@@ -3,7 +3,8 @@
         "65b83ad065dbeb5292d94ab9580d9273@user-meta-1"
     ],
     "Botble\\Contact\\Models\\Contact": [
-        "0c175e4a57799ccc0d2967044852a2f8@unread-contacts"
+        "0c175e4a57799ccc0d2967044852a2f8@unread-contacts",
+        "0c175e4a57799ccc0d2967044852a2f8@unread-contacts-count"
     ],
     "Botble\\Ecommerce\\Models\\ProductCategory": [
         "e2df835384821fa5036252a0581ba12b@ecommerce_categories_for_widgets_en_9bde86212d2ccccf4a5490a7d202582d",
