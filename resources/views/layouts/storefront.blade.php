@@ -324,7 +324,6 @@
                 </form>
 
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-
                     <li class="nav-item">
                         <a
                             class="nav-link"
@@ -333,44 +332,56 @@
                             Home
                         </a>
                     </li>
-
+                @auth
                     <li class="nav-item">
                         <a
                             class="nav-link"
-                            href="{{ route('storefront.shop') }}"
+                            href="{{ route('dashboard') }}"
                         >
-                            Shop
+                            <i class="bi bi-person-circle me-1"></i>
+                            Account
                         </a>
                     </li>
+                @else
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="{{ route('login') }}"
+                        >
+                            Login
+                        </a>
+                    </li>
+                @endauth
 
-                    @auth
-                        <li class="nav-item">
-                            <a
-                                class="nav-link"
-                                href="{{ route('dashboard') }}"
-                            >
-                                <i class="bi bi-person-circle me-1"></i>
-                                Account
-                            </a>
-                        </li>
-                    @else
-                        <li class="nav-item">
-                            <a
-                                class="nav-link"
-                                href="{{ route('login') }}"
-                            >
-                                Login
-                            </a>
-                        </li>
-                    @endauth
+                {{-- Cart akan disambungkan pada tahap berikutnya --}}
+                <li class="nav-item ms-lg-2">
+                    <span class="nav-link text-muted">
+                        <i class="bi bi-cart3"></i>
+                        Cart
+                    </span>
+                </li>
 
-                    {{-- Cart akan disambungkan pada tahap berikutnya --}}
+                @auth
                     <li class="nav-item ms-lg-2">
-                        <span class="nav-link text-muted">
+                        <a
+                            class="nav-link position-relative"
+                            href="{{ route('cart.index') }}"
+                        >
                             <i class="bi bi-cart3"></i>
                             Cart
-                        </span>
+                        </a>
                     </li>
+                @else
+                    <li class="nav-item ms-lg-2">
+                        <a
+                            class="nav-link"
+                            href="{{ route('login') }}"
+                        >
+                            <i class="bi bi-cart3"></i>
+                            Cart
+                        </a>
+                    </li>
+                @endauth
 
                 </ul>
 

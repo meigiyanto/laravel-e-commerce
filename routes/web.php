@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\CartController;
 
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SubCategoryController;
@@ -21,6 +22,27 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])
 
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])
     ->name('storefront.category');
+
+/*
+|------------------------------------------------------------| Cart Routes
+|------------------------------------------------------------*/
+
+Route::middleware('auth')->group(function () {
+
+    Route::get('/cart', [CartController::class, 'index'])
+        ->name('cart.index');
+
+    Route::post('/cart', [CartController::class, 'store'])
+        ->name('cart.store');
+
+    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])
+        ->name('cart.update');
+
+    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])
+        ->name('cart.destroy');
+
+});
+
 /*
 |------------------------------------------------------------| Authenticated User Routes
 |------------------------------------------------------------*/
