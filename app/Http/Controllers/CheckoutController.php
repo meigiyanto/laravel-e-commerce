@@ -59,19 +59,16 @@ class CheckoutController extends Controller
                 'string',
                 'max:255',
             ],
-
             'phone' => [
                 'required',
                 'string',
                 'max:30',
             ],
-
             'shipping_address' => [
                 'required',
                 'string',
                 'max:2000',
             ],
-
             'notes' => [
                 'nullable',
                 'string',
@@ -134,8 +131,7 @@ class CheckoutController extends Controller
                     );
                 }
 
-                $subtotal +=
-                    $product->price * $cartItem->quantity;
+                $subtotal += $product->price * $cartItem->quantity;
             }
 
             /*
@@ -149,11 +145,7 @@ class CheckoutController extends Controller
              * Generate nomor order.
              */
             do {
-                $orderNumber =
-                    'ORD-' .
-                    now()->format('YmdHis') .
-                    '-' .
-                    strtoupper(Str::random(5));
+                $orderNumber = 'ORD-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(5));
 
             } while (
                 Order::where('order_number', $orderNumber)->exists()
@@ -166,24 +158,12 @@ class CheckoutController extends Controller
                 'user_id' => auth()->id(),
                 'order_number' => $orderNumber,
                 'status' => 'pending',
-
-                'customer_name' =>
-                    $validated['customer_name'],
-
-                'phone' =>
-                    $validated['phone'],
-
-                'shipping_address' =>
-                    $validated['shipping_address'],
-
-                'notes' =>
-                    $validated['notes'] ?? null,
-
+                'customer_name' => $validated['customer_name'],
+                'phone' => $validated['phone'],
+                'shipping_address' => $validated['shipping_address'],
+                'notes' => $validated['notes'] ?? null,
                 'subtotal' => $subtotal,
-
-                'shipping_cost' =>
-                    $shippingCost,
-
+                'shipping_cost' => $shippingCost,
                 'total' => $total,
             ]);
 
@@ -192,36 +172,22 @@ class CheckoutController extends Controller
              */
             foreach ($cart->items as $cartItem) {
 
-                $product =
-                    $products->get($cartItem->product_id);
+                $product = $products->get($cartItem->product_id);
 
-                $itemSubtotal =
-                    $product->price * $cartItem->quantity;
+                $itemSubtotal = $product->price * $cartItem->quantity;
 
                 $order->items()->create([
-                    'product_id' =>
-                        $product->id,
-
-                    'product_name' =>
-                        $product->name,
-
-                    'price' =>
-                        $product->price,
-
-                    'quantity' =>
-                        $cartItem->quantity,
-
-                    'subtotal' =>
-                        $itemSubtotal,
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'price' => $product->price,
+                    'quantity' => $cartItem->quantity,
+                    'subtotal' => $itemSubtotal,
                 ]);
 
                 /*
                  * Kurangi stock.
                  */
-                $product->decrement(
-                    'stock',
-                    $cartItem->quantity
-                );
+                $product->decrement('stock', $cartItem->quantity);
             }
 
             /*
@@ -233,15 +199,7 @@ class CheckoutController extends Controller
             return $order;
         });
 
-        return redirect()
-            ->route(
-                'checkout.success',
-                $order
-            )
-            ->with(
-                'success',
-                'Pesanan berhasil dibuat.'
-            );
+        return redirect()->route('checkout.success', $order)->with('success', 'Pesanan berhasil dibuat.');
     }
 
     /**
@@ -256,13 +214,8 @@ class CheckoutController extends Controller
             abort(403);
         }
 
-        $order->load([
-            'items.product',
-        ]);
+        $order->load(['items.product']);
 
-        return view(
-            'storefront.checkout-success',
-            compact('order')
-        );
+        return view('storefront.checkout-success', compact('order'));
     }
 }

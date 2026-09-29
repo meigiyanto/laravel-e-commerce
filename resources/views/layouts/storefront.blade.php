@@ -377,26 +377,6 @@
                         </ul>
                     </li>
                 @else
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="{{ route('login') }}"
-                        >
-                            <i class="bi bi-person me-1"></i>
-                            Login
-                        </a>
-                    </li>
-                @endauth
-
-                {{-- Cart akan disambungkan pada tahap berikutnya --}}
-                <li class="nav-item ms-lg-2">
-                    <span class="nav-link text-muted">
-                        <i class="bi bi-cart3"></i>
-                        Cart
-                    </span>
-                </li>
-
-                @auth
                     <li class="nav-item ms-lg-2">
                         <a
                             class="nav-link position-relative"
@@ -406,14 +386,14 @@
                             Cart
                         </a>
                     </li>
-                @else
-                    <li class="nav-item ms-lg-2">
+
+                    <li class="nav-item">
                         <a
                             class="nav-link"
                             href="{{ route('login') }}"
                         >
-                            <i class="bi bi-cart3"></i>
-                            Cart
+                            <i class="bi bi-person me-1"></i>
+                            Login
                         </a>
                     </li>
                 @endauth
