@@ -14,15 +14,20 @@ class Order extends Model
     protected $fillable = [
         'user_id',
         'order_number',
-        'total_amount',
         'status',
-        'shipping_name',
-        'shipping_phone',
+        'customer_name',
+        'phone',
         'shipping_address',
+        'notes',
+        'subtotal',
+        'shipping_cost',
+        'total',
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'shipping_cost' => 'decimal:2',
+        'total' => 'decimal:2',
     ];
 
     public function user(): BelongsTo
