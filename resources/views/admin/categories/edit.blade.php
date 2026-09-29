@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
+@section('title', 'Edit Category')
+@section('header', 'Edit Category')
+
 @section('content')
-<div class="admin-container">
+<div class="nk-content-body">
 
     <div class="page-header">
         <div>

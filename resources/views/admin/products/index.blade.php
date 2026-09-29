@@ -1,48 +1,50 @@
 @extends('layouts.app')
 
 @section('title', 'Products')
-
 @section('header', 'Products')
 
 @section('content')
-<div class="page-container">
-    <div class="page-title">
+<div class="nk-content-body">
+    <div class="nk-block-head nk-block-head-sm">
+        <div class="nk-block-between">
+            <div class="nk-block-head-content">
+                <h3 class="nk-block-title page-title">Products</h3>
+                <div class="nk-block-des text-soft">
+                    <p>Kelola produk toko.</p>
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
-
-            <div>
-                <h1>Products</h1>
-                <p>Kelola produk toko.</p>
+                    @if(session('error'))
+                        <div class="alert alert-error">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+                </div>
             </div>
 
-            <a href="{{ route('admin.products.create') }}" class="btn btn-primary">
-                + Add Product
-            </a>
+            <div class="nk-block-head-content">
+                <a href="{{ route('admin.products.create') }}" class="btn btn-outline-primary">
+                    <em class="icon ni ni-plus"></em>
+                    <span>Add Product</span>
+                </a>
+            </div>
 
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
+    <div class="card card-bordered">
+        <div class="card-inner">
 
-    @if(session('error'))
-        <div class="alert alert-error">
-            {{ session('error') }}
-        </div>
-    @endif
-
-    <div class="content-card">
-        <div class="table-wrapper">
-            <table class="data-table">
+            <table class="nowrap table table-bordered table-striped">
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Product</th>
                         <th>Category</th>
-                        <th>Sub-Category</th>
+                        <th>Sub Category</th>
                         <th>Price</th>
                         <th>Stock</th>
                         <th>Actions</th>
@@ -72,16 +74,14 @@
                                 {{ $product->stock }}
                             </td>
                             <td>
-                                <div class="action-group">
+                                <div class="btn-group">
 
-                                    <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-secondary">Edit</a>
+                                    <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary"><em class="ni ni-edit"></em></a>
 
                                     <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Hapus product ini?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-danger">
-                                            Delete
-                                        </button>
+                                        <button type="submit" class="btn btn-sm btn-danger"><em class="ni ni-trash"></em></button>
                                     </form>
                                 </div>
                             </td>
@@ -95,13 +95,10 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
 
-        <!-- <div style="margin-top: 20px;"> -->
-        <div class="pagination-wrapper">
-            {{ $products->links() }}
         </div>
     </div>
+
 </div>
 
 @endsection

@@ -1,5 +1,4 @@
 <!-- sidebar @s -->
-
 <div
     class="nk-sidebar nk-sidebar-fixed is-light"
     data-content="sidebarMenu"
@@ -9,7 +8,7 @@
     <div class="nk-sidebar-element nk-sidebar-head">
         <div class="nk-sidebar-brand">
             <a
-                href="{{ url('/') }}"
+                href="{{ url('/admin/dashboard') }}"
                 class="logo-link nk-sidebar-logo"
             >
                 <img
@@ -47,7 +46,8 @@
                 aria-label="Open sidebar"
             >
 
-                <em class="icon ni ni-arrow-left"></em>            </a>
+                <em class="icon ni ni-arrow-left"></em>
+            </a>
 
             {{-- Desktop compact --}}
             <a
@@ -85,7 +85,7 @@
 
                     <li class="nk-menu-item">
                         <a
-                            href="{{ url('/') }}"
+                            href="{{ url('/admin/dashboard') }}"
                             class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">
@@ -120,9 +120,7 @@
                         >
 
                             <span class="nk-menu-icon">
-
                                 <em class="icon ni ni-package"></em>
-
                             </span>
 
                             <span class="nk-menu-text">
@@ -134,7 +132,7 @@
                         <ul class="nk-menu-sub">
                             <li class="nk-menu-item">
                                 <a
-                                    href="{{ url('/products') }}"
+                                    href="{{ url('/admin/products') }}"
                                     class="nk-menu-link"
                                 >
 
@@ -167,27 +165,33 @@
                             class="nk-menu-link nk-menu-toggle"
                             aria-expanded="false"
                         >
-
                             <span class="nk-menu-icon">
                                 <em class="icon ni ni-list-round"></em>
                             </span>
-
                             <span class="nk-menu-text">
                                 Categories
                             </span>
-
                         </a>
 
 
                         <ul class="nk-menu-sub">
                             <li class="nk-menu-item">
                                 <a
-                                    href="{{ url('/categories') }}"
+                                    href="{{ url('/admin/categories') }}"
                                     class="nk-menu-link"
                                 >
-
                                     <span class="nk-menu-text">
                                         All Categories
+                                    </span>
+                                </a>
+                            </li>
+                            <li class="nk-menu-item">
+                                <a
+                                    href="{{ url('/admin/sub-categories') }}"
+                                    class="nk-menu-link"
+                                >
+                                    <span class="nk-menu-text">
+                                        All Sub Categories
                                     </span>
                                 </a>
                             </li>
@@ -201,13 +205,9 @@
                             href="{{ url('/orders') }}"
                             class="nk-menu-link"
                         >
-
                             <span class="nk-menu-icon">
-
                                 <em class="icon ni ni-cart"></em>
-
                             </span>
-
                             <span class="nk-menu-text">
                                 Orders
                             </span>

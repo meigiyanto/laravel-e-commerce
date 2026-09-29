@@ -37,7 +37,6 @@
         "simplebar": "^6.3.3",
         "summernote": "^0.9.1",
         "sweetalert2": "^11.26.25",
-        "themify-icons": "^1.0.0",
         "tinymce": "^8.9.2",
         "toastr": "^2.1.4"
     },
