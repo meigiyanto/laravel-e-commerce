@@ -5,27 +5,46 @@
 @section('header', 'Edit Profile')
 
 @section('content')
-<div class="page-container">
 
-    <div class="page-title">
-        <h1>Profile</h1>
-        <p>Kelola informasi akun Anda.</p>
+<div class="nk-content-body">
+    <div class="nk-block-head nk-block-head-sm">
+        <div class="nk-block-between">
+            <div class="nk-block-head-content">
+                <h3 class="nk-block-title page-title">Profile</h3>
+                <p>Manage your information</p>
+                <div class="nk-block-des text-soft">
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+
+                    @if(session('error'))
+                        <div class="alert alert-error">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+        </div>
     </div>
 
-    <div class="grid">
-
-        <div class="content-card">
+    <div class="card card-bordered">
+        <div class="card-inner">
             @include('profile.partials.update-profile-information-form')
         </div>
+    </div>
 
-        <div class="content-card">
+    <div class="card card-bordered">
+        <div class="card-inner">
             @include('profile.partials.update-password-form')
         </div>
-
-        <div class="content-card">
+    </div>
+    <div class="card card-bordered">
+        <div class="card-inner">
             @include('profile.partials.delete-user-form')
         </div>
-
     </div>
 
 </div>

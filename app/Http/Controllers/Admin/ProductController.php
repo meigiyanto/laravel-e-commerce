@@ -14,7 +14,7 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::with(['subCategory.category'])->latest()->paginate(10);
+        $products = Product::with(['category', 'subCategory'])->latest()->paginate(10);
 
         return view('admin.products.index',compact('products'));
     }
@@ -86,7 +86,7 @@ class ProductController extends Controller
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
-        unset($validated['category_id']);
+        // unset($validated['category_id']);
 
         Product::create($validated);
 
@@ -166,7 +166,7 @@ class ProductController extends Controller
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
-        unset($validated['category_id']);
+        // unset($validated['category_id']);
 
         $product->update($validated);
 

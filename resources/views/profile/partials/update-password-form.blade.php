@@ -2,10 +2,7 @@
 
     <header class="section-header">
         <h2>Profile Information</h2>
-
-        <p>
-            Update informasi profile dan alamat email akun Anda.
-        </p>
+        <p>Update information profile and your email address</p>
     </header>
 
     <form
@@ -17,15 +14,11 @@
         @method('PATCH')
 
         <div class="form-group">
-            <label for="name" class="form-label">
-                Nama
-            </label>
-
-            <input
+            <label for="name" class="form-label">Name</label>            <input
                 id="name"
                 name="name"
                 type="text"
-                class="form-input"
+                class="form-control"
                 value="{{ old('name', $user->name) }}"
                 required
                 autocomplete="name"
@@ -37,15 +30,13 @@
         </div>
 
         <div class="form-group">
-            <label for="email" class="form-label">
-                Email
-            </label>
+            <label for="email" class="form-label">Email</label>
 
             <input
                 id="email"
                 name="email"
                 type="email"
-                class="form-input"
+                class="form-control"
                 value="{{ old('email', $user->email) }}"
                 required
                 autocomplete="username"
@@ -57,12 +48,12 @@
         </div>
 
         <button type="submit" class="btn btn-primary">
-            Simpan Perubahan
+            Save Changes
         </button>
 
         @if (session('status') === 'profile-updated')
             <p class="success-message">
-                Profile berhasil diperbarui.
+                Profile updated successfully.
             </p>
         @endif
 

@@ -2,11 +2,7 @@
 
     <header class="section-header">
         <h2>Delete Account</h2>
-
-        <p>
-            Setelah akun dihapus, seluruh data dan resource
-            yang terkait dengan akun ini tidak dapat dikembalikan.
-        </p>
+        <p>Once an account is deleted, all data and resources associated with this account cannot be recovered.</p>
     </header>
 
     <form
@@ -25,8 +21,8 @@
                 id="password"
                 name="password"
                 type="password"
-                class="form-input"
-                placeholder="Masukkan password untuk konfirmasi"
+                class="form-control"
+                placeholder="Input your password for confirmation"
             >
 
             @error('password', 'userDeletion')
@@ -37,7 +33,7 @@
         <button
             type="submit"
             class="btn btn-danger"
-            onclick="return confirm('Apakah Anda yakin ingin menghapus akun?')"
+            onclick="return confirm('Are you sure want to delete your account?')"
         >
             Hapus Akun
         </button>
