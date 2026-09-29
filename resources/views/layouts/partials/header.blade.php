@@ -257,7 +257,9 @@
                                 <a href="#">View All</a>
                             </div>
                         </div>
-                    </li><!-- .dropdown -->
+                    </li>
+
+                    <!-- .dropdown -->
                     <li class="dropdown user-dropdown">
                         <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">
                             <div class="user-toggle">
@@ -265,36 +267,95 @@
                                     <em class="icon ni ni-user-alt"></em>
                                 </div>
                                 <div class="user-info d-none d-md-block">
-                                    <div class="user-status user-status-unverified">Unverified</div>
-                                    <div class="user-name dropdown-indicator">Abu Bin Ishityak</div>
+                                    <div class="user-status">
+                                        {{ Auth::user()->isAdmin() ? 'Administrator' : 'Customer' }}
+                                    </div>
+                                    <div class="user-name dropdown-indicator">
+                                        {{ Auth::user()->name }}
+                                    </div>
+
                                 </div>
                             </div>
                         </a>
+
                         <div class="dropdown-menu dropdown-menu-md dropdown-menu-end">
                             <div class="dropdown-inner user-card-wrap bg-lighter d-none d-md-block">
                                 <div class="user-card">
                                     <div class="user-avatar">
-                                        <span>AB</span>
+                                        <span>
+                                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
+                                        </span>
                                     </div>
+
                                     <div class="user-info">
-                                        <span class="lead-text">Abu Bin Ishtiyak</span>
-                                        <span class="sub-text">info@softnio.com</span>
+                                        <span class="lead-text">
+                                            {{ Auth::user()->name }}
+                                        </span>
+                                        <span class="sub-text">
+                                            {{ Auth::user()->email }}
+                                        </span>
+
                                     </div>
                                 </div>
                             </div>
                             <div class="dropdown-inner">
                                 <ul class="link-list">
-                                    <li><a href="html/user-profile-regular"><em class="icon ni ni-user-alt"></em><span>View Profile</span></a></li>
-                                    <li><a href="html/user-profile-setting"><em class="icon ni ni-setting-alt"></em><span>Account Setting</span></a></li>
-                                    <li><a href="html/user-profile-activity"><em class="icon ni ni-activity-alt"></em><span>Login Activity</span></a></li>
-                                    <li><a class="dark-switch" href="#"><em class="icon ni ni-moon"></em><span>Dark Mode</span></a></li>
+                                @if (Auth::user()->isAdmin())
+                                    <li>
+                                        <a href="{{ route('admin.dashboard') }}">
+                                            <em class="icon ni ni-dashboard"></em>
+                                            <span>Admin Dashboard</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                    <li>
+                                        <a href="html/user-profile-regular">
+                                            <em class="icon ni ni-user-alt"></em>
+                                            <span>View Profile</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="html/user-profile-setting">
+                                            <em class="icon ni ni-setting-alt"></em>
+                                            <span>Account Setting</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="html/user-profile-activity">
+                                            <em class="icon ni ni-activity-alt"></em>
+                                            <span>Login Activity</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dark-switch" href="#">
+                                            <em class="icon ni ni-moon"></em>
+                                            <span>Dark Mode</span>
+                                        </a>
+                                    </li>
                                 </ul>
                             </div>
+
                             <div class="dropdown-inner">
                                 <ul class="link-list">
-                                    <li><a href="#"><em class="icon ni ni-signout"></em><span>Sign out</span></a></li>
+                                    <li>
+                                        <form
+                                            method="POST"
+                                            action="{{ route('logout') }}"
+                                        >
+                                            @csrf
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-link p-0 border-0 bg-transparent w-100 text-start"
+                                            >
+                                                <em class="icon ni ni-signout"></em>
+                                                <span>Sign out</span>
+                                            </button>
+                                        </form>
+                                    </li>
                                 </ul>
                             </div>
+
                         </div>
                     </li><!-- .dropdown -->
                 </ul><!-- .nk-quick-nav -->

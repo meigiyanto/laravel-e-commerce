@@ -31,21 +31,56 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                'unique:' . User::class,
+            ],
+
+            'password' => [
+                'required',
+                'confirmed',
+                Rules\Password::defaults(),
+            ],
         ]);
 
+        /*
+         * Create a regular user.
+         *
+         * Admin accounts should be created separately
+         * through the AdminSeeder or admin management.
+         */
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => 'user',
         ]);
 
         event(new Registered($user));
 
+        /*
+         * Automatically log the newly registered user in.
+         */
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        /*
+         * Regenerate the session after authentication.
+         */
+        $request->session()->regenerate();
+
+        /*
+         * Regular users always enter the regular dashboard.
+         */
+        return redirect()->route('dashboard');
     }
 }

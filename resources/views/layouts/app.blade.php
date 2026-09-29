@@ -1,36 +1,65 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <head>
+        <meta charset="utf-8" />
 
-    <title>{{ config('app.name', 'Laravel E-Commerce Store') }}</title>
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <!-- Fav Icon  -->
-    <link rel="shortcut icon" href="./images/favicon.png">
-    <!-- Font -->
-    <link rel="stylesheet" href={{ asset('fonts/DMSans-Medium.woff2&display=swap')}}/>
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1"
+        >
 
-    @vite(['resources/css/app.css', 'resources/js/bundle.js', 'resources/js/main.js'])
-    <link id="skin-default" rel="stylesheet" href={{ asset('css/theme.css') }} />
-    <script src="https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.min.js"></script>
-    <script>eruda.init()</script>
-</head>
+        <title>
+            {{ config('app.name', 'Laravel E-Commerce Store') }}
+        </title>
 
-<body class="nk-body bg-lighter npc-general has-sidebar ui-shady ">
+        <meta
+            name="csrf-token"
+            content="{{ csrf_token() }}"
+        >
 
-    <div class="nk-app-root">
-        <div class="nk-main">
-            @include('layouts.partials.aside')
+        <link
+            rel="shortcut icon"
+            href="{{ asset('images/favicon.png') }}"
+        >
 
-            <div class="nk-wrap">
-                @include('layouts.partials.header')
-                @yield('content')
-                @include('layouts.partials.footer')
+        <link
+            rel="stylesheet"
+            href="{{ asset('fonts/DMSans-Medium.woff2') }}"
+        >
+
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        <link
+            id="skin-default"
+            rel="stylesheet"
+            href="{{ asset('css/theme.css') }}"
+        >
+
+        {{-- Eruda hanya untuk development --}}
+        @if(app()->environment('local'))
+
+            <script src="https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    if (typeof eruda !== 'undefined') {
+                        eruda.init();
+                    }
+                });
+            </script>
+        @endif
+
+    </head>
+    <body class="nk-body bg-lighter npc-general has-sidebar ui-shady">
+        <div class="nk-app-root">
+            <div class="nk-main">
+                @include('layouts.partials.aside')
+                <div class="nk-wrap">
+                    @include('layouts.partials.header')
+                    @yield('content')
+                    @include('layouts.partials.footer')
+                </div>
             </div>
-
         </div>
-    </div>
+    </body>
 
-</body>
 </html>
