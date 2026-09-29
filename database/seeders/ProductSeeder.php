@@ -60,7 +60,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'category' => 'Rumah Tangga',
-                'sub_category' => 'Furniture',
+                'sub_category' => 'Peralatan Rumah',
                 'name' => 'Modern Sofa',
                 'descriptions' => 'Sofa modern dengan desain minimalis untuk ruang keluarga.',
                 'price' => 4999000,
@@ -69,8 +69,8 @@ class ProductSeeder extends Seeder
             ],
             [
                 'category' => 'Rumah Tangga',
-                'sub_category' => 'Kitchen',
-                'name' => 'Kitchen Cookware Set',
+                'sub_category' => 'Dapur',
+                'name' => 'Dapur Cookware Set',
                 'descriptions' => 'Set peralatan masak lengkap untuk kebutuhan dapur sehari-hari.',
                 'price' => 899000,
                 'stock' => 20,

@@ -13,10 +13,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth'])->name('dashboard');
-
+Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->middleware(['auth'])->name('dashboard');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -25,24 +26,22 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-|--------------------------------------------------------------------------
-| Admin Routes
-|--------------------------------------------------------------------------
-*/
+|------------------------------------------------------------| Admin Routes
+|------------------------------------------------------------*/
 
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
 
-        // User Management
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    // User Management
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
-        // Sub Category CRUD
-        Route::resource('sub-categories', SubCategoryController::class)->except(['show']);
+    // Sub Category CRUD
+    Route::resource('sub-categories', SubCategoryController::class)->except(['show']);
 
-        // Category CRUD
-        Route::resource('categories', CategoryController::class)->except(['show']);
+    // Category CRUD
+    Route::resource('categories', CategoryController::class)->except(['show']);
 
-        // Product CRUD
-        Route::resource('products', ProductController::class)->except(['show']);
-    });
+    // Product CRUD
+    Route::resource('products', ProductController::class)->except(['show']);
+});
 
 require __DIR__.'/auth.php';

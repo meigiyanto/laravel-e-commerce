@@ -5,11 +5,8 @@
 @section('header', 'Sub-Categories')
 
 @section('content')
-
 <div class="page-container">
-
     <div class="page-title">
-
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
 
             <div>
@@ -23,9 +20,7 @@
             >
                 + Add Sub-Category
             </a>
-
         </div>
-
     </div>
 
     @if(session('success'))
@@ -83,39 +78,28 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-
                 <tbody>
-
                     @forelse($subCategories as $subCategory)
-
                         <tr>
-
                             <td>
                                 {{ $subCategories->firstItem() + $loop->index }}
                             </td>
-
                             <td>
                                 <strong>
                                     {{ $subCategory->name }}
                                 </strong>
                             </td>
-
                             <td>
                                 {{ $subCategory->slug }}
                             </td>
-
                             <td>
                                 {{ $subCategory->category->name }}
                             </td>
-
                             <td>
                                 {{ $subCategory->products()->count() }}
                             </td>
-
                             <td>
-
                                 <div class="action-group">
-
                                     <a
                                         href="{{ route('admin.sub-categories.edit', $subCategory) }}"
                                         class="btn btn-secondary"
@@ -138,32 +122,23 @@
                                         >
                                             Delete
                                         </button>
-
                                     </form>
-
                                 </div>
-
                             </td>
-
                         </tr>
-
                     @empty
-
                         <tr>
                             <td colspan="6">
                                 Belum ada sub-category.
                             </td>
                         </tr>
-
                     @endforelse
-
                 </tbody>
-
             </table>
 
         </div>
 
-        <div style="margin-top: 20px;">
+        <div style="margin-top: 20px;" class="pagination-wrapper">
             {{ $subCategories->links() }}
         </div>
 

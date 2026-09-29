@@ -12,14 +12,14 @@ class AdminMiddleware
         Request $request,
         Closure $next
     ): Response {
-
-        if (
-            auth()->check() &&
-            auth()->user()->role === 'admin'
-        ) {
-            return $next($request);
+        if (! $request->user()) {
+            return redirect()->route('login');
         }
 
-        abort(403);
+        if (! $request->user()->isAdmin()) {
+            abort(403, 'Admin access required.');
+        }
+
+        return $next($request);
     }
 }

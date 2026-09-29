@@ -9,16 +9,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            AdminSeeder::class,
             CategorySeeder::class,
             SubCategorySeeder::class,
             ProductSeeder::class,
-        ]);
-
-        User::create([
-            'name' => 'Mei Giyanto',
-            'email' => 'denmasgie0@gmail.com',
-            'password' => Hash::make('password123'),
-            'role' => 'admin',
         ]);
     }
 }
