@@ -14,27 +14,27 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Elektronik',
                 'image' => 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=800&q=80',
-                'descriptions' => 'Berbagai macam produk elektronik dan aksesoris teknologi.',
+                'description' => 'Berbagai macam produk elektronik dan aksesoris teknologi.',
             ],
             [
                 'name' => 'Fashion',
                 'image' => 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=800&q=80',
-                'descriptions' => 'Produk fashion pria dan wanita.',
+                'description' => 'Produk fashion pria dan wanita.',
             ],
             [
                 'name' => 'Rumah Tangga',
                 'image' => 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
-                'descriptions' => 'Berbagai kebutuhan rumah tangga sehari-hari.',
+                'description' => 'Berbagai kebutuhan rumah tangga sehari-hari.',
             ],
             [
                 'name' => 'Komputer',
                 'image' => 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80',
-                'descriptions' => 'Perangkat komputer dan aksesoris pendukungnya.',
+                'description' => 'Perangkat komputer dan aksesoris pendukungnya.',
             ],
             [
                 'name' => 'Olahraga',
                 'image' => 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=800&q=80',
-                'descriptions' => '',
+                'description' => '',
             ],
         ];
 
@@ -44,7 +44,7 @@ class CategorySeeder extends Seeder
                     'name' => $category['name'],
                     'slug' => Str::slug($category['name']),
                     'image' => $category['image'],
-                    'descriptions' => $category['descriptions'],
+                    'description' => $category['description'],
                 ]
             );
         }
