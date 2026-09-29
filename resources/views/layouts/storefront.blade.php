@@ -333,14 +333,48 @@
                         </a>
                     </li>
                 @auth
-                    <li class="nav-item">
+                    <li class="nav-item dropdown">
                         <a
-                            class="nav-link"
-                            href="{{ route('dashboard') }}"
+                            class="nav-link dropdown-toggle"
+                            href="#"
+                            role="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
                         >
+
                             <i class="bi bi-person-circle me-1"></i>
                             Account
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a
+                                    class="dropdown-item"
+                                    href="{{ route('dashboard') }}"
+                                >
+                                    <i class="bi bi-speedometer2 me-2"></i>
+                                    Dashboard
+
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    class="dropdown-item"
+                                    href="{{ route('orders.index') }}"
+                                >
+                                    <i class="bi bi-bag me-2"></i>
+                                    My Orders
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    class="dropdown-item"
+                                    href="{{ route('profile.edit') }}"
+                                >
+                                    <i class="bi bi-person me-2"></i>
+                                    Profile
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 @else
                     <li class="nav-item">
@@ -348,6 +382,7 @@
                             class="nav-link"
                             href="{{ route('login') }}"
                         >
+                            <i class="bi bi-person me-1"></i>
                             Login
                         </a>
                     </li>

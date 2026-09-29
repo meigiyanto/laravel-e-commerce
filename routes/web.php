@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController;
 
 /**
  * Dashboard
@@ -27,7 +28,7 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
 /*
-|-----------------------------------------------------------| Cart Routes
+|------------------------------------------------------------| Cart Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
@@ -50,24 +51,26 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-|-----------------------------------------------------------| Authenticated User Routes
+|------------------------------------------------------------| Authenticated User Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
-
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
 
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // My Orders
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 });
 
 /*
-|-----------------------------------------------------------| Admin Routes
+|------------------------------------------------------------| Admin Routes
 |----------------------------------------------------------
 */
 
