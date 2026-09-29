@@ -225,7 +225,7 @@
                     </li>
                     <li class="nk-menu-item">
                         <a
-                            href="{{ url('/users') }}"
+                            href="{{ url('/admin/users') }}"
                             class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">

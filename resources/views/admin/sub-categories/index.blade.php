@@ -1,73 +1,59 @@
 @extends('layouts.app')
 
 @section('title', 'Sub-Categories')
-
 @section('header', 'Sub-Categories')
 
 @section('content')
-<div class="page-container">
-    <div class="page-title">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+<div class="nk-content-body">
+    <div class="nk-block-head nk-block-head-sm">
+        <div class="nk-block-between">
+            <div class="nk-block-head-content">
+                <h3 class="nk-block-title page-title">Sub Categories</h3>
+                <div class="nk-block-des text-soft">
+                    <p>Lists of Sub Category Product</p>
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
-            <div>
-                <h1>Sub-Categories</h1>
-                <p>Kelola sub-kategori produk.</p>
+                    @if(session('error'))
+                        <div class="alert alert-error">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+                </div>
             </div>
 
-            <a
-                href="{{ route('admin.sub-categories.create') }}"
-                class="btn btn-primary"
-            >
-                + Add Sub-Category
-            </a>
+            <div class="nk-block-head-content">
+                <a href="{{ route('admin.sub-categories.create') }}" class="btn btn-outline-primary">
+                    <em class="icon ni ni-plus"></em>
+                    <span>Add Sub Category</span>
+                </a>
+            </div>
+
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
+    <div class="card card-bordered">
+        <div class="card-inner">
+            <form
+                method="GET"
+                action="{{ route('admin.sub-categories.index') }}"
+                style="margin-bottom: 20px;"
+            >
+                <div class="form-control-wrap">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search sub-category">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-outline-primary btn-dim">Search</button>
+                        </div>
+                    </div>
+                </div>
 
-    @if(session('error'))
-        <div class="alert alert-error">
-            {{ session('error') }}
-        </div>
-    @endif
+            </form>
 
-    <div class="content-card">
-
-        <form
-            method="GET"
-            action="{{ route('admin.sub-categories.index') }}"
-            style="margin-bottom: 20px;"
-        >
-
-            <div style="display: flex; gap: 10px;">
-
-                <input
-                    type="text"
-                    name="search"
-                    value="{{ $search }}"
-                    placeholder="Search sub-category..."
-                    class="form-control"
-                >
-
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
-                    Search
-                </button>
-
-            </div>
-
-        </form>
-
-        <div class="table-wrapper">
-
-            <table class="data-table">
-
+            <table class="nowrap table table-bordered table-striped">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -99,7 +85,7 @@
                                 {{ $subCategory->products()->count() }}
                             </td>
                             <td>
-                                <div class="action-group">
+                                <div class="btn-group">
                                     <a
                                         href="{{ route('admin.sub-categories.edit', $subCategory) }}"
                                         class="btn btn-secondary"
@@ -137,11 +123,6 @@
             </table>
 
         </div>
-
-        <div style="margin-top: 20px;" class="pagination-wrapper">
-            {{ $subCategories->links() }}
-        </div>
-
     </div>
 
 </div>

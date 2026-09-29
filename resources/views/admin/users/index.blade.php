@@ -1,49 +1,69 @@
 @extends('layouts.app')
 
 @section('title', 'Users')
-
 @section('header', 'Users')
 
 @section('content')
-<div class="admin-container">
+<div class="nk-content-body">
+    <div class="nk-block-head nk-block-head-sm">
+        <div class="nk-block-between">
+            <div class="nk-block-head-content">
+                <h3 class="nk-block-title page-title">Users</h3>
+                <div class="nk-block-des text-soft">
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
 
-    <div class="page-header">
-        <div>
-            <h1>Users</h1>
-            <p>Daftar pengguna yang terdaftar di database.</p>
+                    @if(session('error'))
+                        <div class="alert alert-error">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!--
+            <div class="nk-block-head-content">
+                <a href="#" class="btn btn-outline-primary">
+                    <em class="icon ni ni-plus"></em>
+                    <span>Add User</span>
+                </a>
+            </div>
+            -->
+
         </div>
     </div>
 
-    <div class="card">
+    <div class="card card-bordered">
+        <div class="card-inner">
 
-        <form method="GET" action="{{ route('admin.users.index') }}" class="search-form">
-            <input
-                type="text"
-                name="search"
-                value="{{ $search }}"
-                placeholder="Cari nama atau email..."
-            >
+            <form method="GET" action="{{ route('admin.users.index') }}" class="search-form mb-3">
+                <div class="form-control-wrap">
+                    <div class="input-group">
+                        <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search name or email">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-primary btn-dim" type="submit">Search</button>
+                        </div>
+                    </div>
+                </div>
 
-            <button type="submit" class="btn btn-primary">
-                Cari
-            </button>
+                @if ($search)
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
+                        Reset
+                    </a>
+                @endif
+            </form>
 
-            @if ($search)
-                <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
-                    Reset
-                </a>
-            @endif
-        </form>
-
-        <div class="table-wrapper">
-            <table class="data-table">
+            <table class="nowrap table table-bordered">
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Nama</th>
+                        <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Terdaftar</th>
+                        <th>Registered</th>
                     </tr>
                 </thead>
 
@@ -59,9 +79,7 @@
                             <td>{{ $user->email }}</td>
 
                             <td>
-                                <span class="badge">
-                                    {{ $user->role ?? 'user' }}
-                                </span>
+                                 {{ $user->role }}
                             </td>
 
                             <td>
@@ -71,20 +89,20 @@
                     @empty
                         <tr>
                             <td colspan="5" class="empty-state">
-                                Tidak ada user ditemukan.
+                                User not found
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+
+            @if ($users->hasPages())
+                <div class="pagination-wrapper">
+                    {{ $users->links() }}
+                </div>
+            @endif
+
         </div>
-
-        @if ($users->hasPages())
-            <div class="pagination-wrapper">
-                {{ $users->links() }}
-            </div>
-        @endif
-
     </div>
 
 </div>

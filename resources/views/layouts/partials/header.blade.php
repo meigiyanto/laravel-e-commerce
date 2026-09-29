@@ -5,29 +5,32 @@
             <div class="nk-menu-trigger d-xl-none ms-n1">
                 <a href="#" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu"><em class="icon ni ni-menu"></em></a>
             </div>
+
             <div class="nk-header-brand d-xl-none">
-                <a href="html/index" class="logo-link">
-                    <img class="logo-light logo-img" src="./images/logo.png" srcset="./images/logo2x.png 2x" alt="logo">
-                    <img class="logo-dark logo-img" src="./images/logo-dark.png" srcset="./images/logo-dark2x.png 2x" alt="logo-dark">
+                <a href="{{ url('/admin/dashboard') }}" class="logo-link">
+                    <img class="logo-light logo-img" src="{{ asset('/images/logo.png') }}" alt="logo">
+                    <img class="logo-dark logo-img" src="{{ asset('/images/logo-dark.png') }}" alt="logo-dark">
                 </a>
-            </div><!-- .nk-header-brand -->
+            </div>
+
             <div class="nk-header-search ms-3 ms-xl-0">
                 <em class="icon ni ni-search"></em>
                 <input type="text" class="form-control border-transparent form-focus-none" placeholder="Search anything">
-            </div><!-- .nk-header-search -->
+            </div>
+
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
                     <li class="dropdown language-dropdown d-none d-sm-block me-n1">
                         <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
                             <div class="quick-icon border border-light">
-                                <img class="icon" src="./images/flags/english-sq.png" alt="">
+                                <img class="icon" src="{{ asset('./images/flags/english-sq.png') }}" alt="">
                             </div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end dropdown-menu-s1">
                             <ul class="language-list">
                                 <li>
                                     <a href="#" class="language-item">
-                                        <img src="./images/flags/english.png" alt="" class="language-flag">
+                                        <img src="{{ asset('./images/flags/english.png') }}" alt="" class="language-flag">
                                         <span class="language-name">English</span>
                                     </a>
                                 </li>
@@ -51,7 +54,9 @@
                                 </li>
                             </ul>
                         </div>
-                    </li><!-- .dropdown -->
+                    </li>
+
+                    <!-- .dropdown
                     <li class="dropdown chats-dropdown hide-mb-xs">
                         <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
                             <div class="icon-status icon-status-na"><em class="icon ni ni-comments"></em></div>
@@ -82,7 +87,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
+                                    </li>
                                     <li class="chat-item is-unread">
                                         <a class="chat-link" href="html/apps/chats/index">
                                             <div class="chat-media user-avatar bg-pink">
@@ -102,7 +107,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
+                                    </li>
                                     <li class="chat-item">
                                         <a class="chat-link" href="html/apps/chats/index">
                                             <div class="chat-media user-avatar">
@@ -118,7 +123,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
+                                    </li>
                                     <li class="chat-item">
                                         <a class="chat-link" href="html/apps/chats/index">
                                             <div class="chat-media user-avatar user-avatar-multiple">
@@ -142,7 +147,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
+                                    </li>
                                     <li class="chat-item">
                                         <a class="chat-link" href="html/apps/chats/index">
                                             <div class="chat-media user-avatar">
@@ -159,7 +164,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
+                                    </li>
                                     <li class="chat-item">
                                         <a class="chat-link" href="html/apps/chats/index">
                                             <div class="chat-media user-avatar bg-purple">
@@ -178,14 +183,16 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </li><!-- .chat-item -->
-                                </ul><!-- .chat-list -->
-                            </div><!-- .nk-dropdown-body -->
+                                    </li>
+                                </ul>
+                            </div>
                             <div class="dropdown-foot center">
                                 <a href="html/apps/chats/index">View All</a>
                             </div>
                         </div>
                     </li>
+                    -->
+
                     <li class="dropdown notification-dropdown me-n1">
                         <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
                             <div class="icon-status icon-status-info"><em class="icon ni ni-bell"></em></div>

@@ -24,14 +24,12 @@
                     @endif
                 </div>
             </div>
-
             <div class="nk-block-head-content">
                 <a href="{{ route('admin.products.create') }}" class="btn btn-outline-primary">
                     <em class="icon ni ni-plus"></em>
                     <span>Add Product</span>
                 </a>
             </div>
-
         </div>
     </div>
 
@@ -98,7 +96,5 @@
 
         </div>
     </div>
-
 </div>
-
 @endsection
