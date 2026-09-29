@@ -2,19 +2,28 @@
 
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\StorefrontController;
+
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\ProfileController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [StorefrontController::class, 'home'])
+    ->name('storefront.home');
 
+Route::get('/shop', [StorefrontController::class, 'shop'])
+    ->name('storefront.shop');
+
+Route::get('/shop/{slug}', [StorefrontController::class, 'product'])
+    ->name('storefront.product');
+
+Route::get('/category/{slug}', [StorefrontController::class, 'category'])
+    ->name('storefront.category');
 /*
-|------------------------------------------------------------------| Authenticated User Routes
-|------------------------------------------------------------------*/
+|------------------------------------------------------------| Authenticated User Routes
+|------------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
 
@@ -33,8 +42,8 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-|------------------------------------------------------------------| Admin Routes
-|-----------------------------------------------------------------
+|------------------------------------------------------------| Admin Routes
+|-----------------------------------------------------------
 */
 
 Route::middleware(['auth', 'admin'])
