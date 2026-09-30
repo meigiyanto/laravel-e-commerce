@@ -3,7 +3,6 @@
 @section('title', $product->name . ' - MeiStore')
 
 @section('content')
-
 <section class="container py-4 py-lg-5">
     {{-- Breadcrumb --}}
     <nav aria-label="breadcrumb" class="mb-4">
@@ -106,12 +105,16 @@
                 </div>
             </div>
 
-
             {{-- Add To Cart --}}
             @if ($product->stock > 0)
                 @auth
-                    <form action="{{ route('cart.store') }}" method="POST" class="mt-4">
+                    <form
+                        action="{{ route('cart.store') }}"
+                        method="POST"
+                        class="mt-4 add-to-cart-form"
+                    >
                         @csrf
+
                         <input
                             type="hidden"
                             name="product_id"
@@ -119,41 +122,80 @@
                         >
 
                         <div class="row g-2">
+
+                            {{-- Quantity --}}
                             <div class="col-4 col-sm-3">
-                                <label for="quantity" class="form-label fw-semibold">Total</label>
+                                <label
+                                    for="quantity"
+                                    class="form-label fw-semibold"
+                                >
+                                    Quantity
+                                </label>
+
                                 <input
                                     type="number"
                                     id="quantity"
                                     name="quantity"
-                                    class="form-control"
+                                    class="form-control add-to-cart-quantity"
                                     value="1"
                                     min="1"
                                     max="{{ $product->stock }}"
                                     required
                                 >
-
                             </div>
+
+                            {{-- Add To Cart --}}
                             <div class="col">
-                                <label class="form-label d-block">&nbsp; </label>
-                                <button type="submit" class="btn btn-primary w-100">
+                                <label class="form-label d-block">
+                                    &nbsp;
+                                </label>
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary w-100 add-to-cart-button"
+                                >
                                     <i class="bi bi-cart-plus me-2"></i>
-                                    Add to cart
+                                    Add to Cart
                                 </button>
                             </div>
+
                         </div>
                     </form>
                 @else
                     <div class="alert alert-light border mt-4">
                         <i class="bi bi-info-circle me-2"></i>
+
                         Please login first to add products to your cart.
+
                         <div class="mt-3">
-                            <a href="{{ route('login') }}" class="btn btn-primary">Login</a>
-                            <a href="{{ route('register') }}" class="btn btn-outline-primary ms-2">Sign Upr</a>
+
+                            <a
+                                href="{{ route('login') }}"
+                                class="btn btn-primary"
+                            >
+                                Login
+                            </a>
+
+                            <a
+                                href="{{ route('register') }}"
+                                class="btn btn-outline-primary ms-2"
+                            >
+                                Sign Up
+                            </a>
+
                         </div>
                     </div>
                 @endauth
             @else
-                <button type="button" class="btn btn-secondary w-100 mt-4" disabled>Out of Stock.</button>
+                <button
+                    type="button"
+                    class="btn btn-secondary w-100 mt-4"
+                    disabled
+                >
+                    <i class="bi bi-x-circle me-2"></i>
+                    Out of Stock
+                </button>
+
             @endif
         </div>
     </div>
@@ -286,12 +328,20 @@
         <div class="mt-5 pt-5 border-top">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="section-title mb-1">Related Product</h2>
-                    <p class="text-muted mb-0">Other products from the same cart.</p>
+                    <h2 class="section-title mb-1">
+                        Related Product
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Other products from the same category.
+                    </p>
                 </div>
-
                 @if ($product->category)
-                    <a href="{{ route('storefront.category', $product->category->slug) }}" class="section-link">See all<i class="bi bi-arrow-right"></i>
+                    <a
+                        href="{{ route('storefront.category', $product->category->slug) }}"
+                        class="section-link"
+                    >
+                        See all
+                        <i class="bi bi-arrow-right"></i>
                     </a>
                 @endif
             </div>
@@ -300,7 +350,13 @@
                 @foreach ($relatedProducts as $relatedProduct)
                     <div class="col-6 col-md-4 col-lg-3">
                         <div class="product-card">
-                            <a href="{{ route('storefront.product', $relatedProduct->slug) }}">
+                            {{-- Product Image --}}
+                            <a
+                                href="{{ route(
+                                    'storefront.product',
+                                    $relatedProduct->slug
+                                ) }}"
+                            >
                                 @if ($relatedProduct->image)
                                     <img
                                         src="{{ $relatedProduct->image }}"
@@ -309,24 +365,106 @@
                                         loading="lazy"
                                     >
                                 @else
-                                    <div class="product-image d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-image fs-1 text-secondary"></i>
+                                    <div
+                                        class="product-image d-flex align-items-center justify-content-center"
+                                    >
+                                        <i
+                                            class="bi bi-image fs-1 text-secondary"
+                                        ></i>
                                     </div>
+
                                 @endif
                             </a>
+
+                            {{-- Product Body --}}
                             <div class="product-body">
+                                {{-- Category --}}
                                 <div class="product-category">
-                                    {{ $relatedProduct->category?->name }}
+                                    {{ $relatedProduct->category?->name ?? 'Tanpa kategori' }}
                                 </div>
 
-                                <a href="{{ route('storefront.product', $relatedProduct->slug) }}">
-                                    <h3 class="product-name">{{ $relatedProduct->name }}</h3>
+                                {{-- Product Name --}}
+                                <a
+                                    href="{{ route(
+                                        'storefront.product',
+                                        $relatedProduct->slug
+                                    ) }}"
+                                >
+                                    <h3 class="product-name">
+                                        {{ $relatedProduct->name }}
+                                    </h3>
                                 </a>
+
+                                {{-- Price --}}
                                 <div class="product-price">
-                                    Rp {{ number_format($relatedProduct->price, 0, ',', '.') }}
+                                    Rp {{ number_format(
+                                        $relatedProduct->price,
+                                        0,
+                                        ',',
+                                        '.'
+                                    ) }}
                                 </div>
 
-                                <a href="{{ route('storefront.product', $relatedProduct->slug) }}" class="btn btn-outline-primary w-100 mt-3">See Product</a>
+                                {{-- Stock --}}
+                                <div class="product-stock mt-1">
+                                    @if ($relatedProduct->stock > 0)
+                                        <i class="bi bi-check-circle text-success"></i>
+                                        Stock {{ $relatedProduct->stock }}
+                                    @else
+                                        <i class="bi bi-x-circle text-danger"></i>
+                                        Out of stock
+                                    @endif
+                                </div>
+
+
+                                {{-- Add To Cart --}}
+                                @if ($relatedProduct->stock > 0)
+                                    @auth
+                                        <form
+                                            action="{{ route('cart.store') }}"
+                                            method="POST"
+                                            class="mt-3 add-to-cart-form"
+                                        >
+                                            @csrf
+                                            <input
+                                                type="hidden"
+                                                name="product_id"
+                                                value="{{ $relatedProduct->id }}"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="quantity"
+                                                value="1"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-primary w-100 add-to-cart-button"
+                                            >
+                                                <i class="bi bi-cart-plus me-1"></i>
+                                                Add to Cart
+                                            </button>
+                                        </form>
+                                    @else
+                                        <a
+                                            href="{{ route('login') }}"
+                                            class="btn btn-primary w-100 mt-3"
+                                        >
+                                            <i class="bi bi-cart-plus me-1"></i>
+                                            Login to Add Cart
+                                        </a>
+                                    @endauth
+                                @else
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary w-100 mt-3"
+                                        disabled
+                                    >
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Out of Stock
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -334,6 +472,7 @@
             </div>
         </div>
     @endif
+
 </section>
 @endsection
 
@@ -388,4 +527,218 @@
         }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /*
+    |-------------------------------------------------------------    | Add To Cart AJAX
+    |------------------------------------------------------------
+    */
+
+    const forms = document.querySelectorAll('.add-to-cart-form');
+
+    forms.forEach(function (form) {
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const button = form.querySelector('.add-to-cart-button');
+
+            if (!button) {
+                return;
+            }
+
+            const originalHtml = button.innerHTML;
+
+            /*
+            |-----------------------------------------------------            | Disable Button
+            |----------------------------------------------------
+            */
+
+            button.disabled = true;
+
+            button.innerHTML = `
+                <span
+                    class="spinner-border spinner-border-sm me-1"
+                    role="status"
+                    aria-hidden="true"
+                ></span>
+
+                Adding...
+            `;
+
+            try {
+
+                /*
+                |-------------------------------------------------                | Send AJAX Request
+                |------------------------------------------------
+                */
+
+                const response = await fetch(
+                    form.action,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        },
+
+                        body: new FormData(form),
+                    }
+                );
+
+
+                /*
+                |-------------------------------------------------                | Parse Response
+                |-------------------------------------------------                */
+
+                const data = await response.json();
+
+
+                /*
+                |-------------------------------------------------                | Handle Error
+                |------------------------------------------------
+                */
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Gagal menambahkan produk ke keranjang.');
+                }
+
+
+                /*
+                |-------------------------------------------------                | Update Cart Badge
+                |-------------------------------------------------                */
+
+                updateCartBadge(
+                    data.cart_count
+                );
+
+
+                /*
+                |-------------------------------------------------                | Show Notification
+                |-------------------------------------------------                */
+                showCartNotification(
+                    data.message,
+                    'success'
+                );
+            } catch (error) {
+                showCartNotification(
+                    error.message ||
+                    'Terjadi kesalahan.',
+                    'danger'
+                );
+            } finally {
+
+                /*
+                |------------------------------------------------
+                | Restore Button
+                |------------------------------------------------
+                */
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+        });
+    });
+
+
+    /*
+    |-------------------------------------------------------------    | Update Cart Badge
+    |------------------------------------------------------------
+    */
+
+    function updateCartBadge(count) {
+        const badge = document.getElementById('cart-count-badge');
+        if (!badge) {
+            return;
+        }
+
+        const cartCount = Number(count) || 0;
+        badge.textContent = cartCount;
+
+        if (cartCount > 0) {
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+        }
+    }
+
+
+    /*
+    |-------------------------------------------------------------    | Cart Notification
+    |-------------------------------------------------------------    */
+
+    function showCartNotification(message, type) {
+
+        let container = document.getElementById('cart-notification-container');
+
+        /*
+        |---------------------------------------------------------        | Create Container
+        |---------------------------------------------------------        */
+
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'cart-notification-container';
+            container.className = 'position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1080';
+            document.body.appendChild(container);
+        }
+
+
+        /*
+        |---------------------------------------------------------        | Create Alert
+        |---------------------------------------------------------        */
+
+        const alert = document.createElement('div');
+
+        alert.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+
+
+        alert.setAttribute(
+            'role',
+            'alert'
+        );
+
+
+        const icon = type === 'success' ? 'check-circle' : 'exclamation-circle';
+
+        alert.innerHTML = `
+            <i class="bi bi-${icon} me-2"></i>
+
+            ${message}
+
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="alert"
+                aria-label="Close"
+            ></button>
+        `;
+
+        container.appendChild(
+            alert
+        );
+
+        /*
+        |--------------------------------------------------------
+        | Auto Remove
+        |--------------------------------------------------------
+        */
+        setTimeout(function () {
+            if (!alert) {
+                return;
+            }
+
+            alert.classList.remove(
+                'show'
+            );
+
+            setTimeout(function () {
+                alert.remove();
+            }, 150);
+        }, 3000);
+    }
+});
+</script>
 @endpush
