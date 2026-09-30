@@ -160,6 +160,15 @@
         </div>
     </div>
 
+    {{-- Product Compare --}}
+    <form action="{{ route('compare.store', $product) }}" method="POST" class="mt-2">
+        @csrf
+        <button class="btn btn-outline-secondary w-100">
+            <i class="bi bi-bar-chart me-1"></i>
+            Compare Product
+        </button>
+    </form>
+
     {{-- Review Product --}}
     <div id="review" class="mt-5 pt-5 border-top">
         <h2 class="h4 fw-bold mb-4">Product Review</h2>

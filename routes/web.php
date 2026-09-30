@@ -10,6 +10,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\CompareController;
 
 /**
  * Dashboard
@@ -33,26 +34,26 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
+    // Product Compare
+    Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
+    Route::post('/compare/{product}', [CompareController::class, 'store'])->name('compare.store');
+    Route::delete('/compare/{product}', [CompareController::class, 'destroy'])->name('compare.destroy');
+    Route::delete('/compare', [CompareController::class, 'clear'])->name('compare.clear');
 
-    // Review
+    // Product Review
     Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
     Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
     // Cart
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-
     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
     // Checkout
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 });
