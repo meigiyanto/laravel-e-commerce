@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -167,6 +168,12 @@ class CheckoutController extends Controller
                 'total' => $total,
             ]);
 
+            Payment::create([
+                'order_id' => $order->id,
+                'transaction_status' => 'pending',
+                'gross_amount' => $order->total,
+            ]);
+
             /*
              * Buat order items dan kurangi stok.
              */
@@ -199,8 +206,7 @@ class CheckoutController extends Controller
             return $order;
         });
 
-        return redirect()->route('checkout.success', $order)->with('success', 'Pesanan berhasil dibuat.');
-    }
+        return redirect()->route('payment.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.');    }
 
     /**
      * Halaman sukses checkout.

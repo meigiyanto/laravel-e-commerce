@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Payment;
 use App\Services\MidtransService;
-use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
@@ -18,20 +16,15 @@ class PaymentController extends Controller
 
         $order->load('payment');
 
-        if (!$order->payment) {
-            abort(404, 'Payment tidak ditemukan.');
+        if ($order->payment->transaction_status === 'settlement' || ($order->payment->transaction_status === 'capture' && $order->payment->fraud_status === 'accept')
+        ) {
+            return redirect()->route('checkout.success', $order);
         }
 
-        if ($order->payment->transaction_status === 'settlement') {
-            return redirect()
-                ->route('checkout.success', $order);
-        }
 
         $snapToken = $midtrans->createSnapToken($order);
 
-        return view(
-            'storefront.payment',
-            compact('order', 'snapToken')
+        return view('storefront.payment', compact('order', 'snapToken')
         );
     }
 }
