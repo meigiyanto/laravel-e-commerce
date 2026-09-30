@@ -334,6 +334,26 @@
                     </li>
                 @auth
                     <li class="nav-item">
+                        <a
+                            class="nav-link position-relative"
+                            href="{{ route('cart.index') }}"
+                        >
+                            <i class="bi bi-cart3 me-1"></i>
+                            Cart
+
+                            @php
+                                $cartCount = auth()->user()->cart?->items()->sum('quantity') ?? 0;
+                            @endphp
+
+                            <span
+                                id="cart-count-badge"
+                                class="badge bg-primary rounded-pill {{ $cartCount < 1 ? 'd-none' : '' }}"
+                            >
+                                {{ $cartCount }}
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ route('wishlist.index') }}">
                             <i class="bi bi-heart me-1"></i>
                             Wishlist
@@ -374,15 +394,6 @@
                                     <i class="bi bi-speedometer2 me-2"></i>
                                     My Dashboard
 
-                                </a>
-                            </li>
-                            <li>
-                                <a
-                                    class="dropdown-item"
-                                    href="{{ route('cart.index') }}"
-                                >
-                                    <i class="bi bi-cart3 me-2"></i>
-                                    My Cart
                                 </a>
                             </li>
                             <li>

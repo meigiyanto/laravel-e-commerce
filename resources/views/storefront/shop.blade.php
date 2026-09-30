@@ -200,6 +200,59 @@
                             </button>
                         </form>
 
+                        {{-- Add To Cart --}}
+                        @if ($product->stock > 0)
+
+                            @auth
+                                <form
+                                    action="{{ route('cart.store') }}"
+                                    method="POST"
+                                    class="mt-2 add-to-cart-form"
+                                >
+                                    @csrf
+
+                                    <input
+                                        type="hidden"
+                                        name="product_id"
+                                        value="{{ $product->id }}"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="quantity"
+                                        value="1"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary w-100 add-to-cart-button"
+                                    >
+                                        <i class="bi bi-cart-plus me-1"></i>
+                                        Add to Cart
+                                    </button>
+                                </form>
+                            @else
+                                <a
+                                    href="{{ route('login') }}"
+                                    class="btn btn-primary w-100 mt-2"
+                                >
+                                    <i class="bi bi-cart-plus me-1"></i>
+                                    Login to Add Cart
+                                </a>
+                            @endauth
+
+                        @else
+
+                            <button
+                                type="button"
+                                class="btn btn-secondary w-100 mt-2"
+                                disabled
+                            >
+                                <i class="bi bi-x-circle me-1"></i>
+                                Out of Stock
+                            </button>
+
+                        @endif
                     </div>
                 </div>
             </div>
@@ -230,3 +283,166 @@
 
 </section>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const forms = document.querySelectorAll('.add-to-cart-form');
+    forms.forEach(function (form) {
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const button = form.querySelector('.add-to-cart-button');
+            if (!button) {
+                return;
+            }
+            const originalHtml = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = `
+                <span
+                    class="spinner-border spinner-border-sm me-1"
+                    role="status"
+                    aria-hidden="true"
+                ></span>
+                Adding...
+            `;
+
+            try {
+                const response = await fetch(
+                    form.action,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document
+                                .querySelector('meta[name="csrf-token"]')
+                                .getAttribute('content'),
+                        },
+                        body: new FormData(form),
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(
+                        data.message || 'Gagal menambahkan produk ke keranjang.'
+                    );
+                }
+
+                /*
+                |-------------------------------------------------                | Update Cart Badge
+                |-------------------------------------------------                */
+
+                updateCartBadge(data.cart_count);
+
+
+                /*
+                |-------------------------------------------------                | Show Success Notification
+                |-------------------------------------------------                */
+
+                showCartNotification(
+                    data.message,
+                    'success'
+                );
+            } catch (error) {
+                showCartNotification(
+                    error.message || 'Terjadi kesalahan.',
+                    'danger'
+                );
+
+            } finally {
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }
+        });
+    });
+
+
+    /*
+    |-------------------------------------------------------------    | Update Cart Badge
+    |-------------------------------------------------------------    */
+
+    function updateCartBadge(count) {
+
+        const badge = document.getElementById(
+            'cart-count-badge'
+        );
+
+        if (!badge) {
+            return;
+        }
+
+        const cartCount = Number(count) || 0;
+
+        badge.textContent = cartCount;
+
+        if (cartCount > 0) {
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+        }
+
+    }
+
+
+    /*
+    |-------------------------------------------------------------    | Notification
+    |------------------------------------------------------------
+    */
+
+    function showCartNotification(message, type) {
+        let container = document.getElementById(
+            'cart-notification-container'
+        );
+
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'cart-notification-container';
+            container.className = 'position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1080';
+            document.body.appendChild(container);
+        }
+
+
+        const alert = document.createElement('div');
+
+        alert.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
+        alert.setAttribute('role', 'alert');
+        alert.innerHTML = `
+            <i class="bi bi-${
+                type === 'success'
+                    ? 'check-circle'
+                    : 'exclamation-circle'
+            } me-2"></i>
+
+            ${message}
+
+            <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="alert"
+                aria-label="Close"
+            ></button>
+        `;
+
+        container.appendChild(alert);
+
+
+        /*
+        |---------------------------------------------------------        | Auto Remove
+        |--------------------------------------------------------
+        */
+
+        setTimeout(function () {
+            if (alert) {
+                alert.classList.remove('show');
+                setTimeout(function () {
+                    alert.remove();
+                }, 150);
+            }
+        }, 3000);
+    }
+});
+</script>
+@endpush
