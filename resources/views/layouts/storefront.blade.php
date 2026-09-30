@@ -372,8 +372,17 @@
                                     href="{{ route('dashboard') }}"
                                 >
                                     <i class="bi bi-speedometer2 me-2"></i>
-                                    Dashboard
+                                    My Dashboard
 
+                                </a>
+                            </li>
+                            <li>
+                                <a
+                                    class="dropdown-item"
+                                    href="{{ route('cart.index') }}"
+                                >
+                                    <i class="bi bi-cart3 me-2"></i>
+                                    My Cart
                                 </a>
                             </li>
                             <li>
@@ -391,22 +400,12 @@
                                     href="{{ route('profile.edit') }}"
                                 >
                                     <i class="bi bi-person me-2"></i>
-                                    Profile
+                                    My Profile
                                 </a>
                             </li>
                         </ul>
                     </li>
                 @else
-                    <li class="nav-item ms-lg-2">
-                        <a
-                            class="nav-link position-relative"
-                            href="{{ route('cart.index') }}"
-                        >
-                            <i class="bi bi-cart3"></i>
-                            Cart
-                        </a>
-                    </li>
-
                     <li class="nav-item">
                         <a
                             class="nav-link"

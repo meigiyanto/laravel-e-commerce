@@ -137,7 +137,6 @@
         @forelse ($products as $product)
             <div class="col-6 col-md-4 col-lg-3">
                 <div class="product-card">
-                    {{-- Image --}}
                     <a href="{{ route('storefront.product', $product->slug) }}">
                         @if ($product->image)
                             <img
@@ -183,14 +182,6 @@
                             @endif
                         </div>
 
-                        <a
-                            href="{{ route('storefront.product', $product->slug) }}"
-                            class="btn btn-outline-primary w-100 mt-3"
-                        >
-                            <i class="bi bi-eye"></i>
-                            See Product
-                        </a>
-
                         {{-- Wish List --}}
                         <form action="{{ route('wishlist.store', $product) }}" method="POST" class="mt-2">
                             @csrf
@@ -227,7 +218,6 @@
                 </div>
             </div>
         @endforelse
-
     </div>
 
 

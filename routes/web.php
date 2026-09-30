@@ -16,6 +16,7 @@ use App\Http\Controllers\WishlistController;
 /**
  * Dashboard
  */
+use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SubCategoryController;
@@ -92,6 +93,11 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/dashboard', function () { return view('admin.dashboard'); })->name('dashboard');
+
+    // Stock Management
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::patch('/inventory/{product}/stock', [InventoryController::class, 'updateStock',])->name('inventory.update-stock');
+    Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjustStock',])->name('inventory.adjust-stock');
 
     // Order Management
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');

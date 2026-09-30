@@ -153,9 +153,7 @@
                     </div>
                 @endauth
             @else
-                <button type="button" class="btn btn-secondary w-100 mt-4" disabled>
-                    Out of Stock.
-                </button>
+                <button type="button" class="btn btn-secondary w-100 mt-4" disabled>Out of Stock.</button>
             @endif
         </div>
     </div>
