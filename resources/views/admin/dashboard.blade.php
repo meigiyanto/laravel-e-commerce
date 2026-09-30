@@ -9,15 +9,9 @@
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
-                <h3 class="nk-block-title page-title">
-                    Admin Dashboard
-                </h3>
-
+                <h3 class="nk-block-title page-title">Admin Dashboard</h3>
                 <div class="nk-block-des text-soft">
-                    <p>
-                        Selamat datang kembali,
-                        {{ Auth::user()->name }}.
-                    </p>
+                    <p>Selamat datang kembali,{{ Auth::user()->name }}.</p>
                 </div>
             </div>
         </div>
@@ -51,7 +45,7 @@
                                 href="{{ route('admin.users.index') }}"
                                 class="btn btn-primary"
                             >
-                                Kelola User
+                                Manage User
                             </a>
                         </div>
                     </div>
@@ -84,7 +78,7 @@
                                 href="{{ route('admin.categories.index') }}"
                                 class="btn btn-primary"
                             >
-                                Kelola Category
+                                Manage Category
                             </a>
                         </div>
                     </div>
@@ -113,16 +107,39 @@
                         </div>
 
                         <div class="mt-3">
-                            <a
-                                href="{{ route('admin.products.index') }}"
-                                class="btn btn-primary"
-                            >
-                                Kelola Product
-                            </a>
+                            <a href="{{ route('admin.products.index') }}" class="btn btn-primary">Manage Product</a>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <div class="card-title-group align-start mb-0">
+                            <div class="card-title">
+                                <h6 class="title">
+                                    Orders
+                                </h6>
+                            </div>
+
+                            <div class="card-tools">
+                                <em class="icon ni ni-cart"></em>
+                            </div>
+                        </div>
+
+                        <div class="card-amount mt-2">
+                            <span class="amount">
+                                Manage Orders
+                            </span>
+                        </div>
+
+                        <div class="mt-3">
+                            <a href="{{ route('admin.orders.index') }}" class="btn btn-primary">Manage Order</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>

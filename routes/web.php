@@ -16,6 +16,7 @@ use App\Http\Controllers\WishlistController;
 /**
  * Dashboard
  */
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -90,9 +91,12 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', function () { return view('admin.dashboard'); })->name('dashboard');
+
+    // Order Management
+    Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
 
     // User Management
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
