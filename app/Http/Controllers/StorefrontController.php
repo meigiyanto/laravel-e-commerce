@@ -82,7 +82,10 @@ class StorefrontController extends Controller
         $product = Product::with([
             'category',
             'subCategory',
+            'reviews.user',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->where('slug', $slug)
             ->firstOrFail();
 

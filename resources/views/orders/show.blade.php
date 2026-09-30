@@ -52,7 +52,6 @@
                                 default => ucfirst($order->status),
                             };
                         @endphp
-
                         <span class="badge {{ $statusClass }}" style="font-size: 14px;">{{ $statusLabel }}</span>
                     </div>
                 </div>
@@ -80,10 +79,7 @@
                             @foreach ($order->items as $item)
                                 @if ($order->status === 'completed' && $item->product)
                                     <div class="mt-2">
-                                        <a
-                                            href="{{ route('storefront.product', $item->product->slug) }}#review"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >
+                                        <a href="{{ route('storefront.product', $item->product->slug) }}#review" class="btn btn-sm btn-outline-primary">
                                             <em class="icon ni ni-star"></em>
                                             Beri Review
                                         </a>

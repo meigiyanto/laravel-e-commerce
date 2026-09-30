@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
 
     // Review
     Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
     // Cart
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
