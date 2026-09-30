@@ -9,6 +9,7 @@ use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ReviewController;
 
 /**
  * Dashboard
@@ -32,6 +33,10 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
+
+    // Review
+    Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
+
     // Cart
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 

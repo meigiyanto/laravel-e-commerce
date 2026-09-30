@@ -46,4 +46,9 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
 }

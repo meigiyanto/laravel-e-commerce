@@ -78,6 +78,17 @@
                         </thead>
                         <tbody>
                             @foreach ($order->items as $item)
+                                @if ($order->status === 'completed' && $item->product)
+                                    <div class="mt-2">
+                                        <a
+                                            href="{{ route('storefront.product', $item->product->slug) }}#review"
+                                            class="btn btn-sm btn-outline-primary"
+                                        >
+                                            <em class="icon ni ni-star"></em>
+                                            Beri Review
+                                        </a>
+                                    </div>
+                                @endif
                                 <tr>
                                     {{-- Product --}}
                                     <td>
@@ -123,12 +134,12 @@
                     <h5 class="title mb-4">Informasi Pengiriman</h5>
                     <div class="mb-3">
                         <div class="text-soft small mb-1">Nama Penerima</div>
-                        <strong>{{ $order->shipping_name }}</strong>
+                        <strong>{{ $order->customer_name }}</strong>
                     </div>
 
                     <div class="mb-3">
                         <div class="text-soft small mb-1">Nomor Telepon</div>
-                        <strong>{{ $order->shipping_phone }}</strong>
+                        <strong>{{ $order->phone }}</strong>
                     </div>
 
                     <div>
@@ -155,7 +166,7 @@
 
                     <div class="d-flex justify-content-between">
                         <strong>Total Pesanan</strong>
-                        <strong class="text-primary">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</strong>
+                        <strong class="text-primary">Rp {{ number_format($order->total, 0, ',', '.') }}</strong>
                     </div>
 
                 </div>
