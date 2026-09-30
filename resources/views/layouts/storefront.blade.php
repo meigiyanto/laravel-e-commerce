@@ -333,6 +333,17 @@
                         </a>
                     </li>
                 @auth
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('compare.index') }}">
+                            <i class="bi bi-bar-chart me-1"></i>
+                            Compare
+                            @if (count(session('compare', [])))
+                                <span class="badge bg-primary rounded-pill">
+                                    {{ count(session('compare', [])) }}
+                                </span>
+                            @endif
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a
                             class="nav-link dropdown-toggle"
