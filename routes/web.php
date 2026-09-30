@@ -11,6 +11,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CompareController;
+use App\Http\Controllers\WishlistController;
 
 /**
  * Dashboard
@@ -34,6 +35,11 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
+    // Wishlist
+    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
+    Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
+
     // Product Compare
     Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
     Route::post('/compare/{product}', [CompareController::class, 'store'])->name('compare.store');

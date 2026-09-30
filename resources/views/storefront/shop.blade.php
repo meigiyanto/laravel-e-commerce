@@ -191,10 +191,21 @@
                             See Product
                         </a>
 
+                        {{-- Wish List --}}
+                        <form action="{{ route('wishlist.store', $product) }}" method="POST" class="mt-2">
+                            @csrf
+                            <button class="btn btn-outline-danger w-100">
+                                <i class="bi bi-heart me-1"></i>
+                                Wishlist
+                            </button>
+                        </form>
+
+                        {{-- Compare --}}
                         <form action="{{ route('compare.store', $product) }}" method="POST" class="mt-2">
                             @csrf
-                            <button class="btn btn-outline-secondary w-25">
+                            <button class="btn btn-outline-secondary w-100">
                                 <i class="bi bi-bar-chart me-1"></i>
+                                Compare
                             </button>
                         </form>
 

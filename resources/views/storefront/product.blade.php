@@ -169,6 +169,15 @@
         </button>
     </form>
 
+    {{-- Product Wishlist --}}
+    <form action="{{ route('wishlist.store', $product) }}" method="POST" class="mt-2">
+        @csrf
+        <button class="btn btn-outline-danger w-100">
+            <i class="bi bi-heart me-1"></i>
+            Add to Wishlist
+        </button>
+    </form>
+
     {{-- Review Product --}}
     <div id="review" class="mt-5 pt-5 border-top">
         <h2 class="h4 fw-bold mb-4">Product Review</h2>

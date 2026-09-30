@@ -334,6 +334,15 @@
                     </li>
                 @auth
                     <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ route('wishlist.index') }}">
+                            <i class="bi bi-heart me-1"></i>
+                            Wishlist
+                            @if ($count = auth()->user()->wishlistProducts()->count())
+                                <span class="badge bg-danger rounded-pill">{{ $count }}</span>
+                            @endif
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ route('compare.index') }}">
                             <i class="bi bi-bar-chart me-1"></i>
                             Compare

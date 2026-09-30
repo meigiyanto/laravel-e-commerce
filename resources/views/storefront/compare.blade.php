@@ -14,7 +14,7 @@
             <form action="{{ route('compare.clear') }}" method="POST">
                 @csrf
                 @method('DELETE')
-                <button class="btn btn-outline-danger btn-sm">Truncate</button>
+                <button class="btn btn-outline-danger btn-sm">Empty</button>
             </form>
         @endif
     </div>
@@ -24,7 +24,7 @@
             Unavailable product to compare.
         </div>
     @else
-        <div class="table-responsive">
+        <div class="table-respsonsive">
             <table class="table align-middle border">
                 <tbody>
                     <tr>
@@ -46,7 +46,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger">
-                                        Hapus
+                                        Remove
                                     </button>
                                 </form>
                             </td>
@@ -54,7 +54,7 @@
                     </tr>
 
                     <tr>
-                        <th>Harga</th>
+                        <th>Price</th>
                         @foreach ($products as $product)
                             <td class="text-center fw-bold">
                                 Rp {{ number_format($product->price, 0, ',', '.') }}
@@ -63,7 +63,7 @@
                     </tr>
 
                     <tr>
-                        <th>Kategori</th>
+                        <th>Category</th>
                         @foreach ($products as $product)
                             <td class="text-center">
                                 {{ $product->category?->name ?? '-' }}
@@ -72,16 +72,16 @@
                     </tr>
 
                     <tr>
-                        <th>Stok</th>
+                        <th>Stock</th>
                         @foreach ($products as $product)
                             <td class="text-center">
-                                {{ $product->stock > 0 ? 'Tersedia' : 'Habis' }}
+                                {{ $product->stock > 0 ? 'Available' : 'Unavailable' }}
                             </td>
                         @endforeach
                     </tr>
 
                     <tr>
-                        <th>Deskripsi</th>
+                        <th>Description</th>
                         @foreach ($products as $product)
                             <td>
                                 {{ $product->description ? \Illuminate\Support\Str::limit($product->description, 120) : '-' }}
@@ -93,6 +93,6 @@
         </div>
     @endif
 
-    <a href="{{ route('storefront.shop') }}" class="btn btn-primary mt-3">Kembali ke Shop</a>
+    <a href="{{ route('storefront.shop') }}" class="btn btn-primary mt-3">Back to Shop</a>
 </section>
 @endsection
