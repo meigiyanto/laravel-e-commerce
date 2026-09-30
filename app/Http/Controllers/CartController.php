@@ -148,10 +148,8 @@ class CartController extends Controller
     /**
      * Update cart item.
      */
-    public function update(
-        Request $request,
-        CartItem $cartItem
-    ) {
+    public function update(Request $request, CartItem $cartItem)
+    {
         $validated = $request->validate([
             'quantity' => [
                 'required',
@@ -161,26 +159,69 @@ class CartController extends Controller
         ]);
 
         /*
-        |---------------------------------------------------------        | Security
-        |---------------------------------------------------------        | Pastikan cart item milik user yang sedang login.
+        |-------------------------------------------------------------
+        | Security
+        |-------------------------------------------------------------
+        | Pastikan cart item milik user yang sedang login.
         */
         if ($cartItem->cart->user_id !== auth()->id()) {
             abort(403);
         }
 
         /*
-        |---------------------------------------------------------        | Stock Validation
-        |---------------------------------------------------------        */
+        |-------------------------------------------------------------
+        | Stock Validation
+        |-------------------------------------------------------------
+        */
         if ($validated['quantity'] > $cartItem->product->stock) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah melebihi stok yang tersedia.',
+                ], 422);
+            }
+
             return back()->with(
                 'error',
                 'Jumlah melebihi stok yang tersedia.'
             );
         }
 
+        /*
+        |-------------------------------------------------------------
+        | Update Quantity
+        |-------------------------------------------------------------
+        */
         $cartItem->update([
             'quantity' => $validated['quantity'],
         ]);
+
+        /*
+        |-------------------------------------------------------------
+        | AJAX Response
+        |-------------------------------------------------------------
+        */
+        if ($request->expectsJson()) {
+            $cart = $cartItem->cart->load('items.product');
+
+            $subtotal = $cartItem->product->price * $cartItem->quantity;
+
+            $total = $cart->items->sum(function ($item) {
+                return $item->product->price * $item->quantity;
+            });
+
+            $cartCount = $cart->items->sum('quantity');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Jumlah produk berhasil diperbarui.',
+                'quantity' => $cartItem->quantity,
+                'subtotal' => $subtotal,
+                'total' => $total,
+                'cart_count' => $cartCount,
+                'item_count' => $cartCount,
+            ]);
+        }
 
         return back()->with(
             'success',
