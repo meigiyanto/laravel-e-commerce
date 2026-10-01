@@ -3,28 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Services\MidtransService;
 
 class PaymentController extends Controller
 {
-    public function show(Order $order, MidtransService $midtrans)
+    public function createPayment(Request $request)
     {
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
+        \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
 
-        $order->load('payment');
+        $paymentIntent = \Stripe\PaymentIntent::create([
+            'amount' => 5000, // dalam sen (50.00 USD)
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+        ]);
 
-        if ($order->payment->transaction_status === 'settlement' || ($order->payment->transaction_status === 'capture' && $order->payment->fraud_status === 'accept')
-        ) {
-            return redirect()->route('checkout.success', $order);
-        }
-
-
-        $snapToken = $midtrans->createSnapToken($order);
-
-        return view('storefront.payment', compact('order', 'snapToken')
-        );
+        return response()->json([
+            'clientSecret' => $paymentIntent->client_secret
+        ]);
     }
 }

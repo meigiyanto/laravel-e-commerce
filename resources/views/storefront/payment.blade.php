@@ -1,6 +1,6 @@
-@extends('layouts.storefront')
+@extends('layouts.app')
 
-@section('title', 'Pembayaran - MeiStore')
+@section('title', 'Payment')
 
 @section('content')
 
@@ -10,34 +10,55 @@
 
         <div class="col-lg-7">
 
-            <div class="card border-0 shadow-sm">
+            <div class="card card-bordered">
 
-                <div class="card-body p-4">
+                <div class="card-inner">
 
-                    <h3 class="fw-bold mb-1">
-                        Pembayaran Pesanan
-                    </h3>
+                    <div class="text-center mb-4">
+                        <h3 class="title">
+                            Menunggu Pembayaran
+                        </h3>
 
-                    <p class="text-muted">
-                        {{ $order->order_number }}
-                    </p>
+                        <p class="text-soft">
+                            Order #{{ $order->order_number }}
+                        </p>
+                    </div>
 
-                    <hr>
+                    <div class="alert alert-info">
+                        Silakan lanjutkan pembayaran melalui
+                        Xendit.
+                    </div>
 
-                    <div class="d-flex justify-content-between mb-3">
-                        <span>Total Pembayaran</span>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total Pesanan</span>
 
                         <strong>
-                            Rp {{ number_format($order->total, 0, ',', '.') }}
+                            Rp {{ number_format(
+                                $order->total,
+                                0,
+                                ',',
+                                '.'
+                            ) }}
                         </strong>
                     </div>
 
-                    <button
-                        id="pay-button"
-                        class="btn btn-primary w-100"
-                    >
-                        Bayar Sekarang
-                    </button>
+                    <div class="d-grid mt-4">
+                        <a
+                            href="{{ $payment->payment_link_url }}"
+                            class="btn btn-primary"
+                        >
+                            Lanjutkan Pembayaran
+                        </a>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a
+                            href="{{ route('orders.show', $order) }}"
+                            class="text-soft"
+                        >
+                            Kembali ke detail pesanan
+                        </a>
+                    </div>
 
                 </div>
 
@@ -50,42 +71,3 @@
 </div>
 
 @endsection
-
-@push('scripts')
-
-<script
-    src="https://app.sandbox.midtrans.com/snap/snap.js"
-    data-client-key="{{ config('services.midtrans.client_key') }}">
-</script>
-
-<script>
-document
-    .getElementById('pay-button')
-    .addEventListener('click', function () {
-
-        snap.pay(@json($snapToken), {
-
-            onSuccess: function () {
-                window.location.href =
-                    @json(route('orders.show', $order));
-            },
-
-            onPending: function () {
-                window.location.href =
-                    @json(route('orders.show', $order));
-            },
-
-            onError: function () {
-                alert('Pembayaran gagal. Silakan coba lagi.');
-            },
-
-            onClose: function () {
-                console.log('Payment popup ditutup.');
-            }
-
-        });
-
-    });
-</script>
-
-@endpush

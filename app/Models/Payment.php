@@ -12,6 +12,14 @@ class Payment extends Model
 
     protected $fillable = [
         'order_id',
+        'provider',
+        'reference_id',
+        'payment_session_id',
+        'payment_request_id',
+        'xendit_payment_id',
+        'payment_link_url',
+        'currency',
+        'status',
         'transaction_id',
         'payment_type',
         'transaction_status',
@@ -19,11 +27,15 @@ class Payment extends Model
         'status_code',
         'gross_amount',
         'paid_at',
+        'expires_at',
+        'metadata',
     ];
 
     protected $casts = [
         'gross_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function order(): BelongsTo

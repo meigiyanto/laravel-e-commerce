@@ -13,7 +13,6 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\MidtransNotificationController;
 
 /**
  * Dashboard
@@ -34,7 +33,6 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
-Route::post('/midtrans/notification', [MidtransNotificationController::class, 'handle'])->name('midtrans.notification');
 
 /*
 |------------------------------------------------------------| Cart Routes
