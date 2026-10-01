@@ -11,9 +11,6 @@ use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
-    /**
-     * Menampilkan halaman checkout.
-     */
     public function index()
     {
         $cart = Cart::where('user_id', auth()->id())
@@ -29,14 +26,10 @@ class CheckoutController extends Controller
                 ->with('error', 'Keranjang kamu masih kosong.');
         }
 
-        $subtotal = $cart->items->sum(function ($item) {
-            return $item->product->price * $item->quantity;
-        });
+        $subtotal = $cart->items->sum(
+            fn ($item) => $item->product->price * $item->quantity
+        );
 
-        /*
-         * Untuk sementara ongkos kirim dibuat gratis.
-         * Nanti bisa diganti dengan perhitungan ongkir.
-         */
         $shippingCost = 0;
 
         $total = $subtotal + $shippingCost;
@@ -49,9 +42,6 @@ class CheckoutController extends Controller
         ));
     }
 
-    /**
-     * Membuat order.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -60,16 +50,19 @@ class CheckoutController extends Controller
                 'string',
                 'max:255',
             ],
+
             'phone' => [
                 'required',
                 'string',
                 'max:30',
             ],
+
             'shipping_address' => [
                 'required',
                 'string',
                 'max:2000',
             ],
+
             'notes' => [
                 'nullable',
                 'string',
@@ -79,10 +72,6 @@ class CheckoutController extends Controller
 
         $order = DB::transaction(function () use ($validated) {
 
-            /*
-             * Lock cart agar proses checkout tidak bentrok
-             * dengan request lain.
-             */
             $cart = Cart::where('user_id', auth()->id())
                 ->lockForUpdate()
                 ->first();
@@ -97,28 +86,26 @@ class CheckoutController extends Controller
                 abort(422, 'Keranjang kamu masih kosong.');
             }
 
-            /*
-             * Lock semua produk yang akan dibeli.
-             */
             $productIds = $cart->items
                 ->pluck('product_id')
                 ->unique()
                 ->values();
 
-            $products = \App\Models\Product::whereIn('id', $productIds)
+            $products = \App\Models\Product::whereIn(
+                'id',
+                $productIds
+            )
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
             $subtotal = 0;
 
-            /*
-             * Validasi stok menggunakan data produk
-             * yang sudah di-lock.
-             */
             foreach ($cart->items as $cartItem) {
 
-                $product = $products->get($cartItem->product_id);
+                $product = $products->get(
+                    $cartItem->product_id
+                );
 
                 if (!$product) {
                     throw new \RuntimeException(
@@ -132,96 +119,150 @@ class CheckoutController extends Controller
                     );
                 }
 
-                $subtotal += $product->price * $cartItem->quantity;
+                /*
+                 * Harga diambil dari database.
+                 * Bukan dari request browser.
+                 */
+                $subtotal +=
+                    $product->price *
+                    $cartItem->quantity;
             }
 
-            /*
-             * Ongkir sementara gratis.
-             */
             $shippingCost = 0;
 
+            /*
+             * Total authoritative.
+             */
             $total = $subtotal + $shippingCost;
 
-            /*
-             * Generate nomor order.
-             */
             do {
-                $orderNumber = 'ORD-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(5));
+                $orderNumber =
+                    'ORD-' .
+                    now()->format('YmdHis') .
+                    '-' .
+                    strtoupper(Str::random(5));
 
             } while (
-                Order::where('order_number', $orderNumber)->exists()
+                Order::where(
+                    'order_number',
+                    $orderNumber
+                )->exists()
             );
 
-            /*
-             * Buat order utama.
-             */
             $order = Order::create([
                 'user_id' => auth()->id(),
+
                 'order_number' => $orderNumber,
+
                 'status' => 'pending',
-                'customer_name' => $validated['customer_name'],
-                'phone' => $validated['phone'],
-                'shipping_address' => $validated['shipping_address'],
-                'notes' => $validated['notes'] ?? null,
+
+                'customer_name' =>
+                    $validated['customer_name'],
+
+                'phone' =>
+                    $validated['phone'],
+
+                'shipping_address' =>
+                    $validated['shipping_address'],
+
+                'notes' =>
+                    $validated['notes'] ?? null,
+
                 'subtotal' => $subtotal,
+
                 'shipping_cost' => $shippingCost,
+
                 'total' => $total,
             ]);
 
             Payment::create([
                 'order_id' => $order->id,
+
+                'provider' => 'stripe',
+
+                'currency' => 'IDR',
+
+                'status' => 'pending',
+
                 'transaction_status' => 'pending',
+
                 'gross_amount' => $order->total,
             ]);
 
-            /*
-             * Buat order items dan kurangi stok.
-             */
             foreach ($cart->items as $cartItem) {
 
-                $product = $products->get($cartItem->product_id);
+                $product = $products->get(
+                    $cartItem->product_id
+                );
 
-                $itemSubtotal = $product->price * $cartItem->quantity;
+                $itemSubtotal =
+                    $product->price *
+                    $cartItem->quantity;
 
                 $order->items()->create([
                     'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'price' => $product->price,
-                    'quantity' => $cartItem->quantity,
-                    'subtotal' => $itemSubtotal,
+
+                    'product_name' =>
+                        $product->name,
+
+                    'price' =>
+                        $product->price,
+
+                    'quantity' =>
+                        $cartItem->quantity,
+
+                    'subtotal' =>
+                        $itemSubtotal,
                 ]);
 
-                /*
-                 * Kurangi stock.
-                 */
-                $product->decrement('stock', $cartItem->quantity);
+                $product->decrement(
+                    'stock',
+                    $cartItem->quantity
+                );
             }
 
-            /*
-             * Kosongkan keranjang setelah order
-             * berhasil dibuat.
-             */
             $cart->items()->delete();
 
             return $order;
         });
 
-        return redirect()->route('payment.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.');    }
+        return redirect()
+            ->route('payment.show', $order)
+            ->with(
+                'success',
+                'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.'
+            );
+    }
 
-    /**
-     * Halaman sukses checkout.
-     */
     public function success(Order $order)
     {
+        abort_unless(
+            $order->user_id === auth()->id(),
+            403
+        );
+
+        $order->load([
+            'items.product',
+            'payment',
+        ]);
+
         /*
-         * Pastikan user hanya dapat melihat order miliknya.
+         * Jangan menganggap redirect dari Stripe
+         * sebagai bukti pembayaran berhasil.
+         *
+         * Webhook adalah sumber kebenaran.
          */
-        if ($order->user_id !== auth()->id()) {
-            abort(403);
+        if (
+            !$order->payment ||
+            $order->payment->status !== 'succeeded'
+        ) {
+            return redirect()
+                ->route('payment.show', $order);
         }
 
-        $order->load(['items.product']);
-
-        return view('storefront.checkout-success', compact('order'));
+        return view(
+            'storefront.checkout-success',
+            compact('order')
+        );
     }
 }

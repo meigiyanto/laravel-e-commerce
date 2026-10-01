@@ -12,23 +12,32 @@ class Payment extends Model
 
     protected $fillable = [
         'order_id',
+
         'provider',
         'reference_id',
-        'payment_session_id',
-        'payment_request_id',
-        'xendit_payment_id',
-        'payment_link_url',
+
+        'stripe_payment_intent_id',
+
         'currency',
         'status',
+        'payment_method',
+
         'transaction_id',
         'payment_type',
         'transaction_status',
         'fraud_status',
         'status_code',
+
         'gross_amount',
         'paid_at',
         'expires_at',
         'metadata',
+
+        // legacy fields
+        'payment_session_id',
+        'payment_request_id',
+        'xendit_payment_id',
+        'payment_link_url',
     ];
 
     protected $casts = [
