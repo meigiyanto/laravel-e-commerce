@@ -159,31 +159,35 @@
                     <div class="card-body p-4">
 
                         <h5 class="fw-bold mb-3">
-                            <i class="bi bi-wallet2 me-2"></i>
+
+                            <i class="bi bi-credit-card me-2"></i>
+
                             Metode Pembayaran
+
                         </h5>
 
                         <div class="border rounded p-3">
 
-                            <div class="form-check">
+                            <div class="d-flex align-items-center gap-3">
 
-                                <input
-                                    class="form-check-input"
-                                    type="radio"
-                                    checked
-                                >
+                                <div class="fs-3 text-primary">
 
-                                <label class="form-check-label">
+                                    <i class="bi bi-credit-card"></i>
 
-                                    <strong>
-                                        COD
-                                    </strong>
+                                </div>
 
-                                    <div class="small text-muted">
-                                        Bayar saat pesanan diterima.
+                                <div>
+
+                                    <div class="fw-semibold">
+                                        Stripe
                                     </div>
 
-                                </label>
+                                    <div class="small text-muted">
+                                        Pilih metode pembayaran yang tersedia
+                                        pada halaman pembayaran Stripe.
+                                    </div>
+
+                                </div>
 
                             </div>
 
@@ -193,13 +197,13 @@
 
                             <i class="bi bi-info-circle me-1"></i>
 
-                            Untuk versi portfolio ini, pembayaran menggunakan
-                            simulasi COD. Payment gateway dapat ditambahkan
-                            pada tahap berikutnya.
+                            Setelah pesanan dibuat, kamu akan diarahkan
+                            ke halaman pembayaran Stripe.
 
                         </div>
 
                     </div>
+
                 </div>
 
             </div>
