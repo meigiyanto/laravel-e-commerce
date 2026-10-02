@@ -12,10 +12,7 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $orders = Order::query()
-            ->where('user_id', auth()->id())
-            ->latest()
-            ->paginate(10);
+        $orders = Order::query()->where('user_id', auth()->id())->latest()->paginate(10);
 
         return view('orders.index', compact('orders'));
     }
@@ -26,15 +23,8 @@ class OrderController extends Controller
     public function show(Order $order)
     {
         // User hanya boleh melihat order miliknya sendiri.
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
-
-        $order->load([
-            'items.product',
-        ]);
-
+        abort_unless($order->user_id === auth()->id(),403);
+        $order->load(['items.product']);
         return view('orders.show', compact('order'));
     }
 }

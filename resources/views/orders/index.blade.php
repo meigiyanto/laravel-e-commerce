@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'My Orders')
+section('title', 'My Orders')
 
 @section('header', 'My Orders')
 
@@ -15,12 +15,15 @@
                     <p>Lihat riwayat dan status pesanan kamu.</p>
                 </div>
             </div>
-            <div class="nk-block-head-content">
-                <a href="{{ route('storefront.shop') }}" class="btn btn-primary">
-                    <em class="icon ni ni-cart"></em>
-                    <span>Belanja Lagi</span>
-                </a>
-            </div>
+
+            @if ($orders->count() > 0)
+                <div class="nk-block-head-content">
+                    <a href="{{ route('storefront.shop') }}" class="btn btn-primary">
+                        <em class="icon ni ni-cart"></em>
+                        <span>Belanja Lagi</span>
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -54,13 +57,8 @@
                                         </td>
                                         {{-- Date --}}
                                         <td>
-                                            <div>
-                                                {{ $order->created_at->format('d M Y') }}
-                                            </div>
-
-                                            <div class="text-soft small">
-                                                {{ $order->created_at->format('H:i') }}
-                                            </div>
+                                            <div>{{ $order->created_at->format('d M Y') }}</div>
+                                            <div class="text-soft small">{{ $order->created_at->format('H:i') }}</div>
                                         </td>
                                         {{-- Total --}}
                                         <td>

@@ -1,21 +1,21 @@
 @extends('layouts.guest')
 
-@section('title', 'Admin Dashboard')
-@section('header', 'Admin Dashboard')
+@section('title', 'Login')
 
 @section('content')
     <div class="auth-header">
-        <h1>Welcome Back</h1>
+        <span class="auth-eyebrow text-center">E-Commerce Store</span>
 
-        <p>
-            Login untuk melanjutkan ke akun Anda.
-        </p>
+        <h1 class="text-center">Welcome back</h1>
+        <p class="text-center">Login untuk melanjutkan ke akun Anda.</p>
     </div>
 
-    <x-auth-session-status
-        class="alert alert-success"
-        :status="session('status')"
-    />
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
+
 
     <form method="POST" action="{{ route('login') }}" class="auth-form">
         @csrf
@@ -29,20 +29,35 @@
                 name="email"
                 value="{{ old('email') }}"
                 required
-                autofocus
                 autocomplete="username"
                 class="form-input"
+                placeholder="nama@email.com"
             >
 
             @error('email')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
         </div>
-
         <div class="form-group">
-            <label for="password" class="form-label">
-                Password
-            </label>
+            <div class="form-label-row">
+                <label
+                    for="password"
+                    class="form-label"
+                >
+                    Password
+                </label>
+                @if (Route::has('password.request'))
+                    <a
+                        href="{{ route('password.request') }}"
+                        class="auth-link"
+                    >
+                        Lupa password?
+                    </a>
+                @endif
+            </div>
+
 
             <input
                 id="password"
@@ -51,45 +66,37 @@
                 required
                 autocomplete="current-password"
                 class="form-input"
+                placeholder="Masukkan password"
             >
 
             @error('password')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
+
         </div>
 
-        <div class="form-row">
-            <label class="checkbox-label">
-                <input
-                    type="checkbox"
-                    name="remember"
-                >
 
-                <span>Remember me</span>
-            </label>
+        <label class="checkbox-label">
+            <input
+                type="checkbox"
+                name="remember"
+            >
+            <span>Ingat saya</span>
+        </label>
 
-            @if (Route::has('password.request'))
-                <a
-                    href="{{ route('password.request') }}"
-                    class="auth-link"
-                >
-                    Lupa password?
-                </a>
-            @endif
-        </div>
 
-        <button type="submit" class="btn btn-primary btn-full">
-            Login
-        </button>
-
+        <button type="submit" class="btn btn-block btn-primary btn-full">Login</button>
     </form>
 
     <div class="auth-footer">
         <span>Belum punya akun?</span>
-
-        <a href="{{ route('register') }}" class="auth-link">
+        <a
+            href="{{ route('register') }}"
+            class="auth-link"
+        >
             Daftar sekarang
         </a>
     </div>
-
 @endsection

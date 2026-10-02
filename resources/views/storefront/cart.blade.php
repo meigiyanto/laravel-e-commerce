@@ -5,7 +5,7 @@
 @section('content')
 <section class="container py-4 py-lg-5">
     <div class="mb-4">
-        <h1 class="section-title mb-2">Sbopping Cart</h1>
+        <h1 class="section-title mb-2">Shopping Cart</h1>
         <p class="text-muted mb-0">Check again product that you wan to buy</p>
     </div>
 

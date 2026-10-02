@@ -25,7 +25,6 @@
         </div>
     </div>
 
-
     {{-- Flash --}}
     @if(session('success'))
         <div class="alert alert-success">
@@ -33,13 +32,11 @@
         </div>
     @endif
 
-
     @if(session('error'))
         <div class="alert alert-danger">
             {{ session('error') }}
         </div>
     @endif
-
 
     <div class="row g-4">
         {{-- LEFT --}}

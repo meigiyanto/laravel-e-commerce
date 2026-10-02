@@ -1,18 +1,26 @@
-<x-guest-layout>
+@extends('layouts.guest')
 
+@section('title', 'Register')
+
+@section('content')
     <div class="auth-header">
-        <h1>Create Account</h1>
-
-        <p>
-            Buat akun untuk mulai berbelanja.
-        </p>
+        <span class="auth-eyebrow text-center">E-Commerce Store</span>
+        <h1 class="text-center">Create your account</h1>
+        <p class="text-center">Buat akun baru untuk mulai berbelanja.</p>
     </div>
 
-    <form method="POST" action="{{ route('register') }}" class="auth-form">
+    <form
+        method="POST"
+        action="{{ route('register') }}"
+        class="auth-form"
+    >
         @csrf
 
         <div class="form-group">
-            <label for="name" class="form-label">
+            <label
+                for="name"
+                class="form-label"
+            >
                 Nama
             </label>
 
@@ -22,18 +30,22 @@
                 name="name"
                 value="{{ old('name') }}"
                 required
-                autofocus
                 autocomplete="name"
                 class="form-input"
+                placeholder="Nama lengkap"
             >
-
             @error('name')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
         </div>
 
         <div class="form-group">
-            <label for="email" class="form-label">
+            <label
+                for="email"
+                class="form-label"
+            >
                 Email
             </label>
 
@@ -45,15 +57,23 @@
                 required
                 autocomplete="username"
                 class="form-input"
+                placeholder="nama@email.com"
             >
 
             @error('email')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
+
         </div>
 
+
         <div class="form-group">
-            <label for="password" class="form-label">
+            <label
+                for="password"
+                class="form-label"
+            >
                 Password
             </label>
 
@@ -64,15 +84,23 @@
                 required
                 autocomplete="new-password"
                 class="form-input"
+                placeholder="Minimal 8 karakter"
             >
 
             @error('password')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
+
         </div>
 
+
         <div class="form-group">
-            <label for="password_confirmation" class="form-label">
+            <label
+                for="password_confirmation"
+                class="form-label"
+            >
                 Konfirmasi Password
             </label>
 
@@ -83,25 +111,34 @@
                 required
                 autocomplete="new-password"
                 class="form-input"
+                placeholder="Ulangi password"
             >
 
             @error('password_confirmation')
-                <p class="form-error">{{ $message }}</p>
+                <p class="form-error">
+                    {{ $message }}
+                </p>
             @enderror
         </div>
 
-        <button type="submit" class="btn btn-primary btn-full">
-            Register
+
+        <button
+            type="submit"
+            class="btn btn-block btn-primary btn-full"
+        >
+            Buat akun
         </button>
 
     </form>
 
+
     <div class="auth-footer">
         <span>Sudah punya akun?</span>
-
-        <a href="{{ route('login') }}" class="auth-link">
+        <a
+            href="{{ route('login') }}"
+            class="auth-link"
+        >
             Login
         </a>
     </div>
-
-</x-guest-layout>
+@endsection
