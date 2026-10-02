@@ -33,6 +33,12 @@ class PaymentController extends Controller
         }
 
         Stripe::setApiKey(config('services.stripe.secret'));
+
+        Log::debug('Stripe configuration check.', [
+            'secret_configured' => !empty(config('services.stripe.secret')),
+            'stripe_api_key_configured' => !empty(Stripe::getApiKey()),
+        ]);
+
         $payment = $order->payment;
 
         /*
@@ -45,24 +51,19 @@ class PaymentController extends Controller
         $expectedAmount = $this->stripeAmount($order->total);
 
         try {
-
             /*
              * Jika PaymentIntent sudah pernah dibuat,
              * gunakan kembali.
              */
             if ($payment->stripe_payment_intent_id) {
-
                 $paymentIntent = PaymentIntent::retrieve($payment->stripe_payment_intent_id);
-
                 /*
                  * Security check:
                  * PaymentIntent Stripe harus sama persis
                  * dengan order server.
                  */
                 if ((int) $paymentIntent->amount !== $expectedAmount || strtolower($paymentIntent->currency) !== 'idr') {
-
-                    Log::critical(
-                        'Stripe amount mismatch.',
+                    Log::critical('Stripe amount mismatch.',
                         [
                             'order_id' => $order->id,
                             'payment_intent_id' => $paymentIntent->id,
@@ -71,10 +72,8 @@ class PaymentController extends Controller
                             'stripe_currency' => $paymentIntent->currency,
                         ]
                     );
-
                     abort(409, 'Nominal pembayaran tidak sesuai dengan pesanan.');
                 }
-
             } else {
                 /*
                  * PaymentIntent hanya dibuat berdasarkan
@@ -107,14 +106,12 @@ class PaymentController extends Controller
                     ],
                 ]);
             }
-
         } catch (Throwable $e) {
             Log::error('Stripe PaymentIntent error.', [
                     'order_id' => $order->id,
                     'exception' => $e->getMessage(),
                 ]
             );
-
             abort(502, 'Pembayaran Stripe tidak dapat disiapkan.');
         }
 
