@@ -41,8 +41,8 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 Route::middleware('auth')->group(function () {
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
-    Route::get('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
-    
+    Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
+
     // Wishlist
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');

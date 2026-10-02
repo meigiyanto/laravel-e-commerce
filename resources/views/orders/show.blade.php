@@ -17,7 +17,14 @@
             </div>
 
             <div class="nk-block-head-content">
-                <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">Back to My Orders</a>
+                <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">
+                <i class="ni ni-arrow-left"></i>
+                    Go Back
+                </a>
+                <button type="button" class="btn btn-outline-secondary">
+                <i class="ni ni-clipboard"></i>
+                    Copy Order
+                </button>
             </div>
         </div>
     </div>
@@ -35,12 +42,12 @@
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         @php
                             $statusClass = match ($order->status) {
-                                'pending' => 'bg-warning text-dark',
-                                'processing' => 'bg-info text-dark',
-                                'shipped' => 'bg-primary',
-                                'completed' => 'bg-success',
-                                'cancelled' => 'bg-danger',
-                                default => 'bg-secondary',
+                                'pending' => 'bg-warning text-dark p-1',
+                                'processing' => 'bg-info text-dark p-1',
+                                'shipped' => 'bg-primary p-1',
+                                'completed' => 'bg-success p-1',
+                                'cancelled' => 'bg-danger p-1',
+                                default => 'bg-secondary p-1',
                             };
 
                             $statusLabel = match ($order->status) {
