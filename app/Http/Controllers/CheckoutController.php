@@ -68,6 +68,11 @@ class CheckoutController extends Controller
                 'string',
                 'max:2000',
             ],
+
+            'payment_method' => [
+                'required',
+                'in:stripe,cod',
+            ],
         ]);
 
         $order = DB::transaction(function () use ($validated) {
@@ -151,74 +156,40 @@ class CheckoutController extends Controller
 
             $order = Order::create([
                 'user_id' => auth()->id(),
-
                 'order_number' => $orderNumber,
-
                 'status' => 'pending',
-
-                'customer_name' =>
-                    $validated['customer_name'],
-
-                'phone' =>
-                    $validated['phone'],
-
-                'shipping_address' =>
-                    $validated['shipping_address'],
-
-                'notes' =>
-                    $validated['notes'] ?? null,
-
-                'subtotal' => $subtotal,
-
+                'customer_name' => $validated['customer_name'],
+                'phone' => $validated['phone'],
+                'shipping_address' => $validated['shipping_address'],
+                'notes' => $validated['notes'] ?? null,                'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
-
                 'total' => $total,
             ]);
 
             Payment::create([
                 'order_id' => $order->id,
-
-                'provider' => 'stripe',
-
+                'provider' => $validated['payment_method'] === 'cod' ? 'cod' : 'stripe',
                 'currency' => 'IDR',
-
                 'status' => 'pending',
-
+                'payment_method' => $validated['payment_method'],
+                'payment_type' => $validated['payment_method'] === 'cod' ? 'cash_on_delivery' : 'card',
                 'transaction_status' => 'pending',
-
                 'gross_amount' => $order->total,
             ]);
 
             foreach ($cart->items as $cartItem) {
-
-                $product = $products->get(
-                    $cartItem->product_id
-                );
-
-                $itemSubtotal =
-                    $product->price *
-                    $cartItem->quantity;
+                $product = $products->get($cartItem->product_id);
+                $itemSubtotal = $product->price * $cartItem->quantity;
 
                 $order->items()->create([
                     'product_id' => $product->id,
-
-                    'product_name' =>
-                        $product->name,
-
-                    'price' =>
-                        $product->price,
-
-                    'quantity' =>
-                        $cartItem->quantity,
-
-                    'subtotal' =>
-                        $itemSubtotal,
+                    'product_name' => $product->name,
+                    'price' => $product->price,
+                    'quantity' => $cartItem->quantity,
+                    'subtotal' => $itemSubtotal,
                 ]);
 
-                $product->decrement(
-                    'stock',
-                    $cartItem->quantity
-                );
+                $product->decrement('stock', $cartItem->quantity);
             }
 
             $cart->items()->delete();
@@ -226,25 +197,17 @@ class CheckoutController extends Controller
             return $order;
         });
 
-        return redirect()
-            ->route('payment.show', $order)
-            ->with(
-                'success',
-                'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.'
-            );
+        if ($validated['payment_method'] === 'cod') {
+            return redirect()->route('orders.show', $order)->with('success','Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
+        }
+
+        return redirect()->route('payment.show', $order)->with('success','Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.');
     }
 
     public function success(Order $order)
     {
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
-
-        $order->load([
-            'items.product',
-            'payment',
-        ]);
+        abort_unless($order->user_id === auth()->id(),403);
+        $order->load(['items.product', 'payment']);
 
         /*
          * Jangan menganggap redirect dari Stripe
@@ -252,17 +215,10 @@ class CheckoutController extends Controller
          *
          * Webhook adalah sumber kebenaran.
          */
-        if (
-            !$order->payment ||
-            $order->payment->status !== 'succeeded'
-        ) {
-            return redirect()
-                ->route('payment.show', $order);
+        if (!$order->payment || $order->payment->status !== 'succeeded') {
+            return redirect()->route('payment.show', $order);
         }
 
-        return view(
-            'storefront.checkout-success',
-            compact('order')
-        );
+        return view('storefront.checkout-success', compact('order'));
     }
 }

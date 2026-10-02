@@ -12,10 +12,7 @@ class PaymentController extends Controller
 {
     public function show(Order $order)
     {
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
+        abort_unless($order->user_id === auth()->id(), 403);
 
         $order->load('payment');
 
@@ -24,37 +21,28 @@ class PaymentController extends Controller
         }
 
         if ($order->payment->status === 'succeeded') {
-            return redirect()
-                ->route('checkout.success', $order);
+            return redirect()->route('checkout.success', $order);
         }
 
         if ($order->payment->status === 'failed') {
-            return redirect()
-                ->route('orders.show', $order)
-                ->with(
-                    'error',
-                    'Pembayaran sebelumnya gagal. Silakan buat pesanan baru.'
-                );
+            return redirect()->route('orders.show', $order)->with('error', 'Pembayaran sebelumnya gagal. Silakan buat pesanan baru.');
         }
 
         if ($order->payment->status === 'canceled') {
-            return redirect()
-                ->route('orders.show', $order)
-                ->with(
-                    'error',
-                    'Pembayaran pesanan ini telah dibatalkan.'
-                );
+            return redirect()->route('orders.show', $order)->with('error', 'Pembayaran pesanan ini telah dibatalkan.');
         }
 
-        Stripe::setApiKey(
-            config('services.stripe.secret')
-        );
+        Stripe::setApiKey(config('services.stripe.secret'));
 
         $payment = $order->payment;
+        /*
+         * COD tidak membutuhkan Stripe PaymentIntent.
+         */
+        if ($payment->payment_method === 'cod') {
+            return redirect()->route('orders.show', $order)->with('success', 'Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
+        }
 
-        $expectedAmount = $this->stripeAmount(
-            $order->total
-        );
+        $expectedAmount = $this->stripeAmount($order->total);
 
         try {
 
@@ -64,10 +52,7 @@ class PaymentController extends Controller
              */
             if ($payment->stripe_payment_intent_id) {
 
-                $paymentIntent =
-                    PaymentIntent::retrieve(
-                        $payment->stripe_payment_intent_id
-                    );
+                $paymentIntent = PaymentIntent::retrieve($payment->stripe_payment_intent_id);
 
                 /*
                  * Security check:
