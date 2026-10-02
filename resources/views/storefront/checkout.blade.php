@@ -143,41 +143,61 @@
                             Metode Pembayaran
                         </h5>
 
-                            {{-- Stripe --}}
-                            <label
-                                class="payment-method-option w-100"
-                                for="payment_stripe"
+                        {{-- Stripe --}}
+                        <label
+                            class="payment-method-option w-100"
+                            for="payment_stripe"
+                        >
+                            <input
+                                type="radio"
+                                class="form-check-input me-2"
+                                name="payment_method"
+                                id="payment_stripe"
+                                value="stripe"
+                                required
                             >
-                                <input
-                                    type="radio"
-                                    class="form-check-input me-2"
-                                    name="payment_method"
-                                    id="payment_stripe"
-                                    value="stripe"
-                                    {{ old('payment_method', 'stripe') === 'stripe' ? 'checked' : '' }}
-                                >
 
-                                <span>
-                                    <strong class="d-block"><i class="bi bi-credit-card me-1"></i>Stripe</strong>
-                                    <small class="text-muted">Bayar secara online menggunakan kartu atau metode pembayaran yang tersedia di Stripe.</small>
-                                </span>
-                            </label>
+                            <span>
+                                <strong class="d-block"><i class="bi bi-credit-card me-1"></i>Stripe</strong>
+                                <small class="text-muted">Bayar secara online menggunakan kartu atau metode pembayaran yang tersedia di Stripe.</small>
+                            </span>
+                        </label>
 
-                            {{-- COD --}}
-                            <label class="payment-method-option w-100" for="payment_cod">
-                                <input
-                                    type="radio"
-                                    class="form-check-input me-2"
-                                    name="payment_method"
-                                    id="payment_cod"
-                                    value="cod"
-                                    {{ old('payment_method') === 'cod' ? 'checked' : '' }}>
+                        {{-- Midtrans --}}
+                        <label
+                            class="payment-method-option w-100"
+                            for="payment_midtrans"
+                        >
+                            <input
+                                type="radio"
+                                class="form-check-input me-2"
+                                name="payment_method"
+                                id="payment_midtrans"
+                                value="midtrans"
+                                required
+                            >
 
-                                <span>
-                                    <strong class="d-block"><i class="bi bi-cash-coin me-1"></i>Cash on Delivery
-                                    </strong><small class="text-muted">Bayar saat pesanan diterima</small>
-                                </span>
-                            </label>
+                            <span>
+                                <strong class="d-block"><i class="bi bi-credit-card me-1"></i>Midtrans</strong>
+                                <small class="text-muted">Bayar menggunakan berbagai metode pembayaran melalui Midtrans.</small>
+                            </span>
+                        </label>
+
+                        {{-- COD --}}
+                        <label class="payment-method-option w-100" for="payment_cod">
+                            <input
+                                type="radio"
+                                class="form-check-input me-2"
+                                name="payment_method"
+                                id="payment_cod"
+                                value="cod"
+                                {{ old('payment_method') === 'cod' ? 'checked' : '' }}>
+
+                            <span>
+                                <strong class="d-block"><i class="bi bi-cash-coin me-1"></i>Cash on Delivery
+                                </strong><small class="text-muted">Bayar saat pesanan diterima</small>
+                            </span>
+                        </label>
                         @error('payment_method')
                             <div class="text-danger small mt-2">
                                 {{ $message }}
