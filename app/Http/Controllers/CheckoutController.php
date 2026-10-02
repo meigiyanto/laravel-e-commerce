@@ -217,9 +217,49 @@ class CheckoutController extends Controller
         ]);
 
         /*
-        * Halaman success hanya boleh ditampilkan
-        * jika Payment sudah diverifikasi oleh server.
-        */
+         * COD tidak membutuhkan sinkronisasi Stripe.
+         */
+        if (
+            $order->payment &&
+            $order->payment->payment_method === 'cod'
+        ) {
+            return view(
+                'storefront.checkout-success',
+                compact('order')
+            );
+        }
+
+        /*
+         * Jika Stripe masih pending tetapi sudah memiliki
+         * PaymentIntent, cek langsung ke Stripe.
+         *
+         * Ini menangani kasus:
+         *
+         * Stripe = succeeded
+         * DB     = pending
+         */
+        if (
+            $order->payment &&
+            $order->payment->status !== 'succeeded' &&
+            $order->payment->stripe_payment_intent_id
+        ) {
+            app(PaymentController::class)
+                ->syncPaymentFromStripe(
+                    $order,
+                    $order->payment->stripe_payment_intent_id
+                );
+
+            $order->refresh();
+            $order->load([
+                'items.product',
+                'payment',
+            ]);
+        }
+
+        /*
+         * Halaman success hanya boleh ditampilkan
+         * setelah server memverifikasi pembayaran.
+         */
         if (
             !$order->payment ||
             $order->payment->status !== 'succeeded'
