@@ -233,26 +233,25 @@ class CheckoutController extends Controller
             'payment',
         ]);
 
+        $payment = $order->payment;
+
         /*
-         * COD tidak membutuhkan sinkronisasi Stripe.
+         * Order tanpa payment tidak boleh dianggap berhasil.
          */
-        if (
-            $order->payment &&
-            $order->payment->payment_method === 'cod'
-        ) {
-            return view(
-                'storefront.checkout-success',
-                compact('order')
-            );
+        if (!$payment) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with(
+                    'error',
+                    'Data pembayaran untuk pesanan ini tidak ditemukan.'
+                );
         }
 
         /*
-         * COD tidak membutuhkan sinkronisasi payment gateway.
+         * COD:
+         * Tidak membutuhkan payment gateway.
          */
-        if (
-            $order->payment &&
-            $order->payment->payment_method === 'cod'
-        ) {
+        if ($payment->provider === 'cod') {
             return view(
                 'storefront.checkout-success',
                 compact('order')
@@ -261,18 +260,18 @@ class CheckoutController extends Controller
 
         /*
          * Stripe:
-         * tetap gunakan mekanisme Stripe yang sudah ada.
+         * Pertahankan mekanisme sinkronisasi Stripe
+         * yang sudah digunakan sebelumnya.
          */
         if (
-            $order->payment &&
-            $order->payment->provider === 'stripe' &&
-            $order->payment->status !== 'succeeded' &&
-            $order->payment->stripe_payment_intent_id
+            $payment->provider === 'stripe' &&
+            $payment->status !== 'succeeded' &&
+            $payment->stripe_payment_intent_id
         ) {
             app(PaymentController::class)
                 ->syncPaymentFromStripe(
                     $order,
-                    $order->payment->stripe_payment_intent_id
+                    $payment->stripe_payment_intent_id
                 );
 
             $order->refresh();
@@ -281,27 +280,25 @@ class CheckoutController extends Controller
                 'items.product',
                 'payment',
             ]);
+
+            $payment = $order->payment;
         }
 
         /*
          * Midtrans:
-         * status utamanya disinkronkan melalui
-         * HTTP Notification.
          *
-         * Jika callback browser sudah menghasilkan
-         * transaction_id, confirm() sebelumnya juga
-         * melakukan pengecekan status.
+         * Jika browser callback belum membuat status
+         * menjadi succeeded, cek status langsung ke Midtrans.
+         *
+         * Webhook/HTTP Notification tetap menjadi mekanisme
+         * utama untuk sinkronisasi pembayaran.
          */
         if (
-            $order->payment &&
-            $order->payment->provider === 'midtrans' &&
-            $order->payment->status !== 'succeeded'
+            $payment->provider === 'midtrans' &&
+            $payment->status !== 'succeeded'
         ) {
             return redirect()
-                ->route(
-                    'payment.midtrans.show',
-                    $order
-                )
+                ->route('payment.midtrans.show', $order)
                 ->with(
                     'error',
                     'Pembayaran Midtrans belum berhasil diverifikasi.'
@@ -309,36 +306,26 @@ class CheckoutController extends Controller
         }
 
         /*
-         * Halaman success hanya boleh ditampilkan
-         * setelah server memverifikasi pembayaran.
+         * Pembayaran sudah berhasil diverifikasi.
          */
-        if (
-            !$order->payment ||
-            $order->payment->status !== 'succeeded'
-        ) {
-            if (
-                $order->payment?->provider === 'midtrans'
-            ) {
-                return redirect()
-                    ->route(
-                        'payment.midtrans.show',
-                        $order
-                    )
-                    ->with(
-                        'error',
-                        'Pembayaran Midtrans belum berhasil diverifikasi.'
-                    );
-            }
-
-            return redirect()
-                ->route(
-                    'payment.show',
-                    $order
-                )
-                ->with(
-                    'error',
-                    'Pembayaran Stripe belum berhasil diverifikasi.'
-                );
+        if ($payment->status === 'succeeded') {
+            return view(
+                'storefront.checkout-success',
+                compact('order')
+            );
         }
+
+        /*
+         * Pembayaran gagal, expired, cancelled,
+         * atau masih pending.
+         *
+         * Jangan tampilkan halaman success.
+         */
+        return redirect()
+            ->route('orders.show', $order)
+            ->with(
+                'error',
+                'Pembayaran belum berhasil. Silakan periksa status pesanan Anda.'
+            );
     }
 }
