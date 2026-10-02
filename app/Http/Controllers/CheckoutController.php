@@ -206,19 +206,38 @@ class CheckoutController extends Controller
 
     public function success(Order $order)
     {
-        abort_unless($order->user_id === auth()->id(),403);
-        $order->load(['items.product', 'payment']);
+        abort_unless(
+            $order->user_id === auth()->id(),
+            403
+        );
+
+        $order->load([
+            'items.product',
+            'payment',
+        ]);
 
         /*
-         * Jangan menganggap redirect dari Stripe
-         * sebagai bukti pembayaran berhasil.
-         *
-         * Webhook adalah sumber kebenaran.
-         */
-        if (!$order->payment || $order->payment->status !== 'succeeded') {
-            return redirect()->route('payment.show', $order);
+        * Halaman success hanya boleh ditampilkan
+        * jika Payment sudah diverifikasi oleh server.
+        */
+        if (
+            !$order->payment ||
+            $order->payment->status !== 'succeeded'
+        ) {
+            return redirect()
+                ->route(
+                    'payment.show',
+                    $order
+                )
+                ->with(
+                    'error',
+                    'Pembayaran belum berhasil diverifikasi.'
+                );
         }
 
-        return view('storefront.checkout-success', compact('order'));
+        return view(
+            'storefront.checkout-success',
+            compact('order')
+        );
     }
 }

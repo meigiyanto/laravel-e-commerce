@@ -13,7 +13,6 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\StripeWebhookController;
 
 /**
  * Dashboard
@@ -34,15 +33,16 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
-Route::post('/stripe/webhook',  [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
-
 /*
-|------------------------------------------------------------| Cart Routes
+|------------------------------------------------------------
+| Cart Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
+    Route::get('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
+    
     // Wishlist
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
     Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');

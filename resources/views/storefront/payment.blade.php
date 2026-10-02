@@ -5,24 +5,14 @@
 @section('content')
 
 <div class="container py-5">
-
     <div class="row justify-content-center">
-
         <div class="col-lg-7">
-
             <div class="card border-0 shadow-sm">
-
                 <div class="card-body p-4 p-lg-5">
-
                     <div class="text-center mb-4">
+                        <h1 class="h3 fw-bold mb-2">Pembayaran Pesanan</h1>
 
-                        <h1 class="h3 fw-bold mb-2">
-                            Pembayaran Pesanan
-                        </h1>
-
-                        <p class="text-muted mb-1">
-                            Order #{{ $order->order_number }}
-                        </p>
+                        <p class="text-muted mb-1">Order #{{ $order->order_number }}</p>
 
                         <div class="fs-4 fw-bold text-primary">
                             Rp {{ number_format(
@@ -108,7 +98,6 @@
 <script src="https://js.stripe.com/v3/"></script>
 
 <script>
-
 document.addEventListener(
     'DOMContentLoaded',
     async function () {
@@ -173,14 +162,7 @@ document.addEventListener(
 
                 event.preventDefault();
 
-                submitButton.disabled = true;
-
-                spinner.classList.remove(
-                    'd-none'
-                );
-
-                buttonText.textContent =
-                    'Memproses...';
+                setLoading(true);
 
                 errorBox.classList.add(
                     'd-none'
@@ -203,13 +185,12 @@ document.addEventListener(
                 }
 
                 /*
-                 * Stripe yang menentukan hasil pembayaran.
-                 *
-                 * Tidak ada amount yang dikirim
-                 * dari browser.
+                 * Konfirmasi pembayaran
+                 * melalui Stripe.js.
                  */
                 const {
-                    error
+                    error,
+                    paymentIntent
                 } = await stripe.confirmPayment({
 
                     elements,
@@ -217,7 +198,6 @@ document.addEventListener(
                     clientSecret,
 
                     confirmParams: {
-
                         return_url:
                             @json(
                                 route(
@@ -232,10 +212,6 @@ document.addEventListener(
                             ),
                     },
 
-                    /*
-                     * Redirect hanya jika payment method
-                     * memang membutuhkan redirect.
-                     */
                     redirect: 'if_required',
                 });
 
@@ -249,12 +225,109 @@ document.addEventListener(
                 }
 
                 /*
-                 * Jangan mengubah order menjadi paid
-                 * dari JavaScript.
+                 * Jangan percaya browser sebagai
+                 * sumber pembayaran berhasil.
                  *
-                 * Webhook Stripe yang melakukan itu.
+                 * Kirim hanya PaymentIntent ID.
+                 *
+                 * Server akan mengambil ulang
+                 * PaymentIntent langsung dari Stripe.
                  */
+                if (
+                    !paymentIntent ||
+                    !paymentIntent.id
+                ) {
+
+                    showError(
+                        'PaymentIntent tidak ditemukan.'
+                    );
+
+                    return;
+                }
+
+                try {
+
+                    const response =
+                        await fetch(
+                            @json(
+                                route(
+                                    'payment.confirm',
+                                    $order
+                                )
+                            ),
+                            {
+                                method: 'POST',
+
+                                headers: {
+                                    'Content-Type':
+                                        'application/json',
+
+                                    'Accept':
+                                        'application/json',
+
+                                    'X-CSRF-TOKEN':
+                                        @json(
+                                            csrf_token()
+                                        ),
+                                },
+
+                                body: JSON.stringify({
+                                    payment_intent_id:
+                                        paymentIntent.id,
+                                }),
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (
+                        !response.ok ||
+                        !data.success
+                    ) {
+
+                        showError(
+                            data.message ||
+                            'Pembayaran belum berhasil diverifikasi.'
+                        );
+
+                        return;
+                    }
+
+                    /*
+                     * Server sudah memverifikasi
+                     * PaymentIntent dan mengubah:
+                     *
+                     * Payment -> succeeded
+                     * Order   -> processing
+                     */
+                    window.location.href =
+                        data.redirect_url;
+
+                } catch (error) {
+
+                    showError(
+                        'Terjadi kesalahan saat memverifikasi pembayaran.'
+                    );
+                }
+
             });
+
+        function setLoading(loading) {
+
+            submitButton.disabled =
+                loading;
+
+            spinner.classList.toggle(
+                'd-none',
+                !loading
+            );
+
+            buttonText.textContent =
+                loading
+                    ? 'Memproses...'
+                    : 'Bayar Sekarang';
+        }
 
         function showError(message) {
 
@@ -266,18 +339,10 @@ document.addEventListener(
                 'd-none'
             );
 
-            submitButton.disabled = false;
-
-            spinner.classList.add(
-                'd-none'
-            );
-
-            buttonText.textContent =
-                'Bayar Sekarang';
+            setLoading(false);
         }
 
     });
-
 </script>
 
 @endpush
