@@ -15,7 +15,6 @@
 
         {{-- Eruda hanya untuk development --}}
         @if(app()->environment('local'))
-
             <script src="https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.min.js"></script>
             <script>
                 document.addEventListener('DOMContentLoaded', function () {

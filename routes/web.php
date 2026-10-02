@@ -34,8 +34,8 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
-
 Route::post('/stripe/webhook',  [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+
 /*
 |------------------------------------------------------------| Cart Routes
 |-----------------------------------------------------------*/
