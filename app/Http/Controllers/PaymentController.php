@@ -597,7 +597,7 @@ class PaymentController extends Controller
                  * setelah Payment berhasil diverifikasi.
                  */
                 $order->update([
-                    'status' => 'processing',
+                    'status' => 'completed',
                 ]);
 
                 return;

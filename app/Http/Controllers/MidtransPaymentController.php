@@ -517,7 +517,7 @@ class MidtransPaymentController extends Controller
              * Order masuk ke proses berikutnya.
              */
             $order->update([
-                'status' => 'processing',
+                'status' => 'completed',
             ]);
         }
 

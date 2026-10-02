@@ -27,13 +27,8 @@ class MidtransService
     /**
      * Membuat Snap Token untuk order.
      */
-    public function createSnapToken(
-        Order $order
-    ): string {
-        $order->loadMissing([
-            'items',
-            'user',
-        ]);
+    public function createSnapToken(Order $order): string {
+        $order->loadMissing(['items', 'user']);
 
         $params = [
             'transaction_details' => [
@@ -82,6 +77,17 @@ class MidtransService
                     'address' =>
                         $order->shipping_address,
                 ],
+            ],
+
+            'callbacks' => [
+                'finish' =>
+                    route('checkout.success', $order),
+
+                'error' =>
+                    route(
+                        'payment.midtrans.show',
+                        $order
+                    ),
             ],
         ];
 

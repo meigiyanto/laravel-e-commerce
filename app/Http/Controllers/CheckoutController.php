@@ -161,7 +161,8 @@ class CheckoutController extends Controller
                 'customer_name' => $validated['customer_name'],
                 'phone' => $validated['phone'],
                 'shipping_address' => $validated['shipping_address'],
-                'notes' => $validated['notes'] ?? null,                           'subtotal' => $subtotal,
+                'notes' => $validated['notes'] ?? null,
+                'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => $total,
             ]);
