@@ -13,6 +13,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\MidtransPaymentController;
 
 /**
  * Dashboard
@@ -33,6 +34,8 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
+Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
+
 /*
 |------------------------------------------------------------
 | Cart Routes
@@ -42,6 +45,8 @@ Route::middleware('auth')->group(function () {
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
     Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
+    Route::get('/payment/midtrans/{order}', [MidtransPaymentController::class, 'show'])->name('payment.midtrans.show');
+    Route::post('/payment/midtrans/{order}/confirm', [MidtransPaymentController::class, 'confirm'])->name('payment.midtrans.confirm');
 
     // Wishlist
     Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');

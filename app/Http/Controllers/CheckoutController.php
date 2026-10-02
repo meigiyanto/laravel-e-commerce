@@ -71,7 +71,7 @@ class CheckoutController extends Controller
 
             'payment_method' => [
                 'required',
-                'in:stripe,cod',
+                'in:stripe,midtrans,cod',
             ],
         ]);
 
@@ -161,20 +161,33 @@ class CheckoutController extends Controller
                 'customer_name' => $validated['customer_name'],
                 'phone' => $validated['phone'],
                 'shipping_address' => $validated['shipping_address'],
-                'notes' => $validated['notes'] ?? null,                'subtotal' => $subtotal,
+                'notes' => $validated['notes'] ?? null,                           'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total' => $total,
             ]);
 
             Payment::create([
                 'order_id' => $order->id,
-                'provider' => $validated['payment_method'] === 'cod' ? 'cod' : 'stripe',
+                'provider' =>
+                    $validated['payment_method'],
                 'currency' => 'IDR',
                 'status' => 'pending',
-                'payment_method' => $validated['payment_method'],
-                'payment_type' => $validated['payment_method'] === 'cod' ? 'cash_on_delivery' : 'card',
-                'transaction_status' => 'pending',
-                'gross_amount' => $order->total,
+                'payment_method' =>
+                    $validated['payment_method'],
+                'payment_type' => match (
+                    $validated['payment_method']
+                ) {
+                    'stripe' =>
+                        'card',
+                    'midtrans' =>
+                        'midtrans_snap',
+                    'cod' =>
+                        'cash_on_delivery',
+                },
+                'transaction_status' =>
+                    'pending',
+                'gross_amount' =>
+                    $order->total,
             ]);
 
             foreach ($cart->items as $cartItem) {
@@ -201,7 +214,11 @@ class CheckoutController extends Controller
             return redirect()->route('orders.show', $order)->with('success','Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
         }
 
-        return redirect()->route('payment.show', $order)->with('success','Pesanan berhasil dibuat. Silakan lanjutkan pembayaran.');
+        if ($validated['payment_method'] === 'midtrans') {
+            return redirect()->route('payment.midtrans.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran melalui Midtrans.');
+        }
+
+        return redirect()->route('payment.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran melalui Stripe.');
     }
 
     public function success(Order $order)
@@ -230,16 +247,25 @@ class CheckoutController extends Controller
         }
 
         /*
-         * Jika Stripe masih pending tetapi sudah memiliki
-         * PaymentIntent, cek langsung ke Stripe.
-         *
-         * Ini menangani kasus:
-         *
-         * Stripe = succeeded
-         * DB     = pending
+         * COD tidak membutuhkan sinkronisasi payment gateway.
          */
         if (
             $order->payment &&
+            $order->payment->payment_method === 'cod'
+        ) {
+            return view(
+                'storefront.checkout-success',
+                compact('order')
+            );
+        }
+
+        /*
+         * Stripe:
+         * tetap gunakan mekanisme Stripe yang sudah ada.
+         */
+        if (
+            $order->payment &&
+            $order->payment->provider === 'stripe' &&
             $order->payment->status !== 'succeeded' &&
             $order->payment->stripe_payment_intent_id
         ) {
@@ -250,10 +276,36 @@ class CheckoutController extends Controller
                 );
 
             $order->refresh();
+
             $order->load([
                 'items.product',
                 'payment',
             ]);
+        }
+
+        /*
+         * Midtrans:
+         * status utamanya disinkronkan melalui
+         * HTTP Notification.
+         *
+         * Jika callback browser sudah menghasilkan
+         * transaction_id, confirm() sebelumnya juga
+         * melakukan pengecekan status.
+         */
+        if (
+            $order->payment &&
+            $order->payment->provider === 'midtrans' &&
+            $order->payment->status !== 'succeeded'
+        ) {
+            return redirect()
+                ->route(
+                    'payment.midtrans.show',
+                    $order
+                )
+                ->with(
+                    'error',
+                    'Pembayaran Midtrans belum berhasil diverifikasi.'
+                );
         }
 
         /*
@@ -264,6 +316,20 @@ class CheckoutController extends Controller
             !$order->payment ||
             $order->payment->status !== 'succeeded'
         ) {
+            if (
+                $order->payment?->provider === 'midtrans'
+            ) {
+                return redirect()
+                    ->route(
+                        'payment.midtrans.show',
+                        $order
+                    )
+                    ->with(
+                        'error',
+                        'Pembayaran Midtrans belum berhasil diverifikasi.'
+                    );
+            }
+
             return redirect()
                 ->route(
                     'payment.show',
@@ -271,13 +337,8 @@ class CheckoutController extends Controller
                 )
                 ->with(
                     'error',
-                    'Pembayaran belum berhasil diverifikasi.'
+                    'Pembayaran Stripe belum berhasil diverifikasi.'
                 );
         }
-
-        return view(
-            'storefront.checkout-success',
-            compact('order')
-        );
     }
 }

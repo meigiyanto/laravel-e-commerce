@@ -17,6 +17,7 @@ class Payment extends Model
         'reference_id',
 
         'stripe_payment_intent_id',
+        'midtrans_snap_token',
 
         'currency',
         'status',

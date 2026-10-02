@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('provider')->nullable();
             $table->string('reference_id')->nullable();
             $table->string('stripe_payment_intent_id')->nullable()->unique();
+            $table->text('midtrans_snap_token')->nullable();
             $table->string('currency')->default('IDR');
             $table->string('status')->default('pending');
             $table->string('payment_method')->nullable();
