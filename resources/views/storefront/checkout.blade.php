@@ -143,54 +143,41 @@
                             Metode Pembayaran
                         </h5>
 
-                        <div class="row g-3">
                             {{-- Stripe --}}
-                            <div class="col-md-6">
-                                <label
-                                    class="payment-method-option w-100"
-                                    for="payment_stripe"
+                            <label
+                                class="payment-method-option w-100"
+                                for="payment_stripe"
+                            >
+                                <input
+                                    type="radio"
+                                    class="form-check-input me-2"
+                                    name="payment_method"
+                                    id="payment_stripe"
+                                    value="stripe"
+                                    {{ old('payment_method', 'stripe') === 'stripe' ? 'checked' : '' }}
                                 >
-                                    <input
-                                        type="radio"
-                                        class="form-check-input me-2"
-                                        name="payment_method"
-                                        id="payment_stripe"
-                                        value="stripe"
-                                        {{ old('payment_method', 'stripe') === 'stripe' ? 'checked' : '' }}
-                                    >
 
-                                    <span>
-                                        <strong class="d-block">
-                                            <i class="bi bi-credit-card me-1"></i>
-                                            Stripe
-                                            <i class="float-end bi bi-info-circle"></i>
-                                        </strong>
-                                        <small class="text-muted">Bayar secara online menggunakan kartu atau metode pembayaran yang tersedia di Stripe.</small>
-                                    </span>
-                                </label>
-                            </div>
+                                <span>
+                                    <strong class="d-block"><i class="bi bi-credit-card me-1"></i>Stripe</strong>
+                                    <small class="text-muted">Bayar secara online menggunakan kartu atau metode pembayaran yang tersedia di Stripe.</small>
+                                </span>
+                            </label>
 
                             {{-- COD --}}
-                            <div class="col-md-6">
-                                <label class="payment-method-option w-100" for="payment_cod">
-                                    <input
-                                        type="radio"
-                                        class="form-check-input me-2"
-                                        name="payment_method"
-                                        id="payment_cod"
-                                        value="cod"
-                                        {{ old('payment_method') === 'cod' ? 'checked' : '' }}>
+                            <label class="payment-method-option w-100" for="payment_cod">
+                                <input
+                                    type="radio"
+                                    class="form-check-input me-2"
+                                    name="payment_method"
+                                    id="payment_cod"
+                                    value="cod"
+                                    {{ old('payment_method') === 'cod' ? 'checked' : '' }}>
 
-                                    <span>
-                                        <strong class="d-block">
-                                            <i class="bi bi-cash-coin me-1"></i>
-                                            Cash on Delivery
-                                        </strong>
-                                       <small class="text-muted">Bayar saat pesanan diterima</small>
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
+                                <span>
+                                    <strong class="d-block"><i class="bi bi-cash-coin me-1"></i>Cash on Delivery
+                                    </strong><small class="text-muted">Bayar saat pesanan diterima</small>
+                                </span>
+                            </label>
                         @error('payment_method')
                             <div class="text-danger small mt-2">
                                 {{ $message }}
@@ -323,6 +310,7 @@
         align-items: flex-start;
         gap: 10px;
         padding: 16px;
+        margin-bottom: 8px;
         border: 1px solid #dee2e6;
         border-radius: 10px;
         cursor: pointer;

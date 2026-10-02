@@ -33,8 +33,8 @@ class PaymentController extends Controller
         }
 
         Stripe::setApiKey(config('services.stripe.secret'));
-
         $payment = $order->payment;
+
         /*
          * COD tidak membutuhkan Stripe PaymentIntent.
          */
@@ -59,129 +59,70 @@ class PaymentController extends Controller
                  * PaymentIntent Stripe harus sama persis
                  * dengan order server.
                  */
-                if (
-                    (int) $paymentIntent->amount !==
-                        $expectedAmount
-                    ||
-                    strtolower(
-                        $paymentIntent->currency
-                    ) !== 'idr'
-                ) {
+                if ((int) $paymentIntent->amount !== $expectedAmount || strtolower($paymentIntent->currency) !== 'idr') {
 
                     Log::critical(
                         'Stripe amount mismatch.',
                         [
                             'order_id' => $order->id,
-
-                            'payment_intent_id' =>
-                                $paymentIntent->id,
-
-                            'expected_amount' =>
-                                $expectedAmount,
-
-                            'stripe_amount' =>
-                                $paymentIntent->amount,
-
-                            'stripe_currency' =>
-                                $paymentIntent->currency,
+                            'payment_intent_id' => $paymentIntent->id,
+                            'expected_amount' => $expectedAmount,
+                            'stripe_amount' => $paymentIntent->amount,
+                            'stripe_currency' => $paymentIntent->currency,
                         ]
                     );
 
-                    abort(
-                        409,
-                        'Nominal pembayaran tidak sesuai dengan pesanan.'
-                    );
+                    abort(409, 'Nominal pembayaran tidak sesuai dengan pesanan.');
                 }
 
             } else {
-
                 /*
                  * PaymentIntent hanya dibuat berdasarkan
                  * nilai server-side.
                  */
-                $paymentIntent =
-                    PaymentIntent::create([
-                        'amount' =>
-                            $expectedAmount,
-
+                $paymentIntent = PaymentIntent::create([
+                        'amount' => $expectedAmount,
                         'currency' => 'idr',
-
                         'automatic_payment_methods' => [
                             'enabled' => true,
                         ],
-
-                        'description' =>
-                            "MeiStore order {$order->order_number}",
-
+                        'description' => "MeiStore order {$order->order_number}",
                         'metadata' => [
-                            'order_id' =>
-                                (string) $order->id,
-
-                            'order_number' =>
-                                $order->order_number,
+                            'order_id' => (string) $order->id,
+                            'order_number' => $order->order_number,
                         ],
-
-                        'receipt_email' =>
-                            $order->user?->email,
+                        'receipt_email' => $order->user?->email,
                     ]);
 
                 $payment->update([
                     'provider' => 'stripe',
-
                     'currency' => 'IDR',
-
                     'status' => 'pending',
-
-                    'transaction_status' =>
-                        $paymentIntent->status,
-
-                    'stripe_payment_intent_id' =>
-                        $paymentIntent->id,
-
-                    'transaction_id' =>
-                        $paymentIntent->id,
-
-                    'gross_amount' =>
-                        $order->total,
-
+                    'transaction_status' => $paymentIntent->status,
+                    'stripe_payment_intent_id' => $paymentIntent->id,
+                    'transaction_id' => $paymentIntent->id,
+                    'gross_amount' => $order->total,
                     'metadata' => [
-                        'stripe_payment_intent_status' =>
-                            $paymentIntent->status,
+                        'stripe_payment_intent_status' => $paymentIntent->status,
                     ],
                 ]);
             }
 
         } catch (Throwable $e) {
-
-            Log::error(
-                'Stripe PaymentIntent error.',
-                [
+            Log::error('Stripe PaymentIntent error.', [
                     'order_id' => $order->id,
-
-                    'exception' =>
-                        $e->getMessage(),
+                    'exception' => $e->getMessage(),
                 ]
             );
 
-            abort(
-                502,
-                'Pembayaran Stripe tidak dapat disiapkan.'
-            );
+            abort(502, 'Pembayaran Stripe tidak dapat disiapkan.');
         }
 
-        return view(
-            'storefront.payment',
-            [
+        return view('storefront.payment', [
                 'order' => $order,
-
-                'payment' =>
-                    $payment->fresh(),
-
-                'clientSecret' =>
-                    $paymentIntent->client_secret,
-
-                'publishableKey' =>
-                    config('services.stripe.key'),
+                'payment' => $payment->fresh(),
+                'clientSecret' => $paymentIntent->client_secret,
+                'publishableKey' => config('services.stripe.key'),
             ]
         );
     }
@@ -195,8 +136,6 @@ class PaymentController extends Controller
          * Rp100.000
          * => 10000000
          */
-        return (int) round(
-            ((float) $amount) * 100
-        );
+        return (int) round(((float) $amount) * 100);
     }
 }
