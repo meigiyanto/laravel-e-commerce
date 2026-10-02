@@ -34,15 +34,14 @@ class MidtransPaymentController extends Controller
             'user',
         ]);
 
-        if (!$order->payment) {
+        $payment = $order->payment;
+
+        if (!$payment) {
             abort(404, 'Data pembayaran tidak ditemukan.');
         }
 
-        $payment = $order->payment;
-
         /*
-         * Pastikan halaman ini hanya digunakan
-         * untuk pembayaran Midtrans.
+         * Halaman ini hanya untuk pembayaran Midtrans.
          */
         if ($payment->provider !== 'midtrans') {
             return redirect()
@@ -50,23 +49,23 @@ class MidtransPaymentController extends Controller
         }
 
         /*
-         * Jika pembayaran sudah berhasil,
-         * langsung ke halaman success.
+         * Pembayaran sudah berhasil.
+         * Tidak perlu membuat Snap Token baru.
          */
         if ($payment->status === 'succeeded') {
-            return redirect()->route(
-                'checkout.success',
-                $order
-            );
+            return redirect()
+                ->route('checkout.success', $order);
         }
 
         try {
             /*
-             * Gunakan Snap Token yang sudah ada
-             * apabila tersedia.
+             * Gunakan Snap Token yang sudah tersimpan.
              */
             $snapToken = $payment->midtrans_snap_token;
 
+            /*
+             * Buat Snap Token hanya jika belum tersedia.
+             */
             if (!$snapToken) {
                 $snapToken = $this->midtrans->createSnapToken(
                     $order
@@ -114,9 +113,9 @@ class MidtransPaymentController extends Controller
     /**
      * Verifikasi pembayaran setelah callback Snap.
      *
-     * Browser tidak dipercaya sebagai sumber
-     * pembayaran berhasil. Status diambil kembali
-     * dari Midtrans.
+     * Callback browser bukan sumber kebenaran pembayaran.
+     * Status transaksi diverifikasi kembali melalui
+     * Midtrans Get Status API.
      */
     public function confirm(
         Request $request,
@@ -137,14 +136,14 @@ class MidtransPaymentController extends Controller
 
         $order->load('payment');
 
-        if (!$order->payment) {
+        $payment = $order->payment;
+
+        if (!$payment) {
             return response()->json([
                 'message' =>
                     'Data pembayaran tidak ditemukan.',
             ], 404);
         }
-
-        $payment = $order->payment;
 
         if ($payment->provider !== 'midtrans') {
             return response()->json([
@@ -154,7 +153,9 @@ class MidtransPaymentController extends Controller
         }
 
         /*
-         * Idempotent.
+         * Idempotent:
+         * jangan melakukan request Midtrans lagi jika
+         * pembayaran sudah berhasil diverifikasi.
          */
         if ($payment->status === 'succeeded') {
             return response()->json([
@@ -169,14 +170,19 @@ class MidtransPaymentController extends Controller
 
         try {
             /*
-             * Gunakan transaction_id jika tersedia.
-             * Jika tidak, gunakan order_number.
+             * Callback Snap biasanya memberikan transaction_id.
+             *
+             * Jika tidak tersedia, gunakan transaction_id
+             * yang sudah tersimpan atau order_number.
              */
             $transactionIdentifier =
                 $validated['transaction_id']
                 ?? $payment->transaction_id
                 ?? $order->order_number;
 
+            /*
+             * Ambil status terbaru langsung dari Midtrans.
+             */
             $transaction = $this->midtrans->getStatus(
                 $transactionIdentifier
             );
@@ -190,6 +196,9 @@ class MidtransPaymentController extends Controller
             $payment->refresh();
             $order->refresh();
 
+            /*
+             * Pembayaran sudah berhasil diverifikasi.
+             */
             if ($payment->status === 'succeeded') {
                 return response()->json([
                     'success' => true,
@@ -201,21 +210,24 @@ class MidtransPaymentController extends Controller
                 ]);
             }
 
+            /*
+             * Pembayaran belum berhasil.
+             */
             return response()->json([
                 'success' => false,
                 'status' => $payment->status,
                 'transaction_status' =>
                     $payment->transaction_status,
                 'message' =>
-                    'Pembayaran belum berhasil diselesaikan.',
+                    $this->paymentStatusMessage($payment),
             ], 422);
-
         } catch (Throwable $e) {
             Log::error(
                 'Midtrans payment confirmation failed.',
                 [
                     'order_id' => $order->id,
-                    'order_number' => $order->order_number,
+                    'order_number' =>
+                        $order->order_number,
                     'message' => $e->getMessage(),
                 ]
             );
@@ -230,7 +242,8 @@ class MidtransPaymentController extends Controller
     /**
      * HTTP Notification / Webhook Midtrans.
      *
-     * Route ini TIDAK menggunakan auth middleware.
+     * Endpoint ini tidak menggunakan auth middleware
+     * karena dipanggil langsung oleh server Midtrans.
      */
     public function notification(
         Request $request
@@ -242,17 +255,17 @@ class MidtransPaymentController extends Controller
             $payload
         );
 
-        $required = [
+        /*
+         * Field minimum yang diperlukan untuk
+         * memverifikasi notification.
+         */
+        foreach ([
             'order_id',
             'status_code',
             'gross_amount',
             'signature_key',
-        ];
-
-        foreach ($required as $field) {
-            if (
-                !array_key_exists($field, $payload)
-            ) {
+        ] as $field) {
+            if (!array_key_exists($field, $payload)) {
                 return response()->json([
                     'message' =>
                         "Field {$field} tidak ditemukan.",
@@ -261,7 +274,7 @@ class MidtransPaymentController extends Controller
         }
 
         /*
-         * Verifikasi signature dari Midtrans.
+         * Verifikasi signature Midtrans.
          */
         if (
             !$this->midtrans->verifyNotification(
@@ -282,6 +295,10 @@ class MidtransPaymentController extends Controller
             ], 403);
         }
 
+        /*
+         * Cari order berdasarkan order_number
+         * yang dikirim sebagai order_id oleh Midtrans.
+         */
         $order = Order::where(
             'order_number',
             $payload['order_id']
@@ -304,8 +321,8 @@ class MidtransPaymentController extends Controller
         }
 
         /*
-         * Notification Midtrans harus berasal
-         * dari payment provider Midtrans.
+         * Pastikan notification memang milik
+         * pembayaran Midtrans.
          */
         if ($payment->provider !== 'midtrans') {
             return response()->json([
@@ -315,15 +332,14 @@ class MidtransPaymentController extends Controller
         }
 
         /*
-         * Pastikan nominal notification sama
-         * dengan nominal order.
+         * Gross amount dari Midtrans harus sama
+         * dengan total order di database.
          */
         if (
-            bccomp(
-                (string) $payload['gross_amount'],
-                (string) $order->total,
-                2
-            ) !== 0
+            !$this->amountsMatch(
+                $payload['gross_amount'],
+                $order->total
+            )
         ) {
             Log::critical(
                 'Midtrans gross amount mismatch.',
@@ -342,49 +358,54 @@ class MidtransPaymentController extends Controller
         }
 
         try {
-            DB::transaction(function () use (
-                $order,
-                $payment,
-                $payload
-            ) {
-                /*
-                 * Lock payment agar notification
-                 * yang datang bersamaan tidak
-                 * menyebabkan race condition.
-                 */
-                $payment = Payment::where(
-                    'id',
-                    $payment->id
-                )
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                /*
-                 * Jangan downgrade pembayaran
-                 * yang sudah berhasil.
-                 */
-                if (
-                    $payment->status === 'succeeded'
-                ) {
-                    return;
-                }
-
-                $this->syncPaymentFromMidtrans(
+            DB::transaction(
+                function () use (
                     $order,
                     $payment,
-                    (object) $payload
-                );
-            });
+                    $payload
+                ) {
+                    /*
+                     * Lock payment untuk mencegah
+                     * race condition ketika notification
+                     * datang bersamaan.
+                     */
+                    $payment = Payment::where(
+                        'id',
+                        $payment->id
+                    )
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    /*
+                     * Jangan pernah menurunkan payment
+                     * yang sudah berhasil.
+                     */
+                    if (
+                        $payment->status === 'succeeded'
+                    ) {
+                        return;
+                    }
+
+                    $this->syncPaymentFromMidtrans(
+                        $order,
+                        $payment,
+                        (object) $payload
+                    );
+                }
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notification diterima.',
+                'message' =>
+                    'Notification diterima.',
             ]);
         } catch (Throwable $e) {
             Log::error(
                 'Midtrans notification processing failed.',
                 [
                     'order_id' => $order->id,
+                    'order_number' =>
+                        $order->order_number,
                     'message' => $e->getMessage(),
                 ]
             );
@@ -406,12 +427,17 @@ class MidtransPaymentController extends Controller
         object $transaction
     ): void {
         $transactionStatus =
-            $transaction->transaction_status
-            ?? 'pending';
+            strtolower(
+                (string) (
+                    $transaction->transaction_status
+                    ?? 'pending'
+                )
+            );
 
         $statusCode =
-            $transaction->status_code
-            ?? null;
+            isset($transaction->status_code)
+                ? (string) $transaction->status_code
+                : null;
 
         $paymentType =
             $transaction->payment_type
@@ -422,20 +448,130 @@ class MidtransPaymentController extends Controller
             ?? null;
 
         $fraudStatus =
-            $transaction->fraud_status
-            ?? null;
+            isset($transaction->fraud_status)
+                ? strtolower(
+                    (string) $transaction->fraud_status
+                )
+                : null;
 
-        $paymentStatus = match (
-            $transactionStatus
+        /*
+         * Tentukan status lokal berdasarkan
+         * status transaksi Midtrans.
+         */
+        $paymentStatus =
+            $this->resolvePaymentStatus(
+                $transactionStatus,
+                $statusCode,
+                $fraudStatus
+            );
+
+        $data = [
+            'provider' => 'midtrans',
+
+            'status' =>
+                $paymentStatus,
+
+            'payment_method' =>
+                $paymentType,
+
+            'transaction_id' =>
+                $transactionId,
+
+            'reference_id' =>
+                $transaction->reference_id
+                ?? $payment->reference_id,
+
+            'payment_type' =>
+                $paymentType,
+
+            'transaction_status' =>
+                $transactionStatus,
+
+            'fraud_status' =>
+                $fraudStatus,
+
+            'status_code' =>
+                $statusCode,
+
+            'gross_amount' =>
+                $transaction->gross_amount
+                ?? $order->total,
+
+            'metadata' => [
+                'midtrans' =>
+                    (array) $transaction,
+            ],
+        ];
+
+        /*
+         * Simpan waktu pembayaran hanya sekali.
+         */
+        if (
+            $paymentStatus === 'succeeded' &&
+            !$payment->paid_at
         ) {
-            'settlement' => 'succeeded',
+            $data['paid_at'] = now();
 
-            'capture' =>
+            /*
+             * Pembayaran berhasil.
+             * Order masuk ke proses berikutnya.
+             */
+            $order->update([
+                'status' => 'processing',
+            ]);
+        }
+
+        /*
+         * Simpan expiry time jika dikirim Midtrans.
+         */
+        if (
+            !empty($transaction->expiry_time)
+        ) {
+            $data['expires_at'] =
+                $transaction->expiry_time;
+        }
+
+        $payment->update($data);
+    }
+
+    /**
+     * Menentukan status pembayaran lokal
+     * berdasarkan status transaksi Midtrans.
+     */
+    private function resolvePaymentStatus(
+        string $transactionStatus,
+        ?string $statusCode,
+        ?string $fraudStatus
+    ): string {
+        /*
+         * Settlement adalah pembayaran berhasil.
+         */
+        if ($transactionStatus === 'settlement') {
+            return 'succeeded';
+        }
+
+        /*
+         * Capture untuk kartu harus mempertimbangkan
+         * status code dan fraud status.
+         */
+        if ($transactionStatus === 'capture') {
+            $validStatusCode =
+                $statusCode === null ||
+                $statusCode === '200';
+
+            $validFraudStatus =
                 $fraudStatus === null ||
-                $fraudStatus === 'accept'
-                    ? 'succeeded'
-                    : 'failed',
+                $fraudStatus === 'accept';
 
+            return (
+                $validStatusCode &&
+                $validFraudStatus
+            )
+                ? 'succeeded'
+                : 'failed';
+        }
+
+        return match ($transactionStatus) {
             'deny' => 'failed',
 
             'cancel',
@@ -447,42 +583,47 @@ class MidtransPaymentController extends Controller
 
             default => 'pending',
         };
+    }
 
-        $data = [
-            'provider' => 'midtrans',
-            'status' => $paymentStatus,
-            'payment_method' =>
-                $paymentType,
-            'transaction_id' =>
-                $transactionId,
-            'payment_type' =>
-                $paymentType,
-            'transaction_status' =>
-                $transactionStatus,
-            'fraud_status' =>
-                $fraudStatus,
-            'status_code' =>
-                $statusCode,
-            'gross_amount' =>
-                $transaction->gross_amount
-                ?? $order->total,
-            'metadata' => [
-                'midtrans' =>
-                    (array) $transaction,
-            ],
-        ];
+    /**
+     * Membandingkan nominal tanpa membutuhkan BCMath.
+     */
+    private function amountsMatch(
+        string|int|float $received,
+        string|int|float $expected
+    ): bool {
+        return number_format(
+            (float) $received,
+            2,
+            '.',
+            ''
+        ) === number_format(
+            (float) $expected,
+            2,
+            '.',
+            ''
+        );
+    }
 
-        if (
-            $paymentStatus === 'succeeded'
-        ) {
-            $data['paid_at'] =
-                now();
+    /**
+     * Pesan yang ditampilkan ketika pembayaran
+     * belum berhasil.
+     */
+    private function paymentStatusMessage(
+        Payment $payment
+    ): string {
+        return match ($payment->status) {
+            'failed' =>
+                'Pembayaran Midtrans gagal.',
 
-            $order->update([
-                'status' => 'processing',
-            ]);
-        }
+            'canceled' =>
+                'Pembayaran Midtrans dibatalkan.',
 
-        $payment->update($data);
+            'expired' =>
+                'Pembayaran Midtrans telah kedaluwarsa.',
+
+            default =>
+                'Pembayaran belum berhasil diselesaikan.',
+        };
     }
 }
