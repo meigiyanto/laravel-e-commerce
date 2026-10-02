@@ -1,5 +1,9 @@
-<x-guest-layout>
+@extends('layouts.guest')
 
+@section('title', 'Admin Dashboard')
+@section('header', 'Admin Dashboard')
+
+@section('content')
     <div class="auth-header">
         <h1>Welcome Back</h1>
 
@@ -17,9 +21,7 @@
         @csrf
 
         <div class="form-group">
-            <label for="email" class="form-label">
-                Email
-            </label>
+            <label for="email" class="form-label">Email</label>
 
             <input
                 id="email"
@@ -90,4 +92,4 @@
         </a>
     </div>
 
-</x-guest-layout>
+@endsection
