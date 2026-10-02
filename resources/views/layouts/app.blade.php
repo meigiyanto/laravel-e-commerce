@@ -6,6 +6,7 @@
         <title>{{ config('app.name', 'Laravel E-Commerce Store') }}</title>
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}" />
+        
         <link rel="stylesheet" href="{{ asset('fonts/DMSans-Medium.woff2') }}" />
         <link rel="stylesheet" href="{{ asset('css/libs/fontawesome-icons.css') }}" />
         <link rel="stylesheet" href="{{ asset('css/libs/bootstrap-icons.css') }}" />
