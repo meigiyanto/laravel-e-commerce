@@ -698,9 +698,9 @@ class PaymentController extends Controller
     private function stripeAmount($amount): int
     {
         /*
-         * IDR adalah zero-decimal currency
-         * di Stripe.
+         * Stripe memperlakukan IDR dengan
+         * dua digit minor unit untuk request amount.
          */
-        return (int) round((float) $amount);
+        return (int) round((float) $amount * 100);
     }
 }
