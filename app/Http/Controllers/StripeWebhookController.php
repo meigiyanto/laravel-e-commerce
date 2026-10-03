@@ -60,13 +60,13 @@ class StripeWebhookController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 return;
             }
 
             $order = $payment->order;
 
-            if (!$order) {
+            if (! $order) {
                 return;
             }
 
@@ -110,7 +110,7 @@ class StripeWebhookController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 return;
             }
 
@@ -148,7 +148,7 @@ class StripeWebhookController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 return;
             }
 

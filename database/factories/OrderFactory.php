@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Order>
+ * @extends Factory<Order>
  */
 class OrderFactory extends Factory
 {
@@ -17,7 +18,7 @@ class OrderFactory extends Factory
 
         return [
             'user_id' => User::factory(),
-            'order_number' => 'ORD-' . fake()->unique()->numerify('########'),
+            'order_number' => 'ORD-'.fake()->unique()->numerify('########'),
             'status' => 'pending',
             'customer_name' => fake()->name(),
             'phone' => fake()->numerify('08##########'),

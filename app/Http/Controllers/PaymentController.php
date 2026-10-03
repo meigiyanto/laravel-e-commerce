@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class PaymentController extends Controller
 
         $order->load('payment');
 
-        if (!$order->payment) {
+        if (! $order->payment) {
             abort(404, 'Data pembayaran tidak ditemukan.');
         }
 
@@ -121,19 +122,15 @@ class PaymentController extends Controller
                         'card',
                     ],
 
-                    'description' =>
-                        "MeiStore order {$order->order_number}",
+                    'description' => "MeiStore order {$order->order_number}",
 
                     'metadata' => [
-                        'order_id' =>
-                            (string) $order->id,
+                        'order_id' => (string) $order->id,
 
-                        'order_number' =>
-                            $order->order_number,
+                        'order_number' => $order->order_number,
                     ],
 
-                    'receipt_email' =>
-                        $order->user?->email,
+                    'receipt_email' => $order->user?->email,
                 ]);
 
                 $payment->update([
@@ -143,21 +140,16 @@ class PaymentController extends Controller
 
                     'status' => 'pending',
 
-                    'transaction_status' =>
-                        $paymentIntent->status,
+                    'transaction_status' => $paymentIntent->status,
 
-                    'stripe_payment_intent_id' =>
-                        $paymentIntent->id,
+                    'stripe_payment_intent_id' => $paymentIntent->id,
 
-                    'transaction_id' =>
-                        $paymentIntent->id,
+                    'transaction_id' => $paymentIntent->id,
 
-                    'gross_amount' =>
-                        $order->total,
+                    'gross_amount' => $order->total,
 
                     'metadata' => [
-                        'stripe_payment_intent_status' =>
-                            $paymentIntent->status,
+                        'stripe_payment_intent_status' => $paymentIntent->status,
                     ],
                 ]);
             }
@@ -194,10 +186,8 @@ class PaymentController extends Controller
             [
                 'order' => $order,
                 'payment' => $payment->fresh(),
-                'clientSecret' =>
-                    $paymentIntent->client_secret,
-                'publishableKey' =>
-                    config('services.stripe.key'),
+                'clientSecret' => $paymentIntent->client_secret,
+                'publishableKey' => config('services.stripe.key'),
             ]
         );
     }
@@ -227,10 +217,9 @@ class PaymentController extends Controller
 
         $order->load('payment');
 
-        if (!$order->payment) {
+        if (! $order->payment) {
             return response()->json([
-                'message' =>
-                    'Data pembayaran tidak ditemukan.',
+                'message' => 'Data pembayaran tidak ditemukan.',
             ], 404);
         }
 
@@ -244,11 +233,10 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => true,
                 'status' => 'succeeded',
-                'redirect_url' =>
-                    route(
-                        'checkout.success',
-                        $order
-                    ),
+                'redirect_url' => route(
+                    'checkout.success',
+                    $order
+                ),
             ]);
         }
 
@@ -274,8 +262,7 @@ class PaymentController extends Controller
                 !== $paymentIntent->id
             ) {
                 return response()->json([
-                    'message' =>
-                        'PaymentIntent tidak sesuai dengan pesanan.',
+                    'message' => 'PaymentIntent tidak sesuai dengan pesanan.',
                 ], 409);
             }
 
@@ -303,11 +290,10 @@ class PaymentController extends Controller
                 return response()->json([
                     'success' => true,
                     'status' => 'succeeded',
-                    'redirect_url' =>
-                        route(
-                            'checkout.success',
-                            $order
-                        ),
+                    'redirect_url' => route(
+                        'checkout.success',
+                        $order
+                    ),
                 ]);
             }
 
@@ -315,18 +301,15 @@ class PaymentController extends Controller
                 return response()->json([
                     'success' => false,
                     'status' => 'canceled',
-                    'message' =>
-                        'Pembayaran dibatalkan.',
+                    'message' => 'Pembayaran dibatalkan.',
                 ]);
             }
 
             return response()->json([
                 'success' => false,
                 'status' => $payment->status,
-                'payment_intent_status' =>
-                    $paymentIntent->status,
-                'message' =>
-                    'Pembayaran belum berhasil diselesaikan.',
+                'payment_intent_status' => $paymentIntent->status,
+                'message' => 'Pembayaran belum berhasil diselesaikan.',
             ], 422);
 
         } catch (ApiErrorException $e) {
@@ -339,8 +322,7 @@ class PaymentController extends Controller
             );
 
             return response()->json([
-                'message' =>
-                    'Pembayaran tidak dapat diverifikasi.',
+                'message' => 'Pembayaran tidak dapat diverifikasi.',
             ], 502);
         } catch (Throwable $e) {
             Log::error(
@@ -352,8 +334,7 @@ class PaymentController extends Controller
             );
 
             return response()->json([
-                'message' =>
-                    'Pembayaran tidak dapat diverifikasi.',
+                'message' => 'Pembayaran tidak dapat diverifikasi.',
             ], 500);
         }
     }
@@ -374,7 +355,7 @@ class PaymentController extends Controller
 
         $payment = $order->payment;
 
-        if (!$payment) {
+        if (! $payment) {
             return false;
         }
 
@@ -388,7 +369,7 @@ class PaymentController extends Controller
         $paymentIntentId ??=
             $payment->stripe_payment_intent_id;
 
-        if (!$paymentIntentId) {
+        if (! $paymentIntentId) {
             return false;
         }
 
@@ -422,10 +403,8 @@ class PaymentController extends Controller
                     'Stripe PaymentIntent ID mismatch.',
                     [
                         'order_id' => $order->id,
-                        'database_payment_intent_id' =>
-                            $payment->stripe_payment_intent_id,
-                        'stripe_payment_intent_id' =>
-                            $paymentIntent->id,
+                        'database_payment_intent_id' => $payment->stripe_payment_intent_id,
+                        'stripe_payment_intent_id' => $paymentIntent->id,
                     ]
                 );
 
@@ -450,8 +429,7 @@ class PaymentController extends Controller
                 'Stripe payment synchronization failed.',
                 [
                     'order_id' => $order->id,
-                    'payment_intent_id' =>
-                        $paymentIntentId,
+                    'payment_intent_id' => $paymentIntentId,
                     'message' => $e->getMessage(),
                 ]
             );
@@ -482,8 +460,7 @@ class PaymentController extends Controller
                 'Stripe metadata order mismatch.',
                 [
                     'order_id' => $order->id,
-                    'payment_intent_id' =>
-                        $paymentIntent->id,
+                    'payment_intent_id' => $paymentIntent->id,
                 ]
             );
 
@@ -513,14 +490,10 @@ class PaymentController extends Controller
                 'Stripe payment verification failed.',
                 [
                     'order_id' => $order->id,
-                    'payment_intent_id' =>
-                        $paymentIntent->id,
-                    'expected_amount' =>
-                        $expectedAmount,
-                    'stripe_amount' =>
-                        $paymentIntent->amount,
-                    'stripe_currency' =>
-                        $paymentIntent->currency,
+                    'payment_intent_id' => $paymentIntent->id,
+                    'expected_amount' => $expectedAmount,
+                    'stripe_amount' => $paymentIntent->amount,
+                    'stripe_currency' => $paymentIntent->currency,
                 ]
             );
 
@@ -564,31 +537,24 @@ class PaymentController extends Controller
                 $payment->update([
                     'provider' => 'stripe',
 
-                    'stripe_payment_intent_id' =>
-                        $paymentIntent->id,
+                    'stripe_payment_intent_id' => $paymentIntent->id,
 
-                    'transaction_id' =>
-                        $paymentIntent->id,
+                    'transaction_id' => $paymentIntent->id,
 
-                    'currency' =>
-                        strtoupper(
-                            $paymentIntent->currency
-                        ),
+                    'currency' => strtoupper(
+                        $paymentIntent->currency
+                    ),
 
                     'status' => 'succeeded',
 
-                    'transaction_status' =>
-                        $paymentIntent->status,
+                    'transaction_status' => $paymentIntent->status,
 
-                    'gross_amount' =>
-                        $order->total,
+                    'gross_amount' => $order->total,
 
-                    'paid_at' =>
-                        $payment->paid_at ?? now(),
+                    'paid_at' => $payment->paid_at ?? now(),
 
                     'metadata' => [
-                        'stripe_payment_intent_status' =>
-                            $paymentIntent->status,
+                    'stripe_payment_intent_status' => $paymentIntent->status,
                     ],
                 ]);
 
@@ -622,12 +588,10 @@ class PaymentController extends Controller
              * tetap pending.
              */
             $payment->update([
-                'transaction_status' =>
-                    $paymentIntent->status,
+                'transaction_status' => $paymentIntent->status,
 
                 'metadata' => [
-                    'stripe_payment_intent_status' =>
-                        $paymentIntent->status,
+                    'stripe_payment_intent_status' => $paymentIntent->status,
                 ],
             ]);
         });
@@ -663,12 +627,10 @@ class PaymentController extends Controller
         $payment->update([
             'status' => $status,
 
-            'transaction_status' =>
-                $paymentIntent->status,
+            'transaction_status' => $paymentIntent->status,
 
             'metadata' => [
-                'stripe_payment_intent_status' =>
-                    $paymentIntent->status,
+                'stripe_payment_intent_status' => $paymentIntent->status,
             ],
         ]);
 
@@ -680,11 +642,11 @@ class PaymentController extends Controller
 
         foreach ($order->items as $item) {
             $product =
-                \App\Models\Product::whereKey(
+                Product::whereKey(
                     $item->product_id
                 )
-                ->lockForUpdate()
-                ->first();
+                    ->lockForUpdate()
+                    ->first();
 
             if ($product) {
                 $product->increment(

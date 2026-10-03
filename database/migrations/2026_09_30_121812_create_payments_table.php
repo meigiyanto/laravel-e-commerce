@@ -19,7 +19,8 @@ return new class extends Migration
             $table->string('currency')->default('IDR');
             $table->string('status')->default('pending');
             $table->string('payment_method')->nullable();
-            $table->string('transaction_id')->nullable()->unique();            $table->string('payment_type')->nullable();
+            $table->string('transaction_id')->nullable()->unique();
+            $table->string('payment_type')->nullable();
             $table->string('transaction_status')->default('pending');
             $table->string('fraud_status')->nullable();
             $table->string('status_code')->nullable();

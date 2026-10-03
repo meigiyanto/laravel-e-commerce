@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Payment>
+ * @extends Factory<Payment>
  */
 class PaymentFactory extends Factory
 {
@@ -18,7 +19,7 @@ class PaymentFactory extends Factory
             'provider' => 'stripe',
             'reference_id' => null,
 
-            'stripe_payment_intent_id' => 'pi_' . fake()->unique()->regexify('[A-Za-z0-9]{24}'),
+            'stripe_payment_intent_id' => 'pi_'.fake()->unique()->regexify('[A-Za-z0-9]{24}'),
 
             'midtrans_snap_token' => null,
 

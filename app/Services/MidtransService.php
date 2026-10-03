@@ -27,67 +27,55 @@ class MidtransService
     /**
      * Membuat Snap Token untuk order.
      */
-    public function createSnapToken(Order $order): string {
+    public function createSnapToken(Order $order): string
+    {
         $order->loadMissing(['items', 'user']);
 
         $params = [
             'transaction_details' => [
-                'order_id' =>
-                    $order->order_number,
+                'order_id' => $order->order_number,
 
-                'gross_amount' =>
-                    (int) round(
-                        (float) $order->total
-                    ),
+                'gross_amount' => (int) round(
+                    (float) $order->total
+                ),
             ],
 
-            'item_details' =>
-                $order->items
-                    ->map(function ($item) {
-                        return [
-                            'id' =>
-                                (string) $item->product_id,
+            'item_details' => $order->items
+                ->map(function ($item) {
+                    return [
+                        'id' => (string) $item->product_id,
 
-                            'price' =>
-                                (int) round(
-                                    (float) $item->price
-                                ),
+                        'price' => (int) round(
+                            (float) $item->price
+                        ),
 
-                            'quantity' =>
-                                (int) $item->quantity,
+                        'quantity' => (int) $item->quantity,
 
-                            'name' =>
-                                $item->product_name,
-                        ];
-                    })
-                    ->values()
-                    ->all(),
+                        'name' => $item->product_name,
+                    ];
+                })
+                ->values()
+                ->all(),
 
             'customer_details' => [
-                'first_name' =>
-                    $order->customer_name,
+                'first_name' => $order->customer_name,
 
-                'email' =>
-                    $order->user?->email,
+                'email' => $order->user?->email,
 
-                'phone' =>
-                    $order->phone,
+                'phone' => $order->phone,
 
                 'shipping_address' => [
-                    'address' =>
-                        $order->shipping_address,
+                    'address' => $order->shipping_address,
                 ],
             ],
 
             'callbacks' => [
-                'finish' =>
-                    route('checkout.success', $order),
+                'finish' => route('checkout.success', $order),
 
-                'error' =>
-                    route(
-                        'payment.midtrans.show',
-                        $order
-                    ),
+                'error' => route(
+                    'payment.midtrans.show',
+                    $order
+                ),
             ],
         ];
 
@@ -136,9 +124,9 @@ class MidtransService
 
         $signature = hash(
             'sha512',
-            $orderId .
-            $statusCode .
-            $grossAmount .
+            $orderId.
+            $statusCode.
+            $grossAmount.
             $serverKey
         );
 
