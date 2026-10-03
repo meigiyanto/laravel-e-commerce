@@ -6,9 +6,12 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Services\MidtransService;
 use App\Services\RefundService;
+use App\Services\StripePaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Mockery;
 use Tests\TestCase;
 
 class RefundServiceTest extends TestCase
@@ -261,5 +264,84 @@ class RefundServiceTest extends TestCase
         );
 
         $this->assertDatabaseCount('refunds', 0);
+    }
+
+    public function test_stripe_refund_is_completed_when_provider_succeeds(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Produk rusak',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'stripe',
+            'requested_at' => now(),
+        ]);
+
+        $stripeRefund = Mockery::mock();
+
+        $stripeRefund->status = 'succeeded';
+        $stripeRefund->id = 're_test_123';
+
+        $stripe = Mockery::mock(
+            StripePaymentService::class
+        );
+
+        $stripe
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000
+            )
+            ->andReturn($stripeRefund);
+
+        $midtrans = Mockery::mock(
+            MidtransService::class
+        );
+
+        $service = new RefundService(
+            $stripe,
+            $midtrans
+        );
+
+        $result = $service->process($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+
+        $this->assertSame(
+            're_test_123',
+            $result->reference_id
+        );
+
+        $this->assertNotNull(
+            $result->processed_at
+        );
+
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'status' => Refund::STATUS_COMPLETED,
+            'reference_id' => 're_test_123',
+        ]);
     }
 }

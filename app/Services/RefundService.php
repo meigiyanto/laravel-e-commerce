@@ -5,15 +5,8 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
-use App\Models\User;
-use App\Services\MidtransService;
-use App\Services\RefundService;
-use App\Services\StripePaymentService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
-use Mockery;
-use Tests\TestCase;
 
 class RefundService
 {
@@ -151,6 +144,9 @@ class RefundService
         });
     }
 
+    /**
+     * Memproses refund melalui Stripe.
+     */
     protected function processStripe(
         Refund $refund,
         Payment $payment
@@ -174,10 +170,14 @@ class RefundService
 
             $status = match ($stripeRefund->status) {
                 'succeeded' => Refund::STATUS_COMPLETED,
+
                 'pending',
                 'requires_action' => Refund::STATUS_PROCESSING,
+
                 'failed' => Refund::STATUS_FAILED,
+
                 'canceled' => Refund::STATUS_REJECTED,
+
                 default => Refund::STATUS_PROCESSING,
             };
 
@@ -203,6 +203,9 @@ class RefundService
         }
     }
 
+    /**
+     * Memproses refund melalui Midtrans.
+     */
     protected function processMidtrans(
         Refund $refund,
         Payment $payment
@@ -234,8 +237,7 @@ class RefundService
                 $response->transaction_status ?? null;
 
             $status = match ($transactionStatus) {
-                'refund' => Refund::STATUS_COMPLETED,
-
+                'refund',
                 'partial_refund' => Refund::STATUS_COMPLETED,
 
                 default => Refund::STATUS_PROCESSING,
@@ -266,17 +268,12 @@ class RefundService
         }
     }
 
+    /**
+     * Refund COD diproses secara manual oleh admin.
+     */
     protected function processCod(
         Refund $refund
     ): Refund {
-        /*
-         * COD tidak mempunyai payment gateway
-         * yang dapat kita panggil untuk mengembalikan dana.
-         *
-         * Untuk sementara refund COD harus diproses
-         * secara manual oleh admin.
-         */
-
         $refund->update([
             'status' => Refund::STATUS_APPROVED,
         ]);
@@ -284,11 +281,17 @@ class RefundService
         return $refund->fresh();
     }
 
+    /**
+     * Membuat idempotency key untuk refund Midtrans.
+     */
     protected function refundKey(Refund $refund): string
     {
         return 'refund-' . $refund->id;
     }
 
+    /**
+     * Menandai refund sebagai gagal.
+     */
     protected function markFailed(
         Refund $refund,
         string $message
@@ -301,76 +304,6 @@ class RefundService
             'status' => Refund::STATUS_FAILED,
             'processed_at' => now(),
             'metadata' => $metadata,
-        ]);
-    }
-
-    public function test_stripe_refund_is_completed_when_provider_succeeds(): void
-    {
-        $user = User::factory()->create();
-
-        $order = Order::factory()->create([
-            'user_id' => $user->id,
-            'status' => 'completed',
-            'total' => 150000,
-        ]);
-
-        $payment = Payment::factory()->create([
-            'order_id' => $order->id,
-            'provider' => 'stripe',
-            'status' => 'succeeded',
-            'stripe_payment_intent_id' => 'pi_test_123',
-            'gross_amount' => 150000,
-        ]);
-
-        $refund = Refund::create([
-            'order_id' => $order->id,
-            'payment_id' => $payment->id,
-            'amount' => 50000,
-            'currency' => 'IDR',
-            'reason' => 'Produk rusak',
-            'status' => Refund::STATUS_REQUESTED,
-            'provider' => 'stripe',
-            'requested_at' => now(),
-        ]);
-
-        $stripeRefund = Mockery::mock();
-
-        $stripeRefund->status = 'succeeded';
-        $stripeRefund->id = 're_test_123';
-
-        $stripe = Mockery::mock(StripePaymentService::class);
-
-        $stripe
-            ->shouldReceive('refund')
-            ->once()
-            ->with('pi_test_123', 5000000)
-            ->andReturn($stripeRefund);
-
-        $midtrans = Mockery::mock(MidtransService::class);
-
-        $service = new RefundService(
-            $stripe,
-            $midtrans
-        );
-
-        $result = $service->process($refund);
-
-        $this->assertSame(
-            Refund::STATUS_COMPLETED,
-            $result->status
-        );
-
-        $this->assertSame(
-            're_test_123',
-            $result->reference_id
-        );
-
-        $this->assertNotNull($result->processed_at);
-
-        $this->assertDatabaseHas('refunds', [
-            'id' => $refund->id,
-            'status' => Refund::STATUS_COMPLETED,
-            'reference_id' => 're_test_123',
         ]);
     }
 }
