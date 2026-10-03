@@ -295,7 +295,15 @@ class RefundServiceTest extends TestCase
             'requested_at' => now(),
         ]);
 
-        $stripeRefund = Mockery::mock();
+        $stripeRefund = Mockery::mock(\Stripe\Refund::class);
+
+        $stripeRefund
+            ->shouldReceive('toArray')
+            ->once()
+            ->andReturn([
+                'id' => 're_test_123',
+                'status' => 'succeeded',
+            ]);
 
         $stripeRefund->status = 'succeeded';
         $stripeRefund->id = 're_test_123';
