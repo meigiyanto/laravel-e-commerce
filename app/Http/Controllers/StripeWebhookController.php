@@ -29,24 +29,28 @@ class StripeWebhookController extends Controller
             return response('Invalid signature', 400);
         }
 
-        switch ($event->type) {
-            case 'payment_intent.succeeded':
-                $this->handlePaymentIntentSucceeded(
-                    $event->data->object
-                );
-                break;
+        try {
+            switch ($event->type) {
+                case 'payment_intent.succeeded':
+                    $this->handlePaymentIntentSucceeded(
+                        $event->data->object
+                    );
+                    break;
 
-            case 'payment_intent.payment_failed':
-                $this->handlePaymentIntentFailed(
-                    $event->data->object
-                );
-                break;
+                case 'payment_intent.payment_failed':
+                    $this->handlePaymentIntentFailed(
+                        $event->data->object
+                    );
+                    break;
 
-            case 'payment_intent.canceled':
-                $this->handlePaymentIntentCanceled(
-                    $event->data->object
-                );
-                break;
+                case 'payment_intent.canceled':
+                    $this->handlePaymentIntentCanceled(
+                        $event->data->object
+                    );
+                    break;
+            }
+        } catch (\RuntimeException $e) {
+            return response($e->getMessage(), 422);
         }
 
         return response('Webhook received', 200);
@@ -54,8 +58,49 @@ class StripeWebhookController extends Controller
 
     private function handlePaymentIntentSucceeded(object $paymentIntent): void
     {
+        if (! isset($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status is missing.'
+            );
+        }
+
+        if (! is_string($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status must be a string.'
+            );
+        }
+
+        if ($paymentIntent->status !== 'succeeded') {
+            return;
+        }
+
+        if (! isset($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID is missing.'
+            );
+        }
+
+        if (! is_string($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID must be a string.'
+            );
+        }
+
+        if (! isset($paymentIntent->amount)) {
+            throw new \RuntimeException(
+                'Stripe payment amount is missing.'
+            );
+        }
+
+        if (! is_int($paymentIntent->amount)) {
+            throw new \RuntimeException(
+                'Stripe payment amount must be an integer.'
+            );
+        }
+
         DB::transaction(function () use ($paymentIntent) {
             $payment = Payment::query()
+                ->where('provider', 'stripe')
                 ->where('stripe_payment_intent_id', $paymentIntent->id)
                 ->lockForUpdate()
                 ->first();
@@ -70,18 +115,48 @@ class StripeWebhookController extends Controller
                 return;
             }
 
+           if (in_array($order->status, ['canceled', 'failed', 'refunded'], true)) {
+                return;
+            }
+            
+            if (! is_string($paymentIntent->currency)) {
+                throw new \RuntimeException(
+                    'Stripe payment currency must be a string.'
+                );
+            }
+
+            $stripeCurrency = strtolower($paymentIntent->currency);
+            $paymentCurrency = strtolower($payment->currency);
+
+            if ($paymentCurrency !== $stripeCurrency) {
+                throw new \RuntimeException(
+                    'Stripe payment currency does not match payment currency.'
+                );
+            }
+
+            $stripeAmount = $this->convertStripeAmount(
+                $paymentIntent->amount
+            );
+
+            if ((float) $payment->gross_amount !== $stripeAmount) {
+                throw new \RuntimeException(
+                    'Stripe payment amount does not match payment gross amount.'
+                );
+            }
+
             /*
-             * PaymentIntent dari Stripe menjadi sumber kebenaran
-             * untuk status pembayaran.
-             */
+            * Jangan pernah mengubah payment yang sudah sukses
+            * atau dibatalkan menjadi succeeded kembali.
+            */
+            if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
+                return;
+            }
+
             $payment->update([
                 'status' => 'succeeded',
                 'transaction_status' => 'succeeded',
                 'transaction_id' => $paymentIntent->id,
                 'reference_id' => $paymentIntent->id,
-                'gross_amount' => $this->convertStripeAmount(
-                    $paymentIntent->amount
-                ),
                 'paid_at' => $payment->paid_at ?? now(),
                 'metadata' => array_merge(
                     $payment->metadata ?? [],
@@ -92,20 +167,41 @@ class StripeWebhookController extends Controller
                 ),
             ]);
 
-            /*
-             * Pertahankan rule yang sudah dipakai
-             * pada flow payment saat ini.
-             */
             $order->update([
                 'status' => 'completed',
             ]);
         });
     }
-
+    
     private function handlePaymentIntentFailed(object $paymentIntent): void
     {
+        if (! isset($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID is missing.'
+            );
+        }
+
+        if (! is_string($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID must be a string.'
+            );
+        }
+
+        if (! isset($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status is missing.'
+            );
+        }
+
+        if ($paymentIntent->status !== 'requires_payment_method') {
+            throw new \RuntimeException(
+                'Stripe payment intent has an invalid status for payment_failed event.'
+            );
+        }
+
         DB::transaction(function () use ($paymentIntent) {
             $payment = Payment::query()
+                ->where('provider', 'stripe')
                 ->where('stripe_payment_intent_id', $paymentIntent->id)
                 ->lockForUpdate()
                 ->first();
@@ -115,9 +211,20 @@ class StripeWebhookController extends Controller
             }
 
             /*
-             * Jangan pernah menurunkan payment yang sudah sukses.
-             */
-            if ($payment->status === 'succeeded') {
+            * Jangan pernah menurunkan payment yang sudah sukses
+            * atau dibatalkan.
+            */
+            if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
+                return;
+            }
+
+            $order = $payment->order;
+
+            if (! $order) {
+                return;
+            }
+
+            if (in_array($order->status, ['completed', 'canceled', 'failed', 'refunded'], true)) {
                 return;
             }
 
@@ -142,8 +249,33 @@ class StripeWebhookController extends Controller
 
     private function handlePaymentIntentCanceled(object $paymentIntent): void
     {
+        if (! isset($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID is missing.'
+            );
+        }
+
+        if (! is_string($paymentIntent->id)) {
+            throw new \RuntimeException(
+                'Stripe payment intent ID must be a string.'
+            );
+        }
+
+        if (! isset($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status is missing.'
+            );
+        }
+
+        if ($paymentIntent->status !== 'canceled') {
+            throw new \RuntimeException(
+                'Stripe payment intent has an invalid status for payment_intent.canceled event.'
+            );
+        }
+        
         DB::transaction(function () use ($paymentIntent) {
             $payment = Payment::query()
+                ->where('provider', 'stripe')
                 ->where('stripe_payment_intent_id', $paymentIntent->id)
                 ->lockForUpdate()
                 ->first();
@@ -153,9 +285,20 @@ class StripeWebhookController extends Controller
             }
 
             /*
-             * Jangan menurunkan status pembayaran yang sudah sukses.
-             */
-            if ($payment->status === 'succeeded') {
+            * Jangan pernah menurunkan payment yang sudah sukses,
+            * gagal, atau dibatalkan.
+            */
+            if (in_array($payment->status, ['succeeded', 'failed', 'canceled'], true)) {
+                return;
+            }
+
+            $order = $payment->order;
+
+            if (! $order) {
+                return;
+            }
+
+            if (in_array($order->status, ['completed', 'canceled', 'failed', 'refunded'], true)) {
                 return;
             }
 

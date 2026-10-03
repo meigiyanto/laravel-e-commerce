@@ -81,6 +81,7 @@ class RefundService
     {
         $refundedAmount = (float) $payment->refunds()
             ->whereIn('status', [
+                Refund::STATUS_REQUESTED,
                 Refund::STATUS_APPROVED,
                 Refund::STATUS_PROCESSING,
                 Refund::STATUS_COMPLETED,
