@@ -52,7 +52,8 @@ class RefundControllerTest extends TestCase
             ->assertOk()
             ->assertViewIs('admin.refunds.index')
             ->assertSee('ORD-REFUND-001')
-            ->assertSee('Produk rusak')
+            ->assertSee('Rp 50.000')
+            ->assertSee('Stripe')
             ->assertSee('Requested');
     }
 
@@ -95,7 +96,7 @@ class RefundControllerTest extends TestCase
             ->assertOk()
             ->assertViewIs('admin.refunds.show')
             ->assertSee('Barang tidak sesuai')
-            ->assertSee('75000')
+            ->assertSee('Rp 75.000')
             ->assertSee('Requested');
     }
 
@@ -159,7 +160,7 @@ class RefundControllerTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('50000')
-            ->assertDontSee('25000');
+            ->assertSee('Rp 50.000')
+            ->assertDontSee('Rp 25.000');
     }
 }

@@ -353,4 +353,285 @@ class RefundServiceTest extends TestCase
             'reference_id' => 're_test_123',
         ]);
     }
+
+    public function test_midtrans_refund_is_completed_when_provider_succeeds(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'MIDTRANS-ORDER-123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Produk rusak',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'midtrans',
+            'requested_at' => now(),
+        ]);
+
+        $midtransResponse = (object) [
+            'transaction_status' => 'refund',
+            'refund_key' => 'refund-1',
+            'refund_chargeback_id' => null,
+        ];
+
+        $midtrans = Mockery::mock(
+            MidtransService::class
+        );
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'MIDTRANS-ORDER-123',
+                50000,
+                'refund-' . $refund->id,
+                'Produk rusak'
+            )
+            ->andReturn($midtransResponse);
+
+        $stripe = Mockery::mock(
+            StripePaymentService::class
+        );
+
+        $service = new RefundService(
+            $stripe,
+            $midtrans
+        );
+
+        $result = $service->process($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+
+        $this->assertSame(
+            'refund-1',
+            $result->reference_id
+        );
+
+        $this->assertNotNull(
+            $result->processed_at
+        );
+
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'status' => Refund::STATUS_COMPLETED,
+            'reference_id' => 'refund-1',
+        ]);
+    }
+
+    public function test_midtrans_partial_refund_is_completed(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'MIDTRANS-ORDER-456',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund sebagian',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'midtrans',
+            'requested_at' => now(),
+        ]);
+
+        $midtransResponse = (object) [
+            'transaction_status' => 'partial_refund',
+            'refund_key' => 'refund-partial-1',
+            'refund_chargeback_id' => null,
+        ];
+
+        $midtrans = Mockery::mock(
+            MidtransService::class
+        );
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'MIDTRANS-ORDER-456',
+                50000,
+                'refund-' . $refund->id,
+                'Refund sebagian'
+            )
+            ->andReturn($midtransResponse);
+
+        $stripe = Mockery::mock(
+            StripePaymentService::class
+        );
+
+        $service = new RefundService(
+            $stripe,
+            $midtrans
+        );
+
+        $result = $service->process($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+
+        $this->assertSame(
+            'refund-partial-1',
+            $result->reference_id
+        );
+    }
+
+    public function test_midtrans_refund_is_failed_when_provider_throws_exception(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'MIDTRANS-ORDER-789',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Provider error',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'midtrans',
+            'requested_at' => now(),
+        ]);
+
+        $midtrans = Mockery::mock(
+            MidtransService::class
+        );
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->andThrow(
+                new \RuntimeException(
+                    'Midtrans refund failed'
+                )
+            );
+
+        $stripe = Mockery::mock(
+            StripePaymentService::class
+        );
+
+        $service = new RefundService(
+            $stripe,
+            $midtrans
+        );
+
+        $result = $service->process($refund);
+
+        $this->assertSame(
+            Refund::STATUS_FAILED,
+            $result->status
+        );
+
+        $this->assertNotNull(
+            $result->processed_at
+        );
+
+        $this->assertSame(
+            'Midtrans refund failed',
+            $result->metadata['error']
+        );
+
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'status' => Refund::STATUS_FAILED,
+        ]);
+    }
+
+    public function test_cod_refund_is_approved(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'cod',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Produk dikembalikan',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'cod',
+            'requested_at' => now(),
+        ]);
+
+        $stripe = Mockery::mock(
+            StripePaymentService::class
+        );
+
+        $midtrans = Mockery::mock(
+            MidtransService::class
+        );
+
+        $service = new RefundService(
+            $stripe,
+            $midtrans
+        );
+
+        $result = $service->process($refund);
+
+        $this->assertSame(
+            Refund::STATUS_APPROVED,
+            $result->status
+        );
+
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'status' => Refund::STATUS_APPROVED,
+        ]);
+    }
 }
