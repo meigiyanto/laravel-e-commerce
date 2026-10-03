@@ -50,12 +50,20 @@ class StripePaymentService
     public function refund(
         string $paymentIntentId,
         int $amount,
-        string $reason = 'requested_by_customer'
+        string $reason = 'requested_by_customer',
+        ?string $idempotencyKey = null
     ): Refund {
-        return Refund::create([
-            'payment_intent' => $paymentIntentId,
-            'amount' => $amount,
-            'reason' => $reason,
-        ]);
+        $options = $idempotencyKey !== null
+            ? ['idempotency_key' => $idempotencyKey]
+            : [];
+
+        return Refund::create(
+            [
+                'payment_intent' => $paymentIntentId,
+                'amount' => $amount,
+                'reason' => $reason,
+            ],
+            $options
+        );
     }
 }

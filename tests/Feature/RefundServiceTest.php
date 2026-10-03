@@ -318,7 +318,9 @@ class RefundServiceTest extends TestCase
             ->once()
             ->with(
                 'pi_test_123',
-                5000000
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
             )
             ->andReturn($stripeRefund);
 
@@ -827,7 +829,9 @@ class RefundServiceTest extends TestCase
             ->once()
             ->with(
                 'pi_test_123',
-                5000000
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
             )
             ->andReturn($stripeRefund);
 
@@ -910,7 +914,9 @@ class RefundServiceTest extends TestCase
             ->once()
             ->with(
                 'pi_test_123',
-                5000000
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
             )
             ->andReturn($stripeRefund);
 
@@ -997,7 +1003,9 @@ class RefundServiceTest extends TestCase
             ->once()
             ->with(
                 'pi_test_123',
-                5000000
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
             )
             ->andReturn($stripeRefund);
 
@@ -1080,7 +1088,9 @@ class RefundServiceTest extends TestCase
             ->once()
             ->with(
                 'pi_test_123',
-                5000000
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
             )
             ->andReturn($stripeRefund);
 

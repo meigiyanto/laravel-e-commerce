@@ -95,12 +95,21 @@ class RefundService
 
     /**
      * Memproses refund ke payment provider.
+     *
+     * Database transaction hanya digunakan untuk:
+     * - mengunci refund
+     * - mengunci payment
+     * - memvalidasi state
+     * - menghitung refundable amount
+     * - mengubah refund menjadi processing
+     *
+     * Pemanggilan API provider dilakukan setelah
+     * transaction database selesai.
      */
     public function process(Refund $refund): Refund
     {
-        return DB::transaction(function () use ($refund) {
+        $refund = DB::transaction(function () use ($refund) {
             $refund = Refund::query()
-                ->with(['order', 'payment'])
                 ->lockForUpdate()
                 ->findOrFail($refund->id);
 
@@ -110,7 +119,16 @@ class RefundService
                 ]);
             }
 
-            $payment = $refund->payment;
+            $payment = Payment::query()
+                ->whereKey($refund->payment_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $payment) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Payment untuk refund tidak ditemukan.',
+                ]);
+            }
 
             if ($payment->status !== 'succeeded') {
                 throw ValidationException::withMessages([
@@ -118,30 +136,54 @@ class RefundService
                 ]);
             }
 
+            $refundableAmount = $this->refundableAmount($payment);
+
+            if ((float) $refund->amount > $refundableAmount) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Nominal refund melebihi sisa dana yang dapat direfund.',
+                ]);
+            }
+
+            /*
+            * Validasi provider dilakukan SEBELUM status menjadi processing.
+            * Dengan demikian provider yang tidak didukung tetap REQUESTED.
+            */
+            if (! in_array($payment->provider, [
+                'stripe',
+                'midtrans',
+                'cod',
+            ], true)) {
+                throw ValidationException::withMessages([
+                    'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
+                ]);
+            }
+
             $refund->update([
                 'status' => Refund::STATUS_PROCESSING,
             ]);
 
-            return match ($payment->provider) {
-                'stripe' => $this->processStripe(
-                    $refund,
-                    $payment
-                ),
-
-                'midtrans' => $this->processMidtrans(
-                    $refund,
-                    $payment
-                ),
-
-                'cod' => $this->processCod(
-                    $refund
-                ),
-
-                default => throw ValidationException::withMessages([
-                    'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
-                ]),
-            };
+            return $refund->fresh(['order', 'payment']);
         });
+
+        return match ($refund->payment->provider) {
+            'stripe' => $this->processStripe(
+                $refund,
+                $refund->payment
+            ),
+
+            'midtrans' => $this->processMidtrans(
+                $refund,
+                $refund->payment
+            ),
+
+            'cod' => $this->processCod(
+                $refund
+            ),
+
+            default => throw new \LogicException(
+                'Unsupported refund provider.'
+            ),
+        };
     }
 
     /**
@@ -163,21 +205,16 @@ class RefundService
         try {
             $stripeRefund = $this->stripe->refund(
                 $payment->stripe_payment_intent_id,
-                (int) round(
-                    (float) $refund->amount * 100
-                )
+                (int) round((float) $refund->amount * 100),
+                'requested_by_customer',
+                $this->refundKey($refund)
             );
 
             $status = match ($stripeRefund->status) {
                 'succeeded' => Refund::STATUS_COMPLETED,
-
-                'pending',
-                'requires_action' => Refund::STATUS_PROCESSING,
-
+                'pending', 'requires_action' => Refund::STATUS_PROCESSING,
                 'failed' => Refund::STATUS_FAILED,
-
                 'canceled' => Refund::STATUS_REJECTED,
-
                 default => Refund::STATUS_PROCESSING,
             };
 
@@ -281,10 +318,29 @@ class RefundService
     }
 
     /**
-     * Membuat idempotency key untuk refund Midtrans.
+     * Menandai refund dengan provider yang tidak didukung.
      */
-    protected function refundKey(Refund $refund): string
-    {
+    protected function failUnsupportedProvider(
+        Refund $refund
+    ): Refund {
+        $message = "Provider pembayaran [{$refund->payment->provider}] belum didukung untuk refund.";
+
+        $this->markFailed(
+            $refund,
+            $message
+        );
+
+        throw ValidationException::withMessages([
+            'provider' => $message,
+        ]);
+    }
+
+    /**
+     * Membuat idempotency key untuk refund.
+     */
+    protected function refundKey(
+        Refund $refund
+    ): string {
         return 'refund-'.$refund->id;
     }
 

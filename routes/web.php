@@ -15,6 +15,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\MidtransPaymentController;
 use App\Http\Controllers\OrderController;
+
 /**
  * Dashboard
  */
@@ -102,9 +103,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', function () { return view('admin.dashboard'); })->name('dashboard');
 
     // Refund Management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
