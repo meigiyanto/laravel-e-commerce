@@ -1,60 +1,195 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel E-Commerce Store
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-stack e-commerce web application built with Laravel 13, PHP, MySQL/MariaDB, Bootstrap 5, and Vite. This project is designed as a portfolio application demonstrating authentication, storefront functionality, shopping cart management, checkout, order processing, inventory administration, product reviews, wishlist and comparison features, and online payment integration.
 
-## About Laravel
+## ✨ Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### 🛍️ Storefront
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+* Responsive e-commerce storefront
+* Homepage with product categories and latest products
+* Product catalog with pagination
+* Product search by name and description
+* Product filtering by category
+* Product detail pages
+* Related products based on category
+* Product stock availability
+* Shopping cart
+* AJAX add-to-cart interactions
+* AJAX cart quantity updates
+* Dynamic cart count and subtotal updates
+* Wishlist
+* Product comparison
+* Product reviews and ratings
+* Customer order history
+* Order detail pages
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 🛒 Shopping Cart & Checkout
 
-## Learning Laravel
+* Authenticated shopping cart
+* Add products with quantity validation
+* Server-side stock validation
+* Update cart quantities
+* Remove cart items
+* Checkout form with customer and shipping information
+* Server-side price and total calculation
+* Automatic stock deduction when an order is created
+* Automatic order number generation
+* Empty-cart validation
+* Transaction-safe checkout using database transactions
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 💳 Payment Integration
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+The application supports multiple payment methods:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+* **Stripe** — card payments using Stripe PaymentIntent
+* **Midtrans** — payment processing using Midtrans Snap
+* **Cash on Delivery (COD)**
+* Payment status synchronization
+* Stripe webhook handling
+* Midtrans notification handling
+* Payment verification before an order is considered successfully paid
+* Payment records associated with orders
 
-## Agentic Development
+> Stripe and Midtrans require their respective API credentials to be configured in the environment.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 👤 Authentication & Customer Account
 
-```bash
-composer require laravel/boost --dev
+Authentication is implemented using Laravel Breeze and includes:
 
-php artisan boost:install
-```
+* User registration
+* Login and logout
+* Forgot password
+* Password reset
+* Email verification
+* Password confirmation
+* Password update
+* Profile update
+* Account deletion
+* Customer dashboard
+* Personal order history
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 🔐 Admin Dashboard
 
-## Contributing
+The application provides an admin area protected by the `admin` middleware.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+#### Product Management
 
-## Code of Conduct
+* Create products
+* Edit products
+* Delete products
+* Assign categories and sub-categories
+* Manage product prices
+* Manage product stock
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+#### Category Management
 
-## Security Vulnerabilities
+* Create categories
+* Edit categories
+* Delete categories
+* Category descriptions and slugs
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+#### Sub-category Management
 
-## License
+* Create sub-categories
+* Edit sub-categories
+* Delete sub-categories
+* Associate sub-categories with categories
+* Search sub-categories
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# laravel-e-commerce
-# laravel-e-commerce
+#### Inventory Management
+
+* Search products
+* Filter products by stock status
+* View out-of-stock products
+* View low-stock products
+* View products currently in stock
+* Direct stock updates
+* Add stock
+* Subtract stock
+* Low-stock monitoring
+
+#### Order Management
+
+* View all orders
+* Search orders
+* Filter orders by status
+* View order details
+* Update order status
+* Supported order statuses:
+
+  * Pending
+  * Processing
+  * Shipped
+  * Completed
+  * Cancelled
+* Automatically restore product stock when an order is cancelled
+
+#### User Management
+
+* View registered users
+* Search users by name or email
+
+### ❤️ Wishlist
+
+Authenticated customers can:
+
+* Add products to wishlist
+* View wishlist
+* Remove products from wishlist
+
+### ⚖️ Product Comparison
+
+Customers can compare products using:
+
+* Add product to comparison
+* Remove individual products
+* Clear comparison list
+* Dedicated comparison page
+
+### ⭐ Product Reviews
+
+Customers can:
+
+* Submit product reviews
+* Rate products
+* Update their reviews
+* Delete their reviews
+
+Reviews are restricted to eligible completed orders.
+
+### 🎨 Frontend
+
+* Blade templating
+* Bootstrap 5
+* Alpine.js
+* Vite
+* Bootstrap Icons
+* Font Awesome
+* Themify Icons
+* SweetAlert2
+* Toastr
+* DataTables
+* Chart.js
+* Responsive layouts
+* Custom storefront styling
+* Custom dashboard/admin styling
+
+## 🧰 Tech Stack
+
+| Layer           | Technology            |
+| --------------- | --------------------- |
+| Backend         | Laravel 13            |
+| Language        | PHP 8.3+              |
+| Database        | MySQL / MariaDB       |
+| Authentication  | Laravel Breeze        |
+| Template Engine | Blade                 |
+| CSS Framework   | Bootstrap 5           |
+| JavaScript      | JavaScript, Alpine.js |
+| Build Tool      | Vite                  |
+| Payments        | Stripe, Midtrans      |
+| Notifications   | SweetAlert2, Toastr   |
+| Data Tables     | DataTables            |
+| Charts          | Chart.js              |
+
+## 📁 Pr
