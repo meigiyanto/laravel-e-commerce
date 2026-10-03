@@ -192,4 +192,315 @@ Reviews are restricted to eligible completed orders.
 | Data Tables     | DataTables            |
 | Charts          | Chart.js              |
 
-## 📁 Pr
+## 📁 Project Structure
+
+```text
+laravel-e-commerce/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Admin/
+│   │   │   └── Auth/
+│   │   └── Middleware/
+│   ├── Models/
+│   └── Services/
+├── bootstrap/
+├── config/
+├── database/
+│   ├── factories/
+│   ├── migrations/
+│   └── seeders/
+├── public/
+├── resources/
+│   ├── css/
+│   ├── js/
+│   └── views/
+│       ├── admin/
+│       ├── auth/
+│       ├── layouts/
+│       ├── orders/
+│       └── storefront/
+├── routes/
+├── storage/
+├── tests/
+├── composer.json
+├── package.json
+└── vite.config.js
+```
+
+## 🚀 Installation
+
+### Requirements
+
+Make sure the following are installed:
+
+* PHP 8.3 or newer
+* Composer
+* Node.js and npm
+* MySQL or MariaDB
+* Git
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/meigiyanto/laravel-e-commerce.git
+cd laravel-e-commerce
+```
+
+### 2. Install PHP dependencies
+
+```bash
+composer install
+```
+
+### 3. Configure environment
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Generate the application key:
+
+```bash
+php artisan key:generate
+```
+
+Configure your database in `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel-e-commerce
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### 4. Run database migrations
+
+```bash
+php artisan migrate
+```
+
+The repository also contains a database dump:
+
+```text
+laravel_e_commerce_termux.sql
+```
+
+This can be used when you want to restore the prepared database instead of starting with an empty database.
+
+### 5. Install frontend dependencies
+
+```bash
+npm install --ignore-scripts
+```
+
+Build the frontend assets:
+
+```bash
+npm run build
+```
+
+For development:
+
+```bash
+npm run dev
+```
+
+### 6. Start Laravel
+
+```bash
+php artisan serve
+```
+
+Open:
+
+```text
+http://localhost:8000
+```
+
+## 💳 Payment Configuration
+
+### Stripe
+
+Add the following variables to `.env`:
+
+```env
+STRIPE_KEY=
+STRIPE_SECRET=
+STRIPE_WEBHOOK_SECRET=
+```
+
+### Midtrans
+
+Add:
+
+```env
+MIDTRANS_SERVER_KEY=
+MIDTRANS_CLIENT_KEY=
+MIDTRANS_IS_PRODUCTION=false
+```
+
+For local development, keep:
+
+```env
+MIDTRANS_IS_PRODUCTION=false
+```
+
+Never commit real payment credentials to Git.
+
+## 👨‍💼 Admin Access
+
+The admin section is available under:
+
+```text
+/admin
+```
+
+Admin routes are protected by authentication and the application's `admin` middleware.
+
+A user must have the appropriate admin role in the database to access the admin dashboard.
+
+## 🧪 Testing
+
+Run the Laravel test suite:
+
+```bash
+php artisan test
+```
+
+Or:
+
+```bash
+composer test
+```
+
+## 🔒 Security
+
+The application implements several server-side safeguards:
+
+* Authentication-protected customer routes
+* Admin authorization middleware
+* Order ownership validation
+* Cart ownership validation
+* Server-side product validation
+* Server-side stock validation
+* Database transactions during checkout
+* Product row locking during stock-sensitive operations
+* Payment verification through payment-provider APIs
+* Stripe webhook handling
+* Midtrans notification handling
+* CSRF protection
+* Validation of payment/order relationships
+
+Payment amounts and product prices are calculated from trusted server-side data rather than browser-submitted prices.
+
+## 🔄 E-Commerce Workflow
+
+```text
+                     ┌──────────────┐
+                     │   Customer   │
+                     └──────┬───────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │ Browse Products   │
+                  │ Search / Filter   │
+                  └─────────┬─────────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │ Product Details   │
+                  │ Wishlist / Compare│
+                  └─────────┬─────────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │    Add to Cart    │
+                  └─────────┬─────────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │     Checkout      │
+                  └─────────┬─────────┘
+                            │
+                  ┌─────────┼─────────┐
+                  ▼         ▼         ▼
+               Stripe    Midtrans    COD
+                  │         │         │
+                  └─────────┼─────────┘
+                            ▼
+                  ┌───────────────────┐
+                  │       Order       │
+                  └─────────┬─────────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │  Order Tracking   │
+                  └─────────┬─────────┘
+                            │
+                            ▼
+                  ┌───────────────────┐
+                  │ Product Review    │
+                  └───────────────────┘
+```
+
+### Admin Workflow
+
+```text
+                    ┌──────────────┐
+                    │    Admin     │
+                    └──────┬───────┘
+                           │
+             ┌─────────────┼─────────────┐
+             ▼             ▼             ▼
+        Categories     Products      Inventory
+             │             │             │
+             └─────────────┼─────────────┘
+                           ▼
+                         Orders
+                           │
+                    ┌──────┴──────┐
+                    ▼             ▼
+                Processing     Cancelled
+                    │             │
+                    ▼             ▼
+                Completed    Restore Stock
+```
+
+## 🎯 Portfolio Purpose
+
+This project was created as a web development portfolio project to demonstrate practical full-stack development skills.
+
+Key areas demonstrated by the project include:
+
+* Laravel application architecture
+* MVC development
+* Eloquent ORM
+* Relational database design
+* Authentication and authorization
+* CRUD operations
+* E-commerce business logic
+* Shopping cart implementation
+* AJAX interactions
+* Checkout processing
+* Inventory management
+* Payment gateway integration
+* Webhook processing
+* Transaction handling
+* Concurrency-safe stock management
+* Server-side validation
+* Responsive frontend development
+
+## 📌 Project Status
+
+The application currently contains the core functionality required for a functional e-commerce workflow, from product discovery and cart management through checkout, payment processing, order management, inventory management, and customer reviews.
+
+The project can be further extended with features such as shipping integration, coupons and promotions, product variants, advanced analytics, automated email notifications, and additional testing.
+
+## 📄 License
+
+This project is open-sourced under the MIT License.
