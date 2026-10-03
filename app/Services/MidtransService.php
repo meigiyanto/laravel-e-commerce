@@ -135,4 +135,25 @@ class MidtransService
             (string) $notification['signature_key']
         );
     }
+
+    public function refund(
+    string $identifier,
+    int $amount,
+    string $refundKey,
+    ?string $reason = null
+    ): object {
+        $params = [
+            'refund_key' => $refundKey,
+            'amount' => $amount,
+        ];
+
+        if ($reason !== null) {
+            $params['reason'] = $reason;
+        }
+
+        return Transaction::refund(
+            $identifier,
+            $params
+        );
+    }
 }

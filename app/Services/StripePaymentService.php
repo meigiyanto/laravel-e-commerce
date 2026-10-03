@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
+use Stripe\Refund;
 
 class StripePaymentService
 {
@@ -44,5 +45,17 @@ class StripePaymentService
         return (int) round(
             (float) $order->total * 100
         );
+    }
+
+    public function refund(
+    string $paymentIntentId,
+    int $amount,
+    string $reason = 'requested_by_customer'
+    ): Refund {
+        return Refund::create([
+            'payment_intent' => $paymentIntentId,
+            'amount' => $amount,
+            'reason' => $reason,
+        ]);
     }
 }
