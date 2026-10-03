@@ -156,6 +156,7 @@ document.addEventListener(
                 'payment-error'
             );
 
+        /*
         form.addEventListener(
             'submit',
             async function (event) {
@@ -168,9 +169,6 @@ document.addEventListener(
                     'd-none'
                 );
 
-                /*
-                 * Validasi Payment Element.
-                 */
                 const {
                     error: submitError
                 } = await elements.submit();
@@ -184,10 +182,6 @@ document.addEventListener(
                     return;
                 }
 
-                /*
-                 * Konfirmasi pembayaran
-                 * melalui Stripe.js.
-                 */
                 const {
                     error,
                     paymentIntent
@@ -224,15 +218,6 @@ document.addEventListener(
                     return;
                 }
 
-                /*
-                 * Jangan percaya browser sebagai
-                 * sumber pembayaran berhasil.
-                 *
-                 * Kirim hanya PaymentIntent ID.
-                 *
-                 * Server akan mengambil ulang
-                 * PaymentIntent langsung dari Stripe.
-                 */
                 if (
                     !paymentIntent ||
                     !paymentIntent.id
@@ -294,13 +279,6 @@ document.addEventListener(
                         return;
                     }
 
-                    /*
-                     * Server sudah memverifikasi
-                     * PaymentIntent dan mengubah:
-                     *
-                     * Payment -> succeeded
-                     * Order   -> processing
-                     */
                     window.location.href =
                         data.redirect_url;
 
@@ -312,33 +290,77 @@ document.addEventListener(
                 }
 
             });
+        */
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            setLoading(true);
+            errorBox.classList.add('d-none');
+
+            try {
+                const { error: submitError } = await elements.submit();
+
+                if (submitError) {
+                    throw new Error(submitError.message);
+                }
+
+                const { error, paymentIntent } = await stripe.confirmPayment({
+                    elements,
+                    clientSecret,
+                    confirmParams: {
+                        return_url: @json(route('checkout.success', $order)),
+                        receipt_email: @json($order->user?->email),
+                    },
+
+                    redirect: 'if_required',
+                });
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                if (!paymentIntent?.id) {
+                    throw new Error('PaymentIntent tidak ditemukan.');
+                }
+
+                const response = await fetch(@json(route('payment.confirm', $order)), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': @json(csrf_token()),
+                        },
+
+                        body: JSON.stringify({
+                            payment_intent_id: paymentIntent.id,
+                        }),
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error( data.message ||'Pembayaran belum berhasil diverifikasi.');
+                }
+
+                window.location.href = data.redirect_url;
+            } catch (error) {
+                console.error('Stripe payment error:',error);
+                showError(error?.message || 'Terjadi kesalahan saat memproses pembayaran.');
+            } finally {
+                setLoading(false);
+            }
+        });
 
         function setLoading(loading) {
-
-            submitButton.disabled =
-                loading;
-
-            spinner.classList.toggle(
-                'd-none',
-                !loading
-            );
-
-            buttonText.textContent =
-                loading
-                    ? 'Memproses...'
-                    : 'Bayar Sekarang';
+            submitButton.disabled = loading;
+            spinner.classList.toggle('d-none', !loading);
+            buttonText.textContent =  loading ? 'Memproses...' : 'Bayar Sekarang';
         }
 
         function showError(message) {
-
-            errorBox.textContent =
-                message ||
-                'Pembayaran gagal diproses.';
-
-            errorBox.classList.remove(
-                'd-none'
-            );
-
+            errorBox.textContent =  message || 'Pembayaran gagal diproses.';
+            errorBox.classList.remove('d-none');
             setLoading(false);
         }
 
