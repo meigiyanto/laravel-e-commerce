@@ -100,4 +100,61 @@ class RefundController extends Controller
             compact('refund')
         );
     }
+
+    /**
+     * Memproses refund yang masih berstatus requested.
+     */
+    public function process(Refund $refund)
+    {
+        if ($refund->status !== Refund::STATUS_REQUESTED) {
+            return back()->with(
+                'error',
+                'Refund ini sudah diproses atau tidak dapat diproses kembali.'
+            );
+        }
+
+        try {
+            $processedRefund = $this->refundService->process($refund);
+
+            return redirect()
+                ->route('admin.refunds.show', $processedRefund)
+                ->with(
+                    'success',
+                    'Refund berhasil diproses.'
+                );
+        } catch (ValidationException $exception) {
+            throw $exception;
+        }
+    }
+
+    /**
+     * Menolak refund yang masih berstatus requested.
+     */
+    public function reject(Refund $refund)
+    {
+        return DB::transaction(function () use ($refund) {
+            $refund = Refund::query()
+                ->lockForUpdate()
+                ->findOrFail($refund->id);
+
+            if ($refund->status !== Refund::STATUS_REQUESTED) {
+                return back()->with(
+                    'error',
+                    'Refund ini sudah diproses atau tidak dapat ditolak kembali.'
+                );
+            }
+
+            $refund->update([
+                'status' => Refund::STATUS_REJECTED,
+                'processed_at' => now(),
+            ]);
+
+            return redirect()
+                ->route('admin.refunds.show', $refund)
+                ->with(
+                    'success',
+                    'Refund berhasil ditolak.'
+                );
+        });
+    }
 }
