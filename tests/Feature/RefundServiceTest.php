@@ -12,6 +12,7 @@ use App\Services\StripePaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use Stripe\Refund as StripeRefund;
 use Tests\TestCase;
 
 class RefundServiceTest extends TestCase
@@ -295,18 +296,18 @@ class RefundServiceTest extends TestCase
             'requested_at' => now(),
         ]);
 
-        $stripeRefund = Mockery::mock(\Stripe\Refund::class);
-
-        $stripeRefund
-            ->shouldReceive('toArray')
-            ->once()
-            ->andReturn([
-                'id' => 're_test_123',
-                'status' => 'succeeded',
-            ]);
-
-        $stripeRefund->status = 'succeeded';
-        $stripeRefund->id = 're_test_123';
+        /*
+         * Gunakan objek Stripe Refund asli agar kompatibel
+         * dengan StripeObject::toArray() dan magic properties.
+         */
+        $stripeRefund = StripeRefund::constructFrom([
+            'id' => 're_test_123',
+            'object' => 'refund',
+            'amount' => 5000000,
+            'currency' => 'idr',
+            'status' => 'succeeded',
+            'payment_intent' => 'pi_test_123',
+        ]);
 
         $stripe = Mockery::mock(
             StripePaymentService::class
