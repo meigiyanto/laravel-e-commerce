@@ -554,7 +554,7 @@ class PaymentController extends Controller
                     'paid_at' => $payment->paid_at ?? now(),
 
                     'metadata' => [
-                    'stripe_payment_intent_status' => $paymentIntent->status,
+                        'stripe_payment_intent_status' => $paymentIntent->status,
                     ],
                 ]);
 

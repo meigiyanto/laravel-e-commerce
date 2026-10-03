@@ -24,7 +24,7 @@ class ReviewController extends Controller
             ->latest()
             ->first();
 
-        if (!$item) {
+        if (! $item) {
             return back()->with(
                 'error',
                 'Review hanya dapat diberikan untuk produk dari pesanan yang sudah selesai.'

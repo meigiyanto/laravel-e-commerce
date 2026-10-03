@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
 use App\Models\Category;
-use App\Models\SubCategory;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -31,7 +30,7 @@ class ProductController extends Controller
     {
         $categories = Category::with('subCategories')->orderBy('name')->get();
 
-        return view('admin.products.create',compact('categories'));
+        return view('admin.products.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -90,7 +89,7 @@ class ProductController extends Controller
             ],
         ]);
 
-        $validated['slug'] = !empty($validated['slug'])
+        $validated['slug'] = ! empty($validated['slug'])
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
@@ -110,7 +109,7 @@ class ProductController extends Controller
     {
         $categories = Category::with('subCategories')->orderBy('name')->get();
 
-        return view('admin.products.edit',compact('product', 'categories'));
+        return view('admin.products.edit', compact('product', 'categories'));
     }
 
     public function update(Request $request, Product $product)
@@ -170,7 +169,7 @@ class ProductController extends Controller
             ],
         ]);
 
-        $validated['slug'] = !empty($validated['slug'])
+        $validated['slug'] = ! empty($validated['slug'])
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
@@ -186,7 +185,7 @@ class ProductController extends Controller
         if ($product->orderItems()->exists()) {
             return redirect()
                 ->route('admin.products.index')
-                ->with('error','Product tidak dapat dihapus karena sudah digunakan dalam order.');
+                ->with('error', 'Product tidak dapat dihapus karena sudah digunakan dalam order.');
         }
 
         $product->delete();

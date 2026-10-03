@@ -1,33 +1,31 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Admin\CategoryController;
 /**
  * Store Front
  */
-use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\Admin\InventoryController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\RefundController as AdminRefundController;
+use App\Http\Controllers\Admin\SubCategoryController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\OrderController;
-use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\CompareController;
-use App\Http\Controllers\WishlistController;
-use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MidtransPaymentController;
-use App\Http\Controllers\StripeWebhookController;
-use App\Http\Controllers\RefundController;
-
+use App\Http\Controllers\OrderController;
 /**
  * Dashboard
  */
-use App\Http\Controllers\Admin\InventoryController;
-use App\Http\Controllers\Admin\OrderController as AdminOrderController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\SubCategoryController;
-use App\Http\Controllers\Admin\CategoryController;
-use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Admin\RefundController as AdminRefundController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\WishlistController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
@@ -83,7 +81,9 @@ Route::middleware('auth')->group(function () {
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () { return view('dashboard'); })->name('dashboard');
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
 
     // My Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -102,18 +102,20 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/dashboard', function () { return view('admin.dashboard'); })->name('dashboard');
+    Route::get('/dashboard', function () {
+        return view('admin.dashboard');
+    })->name('dashboard');
 
     // Refund Management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
     Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
     Route::post('/refunds/{refund}/process', [AdminRefundController::class, 'process'])->name('refunds.process');
-    Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');    
-    
+    Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');
+
     // Stock Management
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::patch('/inventory/{product}/stock', [InventoryController::class, 'updateStock',])->name('inventory.update-stock');
-    Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjustStock',])->name('inventory.adjust-stock');
+    Route::patch('/inventory/{product}/stock', [InventoryController::class, 'updateStock'])->name('inventory.update-stock');
+    Route::post('/inventory/{product}/adjust', [InventoryController::class, 'adjustStock'])->name('inventory.adjust-stock');
 
     // Order Management
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');

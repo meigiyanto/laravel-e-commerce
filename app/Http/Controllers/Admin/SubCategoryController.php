@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-
 class SubCategoryController extends Controller
 {
     /**
@@ -78,7 +77,7 @@ class SubCategoryController extends Controller
             ],
         ]);
 
-        $validated['slug'] = !empty($validated['slug'])
+        $validated['slug'] = ! empty($validated['slug'])
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 
@@ -141,7 +140,7 @@ class SubCategoryController extends Controller
             ],
         ]);
 
-        $validated['slug'] = !empty($validated['slug'])
+        $validated['slug'] = ! empty($validated['slug'])
             ? Str::slug($validated['slug'])
             : Str::slug($validated['name']);
 

@@ -13,8 +13,7 @@ class RefundController extends Controller
 {
     public function __construct(
         protected RefundService $refundService
-    ) {
-    }
+    ) {}
 
     /**
      * Menampilkan daftar refund.

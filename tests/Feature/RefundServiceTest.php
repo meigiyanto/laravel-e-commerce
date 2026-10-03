@@ -399,7 +399,7 @@ class RefundServiceTest extends TestCase
             ->with(
                 'MIDTRANS-ORDER-123',
                 50000,
-                'refund-' . $refund->id,
+                'refund-'.$refund->id,
                 'Produk rusak'
             )
             ->andReturn($midtransResponse);
@@ -481,7 +481,7 @@ class RefundServiceTest extends TestCase
             ->with(
                 'MIDTRANS-ORDER-456',
                 50000,
-                'refund-' . $refund->id,
+                'refund-'.$refund->id,
                 'Refund sebagian'
             )
             ->andReturn($midtransResponse);
@@ -766,8 +766,6 @@ class RefundServiceTest extends TestCase
         );
 
         $processedRefund = $service->process($refund);
-
-
 
         $this->assertSame(
             Refund::STATUS_FAILED,
@@ -1162,7 +1160,7 @@ class RefundServiceTest extends TestCase
             ->with(
                 $order->order_number,
                 50000,
-                'refund-' . $refund->id,
+                'refund-'.$refund->id,
                 'Refund menggunakan order number'
             )
             ->andReturn($midtransResponse);

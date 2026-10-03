@@ -137,10 +137,10 @@ class MidtransService
     }
 
     public function refund(
-    string $identifier,
-    int $amount,
-    string $refundKey,
-    ?string $reason = null
+        string $identifier,
+        int $amount,
+        string $refundKey,
+        ?string $reason = null
     ): object {
         $params = [
             'refund_key' => $refundKey,

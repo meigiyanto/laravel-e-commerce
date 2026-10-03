@@ -13,8 +13,7 @@ class RefundService
     public function __construct(
         protected StripePaymentService $stripe,
         protected MidtransService $midtrans,
-    ) {
-    }
+    ) {}
 
     /**
      * Mengajukan refund berdasarkan payment yang sudah berhasil.
@@ -33,7 +32,7 @@ class RefundService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$payment) {
+            if (! $payment) {
                 throw ValidationException::withMessages([
                     'payment' => 'Order belum memiliki pembayaran.',
                 ]);
@@ -152,7 +151,7 @@ class RefundService
         Refund $refund,
         Payment $payment
     ): Refund {
-        if (!$payment->stripe_payment_intent_id) {
+        if (! $payment->stripe_payment_intent_id) {
             $this->markFailed(
                 $refund,
                 'Stripe PaymentIntent ID tidak tersedia.'
@@ -215,7 +214,7 @@ class RefundService
             $payment->transaction_id
             ?: $refund->order->order_number;
 
-        if (!$identifier) {
+        if (! $identifier) {
             $this->markFailed(
                 $refund,
                 'Identifier transaksi Midtrans tidak tersedia.'
@@ -246,8 +245,7 @@ class RefundService
 
             $refund->update([
                 'status' => $status,
-                'reference_id' =>
-                    $response->refund_key
+                'reference_id' => $response->refund_key
                     ?? $response->refund_chargeback_id
                     ?? null,
                 'processed_at' => $status === Refund::STATUS_COMPLETED
@@ -287,7 +285,7 @@ class RefundService
      */
     protected function refundKey(Refund $refund): string
     {
-        return 'refund-' . $refund->id;
+        return 'refund-'.$refund->id;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,7 +21,7 @@ class CheckoutController extends Controller
             ])
             ->first();
 
-        if (!$cart || $cart->items->isEmpty()) {
+        if (! $cart || $cart->items->isEmpty()) {
             return redirect()
                 ->route('cart.index')
                 ->with('error', 'Keranjang kamu masih kosong.');
@@ -81,7 +82,7 @@ class CheckoutController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$cart) {
+            if (! $cart) {
                 abort(404, 'Keranjang tidak ditemukan.');
             }
 
@@ -96,7 +97,7 @@ class CheckoutController extends Controller
                 ->unique()
                 ->values();
 
-            $products = \App\Models\Product::whereIn(
+            $products = Product::whereIn(
                 'id',
                 $productIds
             )
@@ -112,7 +113,7 @@ class CheckoutController extends Controller
                     $cartItem->product_id
                 );
 
-                if (!$product) {
+                if (! $product) {
                     throw new \RuntimeException(
                         "Produk {$cartItem->product_id} tidak ditemukan."
                     );
@@ -142,9 +143,9 @@ class CheckoutController extends Controller
 
             do {
                 $orderNumber =
-                    'ORD-' .
-                    now()->format('YmdHis') .
-                    '-' .
+                    'ORD-'.
+                    now()->format('YmdHis').
+                    '-'.
                     strtoupper(Str::random(5));
 
             } while (
@@ -169,26 +170,19 @@ class CheckoutController extends Controller
 
             Payment::create([
                 'order_id' => $order->id,
-                'provider' =>
-                    $validated['payment_method'],
+                'provider' => $validated['payment_method'],
                 'currency' => 'IDR',
                 'status' => 'pending',
-                'payment_method' =>
-                    $validated['payment_method'],
+                'payment_method' => $validated['payment_method'],
                 'payment_type' => match (
                     $validated['payment_method']
                 ) {
-                    'stripe' =>
-                        'card',
-                    'midtrans' =>
-                        'midtrans_snap',
-                    'cod' =>
-                        'cash_on_delivery',
+                    'stripe' => 'card',
+                    'midtrans' => 'midtrans_snap',
+                    'cod' => 'cash_on_delivery',
                 },
-                'transaction_status' =>
-                    'pending',
-                'gross_amount' =>
-                    $order->total,
+                'transaction_status' => 'pending',
+                'gross_amount' => $order->total,
             ]);
 
             foreach ($cart->items as $cartItem) {
@@ -212,7 +206,7 @@ class CheckoutController extends Controller
         });
 
         if ($validated['payment_method'] === 'cod') {
-            return redirect()->route('orders.show', $order)->with('success','Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
+            return redirect()->route('orders.show', $order)->with('success', 'Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
         }
 
         if ($validated['payment_method'] === 'midtrans') {
@@ -239,7 +233,7 @@ class CheckoutController extends Controller
         /*
          * Order tanpa payment tidak boleh dianggap berhasil.
          */
-        if (!$payment) {
+        if (! $payment) {
             return redirect()
                 ->route('orders.show', $order)
                 ->with(

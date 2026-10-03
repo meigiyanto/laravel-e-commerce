@@ -180,7 +180,7 @@ class StripeWebhookController extends Controller
             ]);
         });
     }
-    
+
     private function handlePaymentIntentFailed(object $paymentIntent): void
     {
         if (! isset($paymentIntent->id)) {
@@ -280,7 +280,7 @@ class StripeWebhookController extends Controller
                 'Stripe payment intent has an invalid status for payment_intent.canceled event.'
             );
         }
-        
+
         DB::transaction(function () use ($paymentIntent) {
             $payment = Payment::query()
                 ->where('provider', 'stripe')

@@ -39,25 +39,25 @@ class OrderController extends Controller
                         'like',
                         "%{$search}%"
                     )
-                    ->orWhere(
-                        'customer_name',
-                        'like',
-                        "%{$search}%"
-                    )
-                    ->orWhere(
-                        'phone',
-                        'like',
-                        "%{$search}%"
-                    )
-                    ->orWhereHas('user', function ($query) use ($search) {
-                        $query
-                            ->where('name', 'like', "%{$search}%")
-                            ->orWhere(
-                                'email',
-                                'like',
-                                "%{$search}%"
-                            );
-                    });
+                        ->orWhere(
+                            'customer_name',
+                            'like',
+                            "%{$search}%"
+                        )
+                        ->orWhere(
+                            'phone',
+                            'like',
+                            "%{$search}%"
+                        )
+                        ->orWhereHas('user', function ($query) use ($search) {
+                            $query
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere(
+                                    'email',
+                                    'like',
+                                    "%{$search}%"
+                                );
+                        });
                 });
             })
             ->when(

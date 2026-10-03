@@ -56,9 +56,9 @@ class MidtransNotificationTest extends TestCase
                 'signature_key' => hash(
                     'sha512',
                     $order->order_number
-                    . '200'
-                    . '100000.00'
-                    . 'test-server-key'
+                    .'200'
+                    .'100000.00'
+                    .'test-server-key'
                 ),
             ]
         );
@@ -136,9 +136,9 @@ class MidtransNotificationTest extends TestCase
                 'signature_key' => hash(
                     'sha512',
                     $order->order_number
-                    . '200'
-                    . $grossAmount
-                    . 'test-server-key'
+                    .'200'
+                    .$grossAmount
+                    .'test-server-key'
                 ),
             ]
         );
@@ -192,9 +192,9 @@ class MidtransNotificationTest extends TestCase
                 'signature_key' => hash(
                     'sha512',
                     $order->order_number
-                    . '200'
-                    . '100000.00'
-                    . 'test-server-key'
+                    .'200'
+                    .'100000.00'
+                    .'test-server-key'
                 ),
             ]
         );

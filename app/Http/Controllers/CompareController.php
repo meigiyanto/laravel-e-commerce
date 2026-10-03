@@ -24,7 +24,7 @@ class CompareController extends Controller
     {
         $ids = $request->session()->get('compare', []);
 
-        if (!in_array($product->id, $ids)) {
+        if (! in_array($product->id, $ids)) {
             if (count($ids) >= 4) {
                 return back()->with('error', 'Maksimal 4 produk untuk dibandingkan.');
             }

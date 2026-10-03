@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class PaymentFlowTest extends TestCase

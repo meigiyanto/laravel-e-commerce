@@ -5,9 +5,9 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Stripe\WebhookSignature;
 use Tests\TestCase;
 
@@ -1184,7 +1184,7 @@ class StripeWebhookTest extends TestCase
                     'gross_amount' => self::ORDER_TOTAL,
                     'currency' => 'IDR',
                     'stripe_payment_intent_id' => $paymentIntentId
-                        ?? 'pi_test_' . uniqid(),
+                        ?? 'pi_test_'.uniqid(),
                 ],
                 $paymentAttributes
             )
@@ -1235,11 +1235,11 @@ class StripeWebhookTest extends TestCase
         string $eventType,
         array $paymentIntent,
     ): string {
-        $eventId = 'evt_test_' . str_replace(
+        $eventId = 'evt_test_'.str_replace(
             ['.', '_'],
             '-',
             $eventType
-        ) . '_' . uniqid();
+        ).'_'.uniqid();
 
         return json_encode([
             'id' => $eventId,

@@ -33,7 +33,6 @@ class CartController extends Controller
         ));
     }
 
-
     /**
      * Add product to cart.
      */
@@ -144,7 +143,6 @@ class CartController extends Controller
             ->with('success', 'Produk berhasil ditambahkan ke keranjang.');
     }
 
-
     /**
      * Update cart item.
      */
@@ -228,7 +226,6 @@ class CartController extends Controller
             'Keranjang berhasil diperbarui.'
         );
     }
-
 
     /**
      * Remove cart item.

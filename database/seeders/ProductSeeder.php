@@ -42,7 +42,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'category' => 'Fashion',
-                'sub_category' => "Pakaian Pria",
+                'sub_category' => 'Pakaian Pria',
                 'name' => "Classic Men's Jacket",
                 'description' => 'Jaket pria dengan desain klasik yang cocok untuk berbagai kesempatan.',
                 'price' => 599000,
@@ -51,7 +51,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'category' => 'Fashion',
-                'sub_category' => "Pakaian Wanita",
+                'sub_category' => 'Pakaian Wanita',
                 'name' => "Women's Casual Dress",
                 'description' => 'Dress kasual wanita dengan desain modern dan nyaman digunakan.',
                 'price' => 449000,
