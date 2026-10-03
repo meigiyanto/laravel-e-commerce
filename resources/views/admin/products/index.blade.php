@@ -36,63 +36,88 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <table class="nowrap table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Product</th>
-                        <th>Category</th>
-                        <th>Sub Category</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($products as $product)
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped js-datatable">
+                    <thead>
                         <tr>
-                            <td>
-                                {{ $products->firstItem() + $loop->index }}
-                            </td>
-                            <td>
-                                <strong>
-                                    {{ $product->name }}
-                                </strong>
-                            </td>
-                            <td>
-                                {{ $product->subCategory->category->name }}
-                            </td>
-                            <td>
-                                {{ $product->subCategory->name }}
-                            </td>
-                            <td>
-                                Rp {{ number_format($product->price, 0, ',', '.') }}
-                            </td>
-                            <td>
-                                {{ $product->stock }}
-                            </td>
-                            <td>
-                                <div class="btn-group">
-
-                                    <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary"><em class="ni ni-edit"></em></a>
-
-                                    <form method="POST" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Hapus product ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-danger"><em class="ni ni-trash"></em></button>
-                                    </form>
-                                </div>
-                            </td>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Sub Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th class="no-sort">Actions</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7">
-                                Belum ada product.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+
+                    <tbody>
+                        @foreach($products as $product)
+                            <tr>
+                                <td>
+                                    {{ $loop->iteration }}
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        {{ $product->name }}
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    {{ $product->category?->name ?? '-' }}
+                                </td>
+
+                                <td>
+                                    {{ $product->subCategory?->name ?? '-' }}
+                                </td>
+
+                                <td>
+                                    Rp {{ number_format($product->price, 0, ',', '.') }}
+                                </td>
+
+                                <td>
+                                    {{ $product->stock }}
+                                </td>
+
+                                <td>
+                                    <div class="btn-group">
+                                        <a
+                                            href="{{ route('admin.products.edit', $product) }}"
+                                            class="btn btn-sm btn-secondary"
+                                            title="Edit"
+                                        >
+                                            <em class="ni ni-edit"></em>
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.products.destroy', $product) }}"
+                                            onsubmit="return confirm('Hapus product ini?')"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-sm btn-danger"
+                                                title="Delete"
+                                            >
+                                                <em class="ni ni-trash"></em>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            @if($products->isEmpty())
+                <div class="text-center text-soft py-4">
+                    Belum ada product.
+                </div>
+            @endif
 
         </div>
     </div>

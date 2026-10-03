@@ -88,7 +88,7 @@
 
             {{-- Table --}}
             <div class="table-responsive">
-                <table class="table table-middle">
+                <table class="table table-middle js-datatable">
                     <thead>
                         <tr>
                             <th>Order</th>
@@ -96,13 +96,13 @@
                             <th>Total</th>
                             <th>Status</th>
                             <th>Date</th>
-                            <th class="text-end">
+                            <th class="text-end no-sort">
                                 Action
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($orders as $order)
+                        @foreach($orders as $order)
                             @php
                                 $statusClass = match ($order->status) {
                                     'pending' => 'bg-warning text-dark',
@@ -140,23 +140,16 @@
                                     </a>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="text-center text-soft py-4">
-                                    Order not found.
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
+                @if($orders->isEmpty())
+                    <div class="text-center text-soft py-4">
+                        Order not found.
+                    </div>
+                @endif
             </div>
 
-            {{-- Pagination --}}
-            @if($orders->hasPages())
-                <div class="mt-4">
-                    {{ $orders->links() }}
-                </div>
-            @endif
         </div>
     </div>
 </div>

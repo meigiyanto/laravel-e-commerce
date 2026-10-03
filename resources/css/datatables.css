@@ -1,0 +1,215 @@
+/* =========================================================
+   DataTables
+   Shared admin table styling
+   ========================================================= */
+
+.dataTables_wrapper {
+    width: 100%;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Top / Bottom controls
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-layout-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dt-layout-row:last-child {
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+.dataTables_wrapper .dt-layout-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Search
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dataTables_wrapper .dt-search label {
+    display: none;
+}
+
+.dataTables_wrapper .dt-search input {
+    min-width: 240px;
+    min-height: 38px;
+
+    border: 1px solid #dbdfea;
+    border-radius: 0.375rem;
+
+    background: #fff;
+    color: #364a63;
+
+    padding: 0.375rem 0.75rem;
+}
+
+.dataTables_wrapper .dt-search input:focus {
+    border-color: #6576ff;
+    outline: 0;
+
+    box-shadow:
+        0 0 0 0.2rem rgba(101, 118, 255, 0.15);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Length selector
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-length {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dataTables_wrapper .dt-length select {
+    min-height: 38px;
+
+    border: 1px solid #dbdfea;
+    border-radius: 0.375rem;
+
+    background: #fff;
+    color: #364a63;
+
+    padding: 0.375rem 2rem 0.375rem 0.75rem;
+}
+
+.dataTables_wrapper .dt-length select:focus {
+    border-color: #6576ff;
+    outline: 0;
+
+    box-shadow:
+        0 0 0 0.2rem rgba(101, 118, 255, 0.15);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Table
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-layout-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.js-datatable {
+    width: 100% !important;
+}
+
+.js-datatable thead th {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.js-datatable tbody td {
+    vertical-align: middle;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Info
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-info {
+    color: #8091a7;
+    font-size: 0.875rem;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Pagination
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_wrapper .dt-paging {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.dataTables_wrapper .dt-paging .dt-paging-button {
+    min-width: 36px;
+    min-height: 36px;
+
+    padding: 0.375rem 0.65rem;
+
+    border: 1px solid #dbdfea;
+    border-radius: 0.375rem;
+
+    background: #fff;
+    color: #526484;
+
+    cursor: pointer;
+}
+
+.dataTables_wrapper
+    .dt-paging
+    .dt-paging-button:hover:not(.disabled):not(.current) {
+    background: #f5f6fa;
+    color: #364a63;
+}
+
+.dataTables_wrapper
+    .dt-paging
+    .dt-paging-button.current {
+    border-color: #6576ff;
+    background: #6576ff;
+    color: #fff;
+}
+
+.dataTables_wrapper
+    .dt-paging
+    .dt-paging-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Responsive
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 767.98px) {
+
+    .dataTables_wrapper .dt-layout-row {
+        align-items: stretch;
+    }
+
+    .dataTables_wrapper .dt-layout-cell {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .dataTables_wrapper .dt-search,
+    .dataTables_wrapper .dt-search input {
+        width: 100%;
+    }
+
+    .dataTables_wrapper .dt-paging {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}

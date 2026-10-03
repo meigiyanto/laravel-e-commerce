@@ -12,9 +12,14 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::withCount('subCategories')->latest()->paginate(10);
+        $categories = Category::withCount('subCategories')
+            ->latest()
+            ->get();
 
-        return view('admin.categories.index', compact('categories'));
+        return view(
+            'admin.categories.index',
+            compact('categories')
+        );
     }
 
     public function create()

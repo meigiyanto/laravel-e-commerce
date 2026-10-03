@@ -21,3 +21,6 @@ import 'jquery-form';
 
 // Sidebar
 import './sidebar.js';
+
+// DataTables
+import './datatables.js';

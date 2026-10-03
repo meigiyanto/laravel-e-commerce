@@ -65,8 +65,7 @@ class OrderController extends Controller
                 fn ($query) => $query->where('status', $status)
             )
             ->latest()
-            ->paginate(15)
-            ->withQueryString();
+            ->get();
 
         /*
          * Jumlah order berdasarkan status.

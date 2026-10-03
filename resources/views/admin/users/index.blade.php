@@ -39,7 +39,7 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <form method="GET" action="{{ route('admin.users.index') }}" class="search-form mb-3">
+            <!-- <form method="GET" action="{{ route('admin.users.index') }}" class="search-form mb-3">
                 <div class="form-control-wrap">
                     <div class="input-group">
                         <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search name or email">
@@ -54,53 +54,48 @@
                         Reset
                     </a>
                 @endif
-            </form>
+            </form> -->
 
-            <table class="nowrap table table-bordered">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Registered</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @forelse ($users as $user)
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped js-datatable">
+                    <thead>
                         <tr>
-                            <td>{{ $user->id }}</td>
-
-                            <td>
-                                <strong>{{ $user->name }}</strong>
-                            </td>
-
-                            <td>{{ $user->email }}</td>
-
-                            <td>
-                                 {{ $user->role }}
-                            </td>
-
-                            <td>
-                                {{ $user->created_at->format('d M Y H:i') }}
-                            </td>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Registered</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="empty-state">
-                                User not found
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
 
-            @if ($users->hasPages())
-                <div class="pagination-wrapper">
-                    {{ $users->links() }}
-                </div>
-            @endif
+                    <tbody>
+                        @foreach ($users as $user)
+                            <tr>
+                                <td>{{ $user->id }}</td>
+
+                                <td>
+                                    <strong>{{ $user->name }}</strong>
+                                </td>
+
+                                <td>{{ $user->email }}</td>
+
+                                <td>
+                                    {{ $user->role }}
+                                </td>
+
+                                <td>
+                                    {{ $user->created_at->format('d M Y H:i') }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                @if ($users->isEmpty())
+                    <div class="text-center text-soft py-4">
+                        User not found.
+                    </div>
+                @endif
+            </div>           
 
         </div>
     </div>

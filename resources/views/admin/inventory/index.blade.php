@@ -191,7 +191,7 @@
 
                         {{-- Table --}}
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover js-datatable">
                                 <thead>
                                     <tr>
                                         <th>Product</th>
@@ -199,12 +199,12 @@
                                         <th>Price</th>
                                         <th>Stock</th>
                                         <th>Status</th>
-                                        <th class="text-end">Action</th>
+                                        <th class="text-end no-sort">Action</th>
                                     </tr>
                                 </thead>
 
                                 <tbody>
-                                    @forelse($products as $product)
+                                    @foreach($products as $product)
                                         <tr>
                                             {{-- Product --}}
                                             <td>
@@ -407,28 +407,16 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    @empty
-                                        <tr>
-                                            <td
-                                                colspan="6"
-                                                class="text-center py-5"
-                                            >
-                                                <div class="text-soft">
-                                                    Tidak ada produk ditemukan.
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforelse
+                                    @endforeach
                                 </tbody>
                             </table>
+                            @if($products->isEmpty())
+                                <div class="text-center text-soft py-5">
+                                    Tidak ada produk ditemukan.
+                                </div>
+                            @endif
                         </div>
 
-                        {{-- Pagination --}}
-                        @if($products->hasPages())
-                            <div class="mt-4">
-                                {{ $products->links() }}
-                            </div>
-                        @endif
                     </div>
                 </div>
             </div>

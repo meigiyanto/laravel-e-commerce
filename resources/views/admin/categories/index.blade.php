@@ -38,58 +38,61 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-             <table class="datatable-init nowrap table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Slug</th>
-                        <th>Product</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @forelse ($categories as $category)
+            <div class="table-responsive">
+                <table class="table table-middle js-datatable">
+                    <thead>
                         <tr>
-                            <td>{{ $category->id }}</td>
-                            <td>{{ $category->name }}</td>
-                            <td>{{ $category->slug }}</td>
-                            <td>{{ $category->sub_categories_count }}</td>
-
-                            <td>
-                                <div class="btn-group">
-                                    <a
-                                        href="{{ route('admin.categories.edit', $category) }}"
-                                        class="btn btn-secondary"
-                                    >
-                                        Edit
-                                    </a>
-
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.categories.destroy', $category) }}"
-                                        onsubmit="return confirm('Hapus kategori ini?')"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
-
-                                        <button type="submit" class="btn btn-danger">
-                                            Delete
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Slug</th>
+                            <th>Product</th>
+                            <th class="no-sort text-end">Action</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="empty-state">
-                                No category
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+
+                    <tbody>
+                        @foreach ($categories as $category)
+                            <tr>
+                                <td>{{ $category->id }}</td>
+                                <td>{{ $category->name }}</td>
+                                <td>{{ $category->slug }}</td>
+                                <td>{{ $category->sub_categories_count }}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a
+                                            href="{{ route('admin.categories.edit', $category) }}"
+                                            class="btn btn-secondary"
+                                        >
+                                            Edit
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.categories.destroy', $category) }}"
+                                            onsubmit="return confirm('Hapus kategori ini?')"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button
+                                                type="submit"
+                                                class="btn btn-danger"
+                                            >
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                @if ($categories->isEmpty())
+                    <div class="text-center text-soft py-4">
+                        No category.
+                    </div>
+                @endif
+            </div>
 
         </div>
     </div>

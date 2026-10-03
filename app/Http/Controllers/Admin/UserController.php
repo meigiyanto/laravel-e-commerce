@@ -10,19 +10,21 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->input('search');
+        $search = trim((string) $request->input('search', ''));
 
         $users = User::query()
-            ->when($search, function ($query, $search) {
+            ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
             ->latest()
-            ->paginate(10)
-            ->withQueryString();
+            ->get();
 
-        return view('admin.users.index', compact('users', 'search'));
+        return view(
+            'admin.users.index',
+            compact('users', 'search')
+        );
     }
 }

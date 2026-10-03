@@ -36,24 +36,8 @@
     </div>
 
     <div class="card card-bordered">
-        <div class="card-inner">
-            <form
-                method="GET"
-                action="{{ route('admin.sub-categories.index') }}"
-                style="margin-bottom: 20px;"
-            >
-                <div class="form-control-wrap">
-                    <div class="input-group">
-                        <input type="text" class="form-control" name="search" value="{{ $search }}" placeholder="Search sub-category">
-                        <div class="input-group-append">
-                            <button type="submit" class="btn btn-outline-primary btn-dim">Search</button>
-                        </div>
-                    </div>
-                </div>
-
-            </form>
-
-            <table class="nowrap table table-bordered table-striped">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped js-datatable">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -61,29 +45,35 @@
                         <th>Slug</th>
                         <th>Category</th>
                         <th>Products</th>
-                        <th>Actions</th>
+                        <th class="no-sort">Actions</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    @forelse($subCategories as $subCategory)
+                    @foreach($subCategories as $subCategory)
                         <tr>
                             <td>
-                                {{ $subCategories->firstItem() + $loop->index }}
+                                {{ $loop->iteration }}
                             </td>
+
                             <td>
                                 <strong>
                                     {{ $subCategory->name }}
                                 </strong>
                             </td>
+
                             <td>
                                 {{ $subCategory->slug }}
                             </td>
+
                             <td>
-                                {{ $subCategory->category->name }}
+                                {{ $subCategory->category?->name ?? '-' }}
                             </td>
+
                             <td>
                                 {{ $subCategory->products()->count() }}
                             </td>
+
                             <td>
                                 <div class="btn-group">
                                     <a
@@ -98,7 +88,6 @@
                                         action="{{ route('admin.sub-categories.destroy', $subCategory) }}"
                                         onsubmit="return confirm('Hapus sub-category ini?')"
                                     >
-
                                         @csrf
                                         @method('DELETE')
 
@@ -112,17 +101,16 @@
                                 </div>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6">
-                                Belum ada sub-category.
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
-
         </div>
+
+        @if($subCategories->isEmpty())
+            <div class="text-center text-soft py-4">
+                Belum ada sub-category.
+            </div>
+        @endif
     </div>
 
 </div>

@@ -37,8 +37,7 @@ class InventoryController extends Controller
             )
             ->orderBy('stock')
             ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+            ->get();
 
         $stockCounts = [
             'out_of_stock' => Product::where('stock', 0)->count(),
