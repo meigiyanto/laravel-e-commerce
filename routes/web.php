@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
@@ -42,8 +43,6 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name
 
 Route::middleware('auth')->group(function () {
     // Refund
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
@@ -105,6 +104,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('/dashboard', function () { return view('admin.dashboard'); })->name('dashboard');
 
+    // Refund Management
+    Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
+    Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
+    
     // Stock Management
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::patch('/inventory/{product}/stock', [InventoryController::class, 'updateStock',])->name('inventory.update-stock');
