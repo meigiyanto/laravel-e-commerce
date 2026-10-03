@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Services\WebhookEventService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
+    public function __construct(
+        protected WebhookEventService $webhookEvents
+    ) {}
+
     public function handle(Request $request): Response
     {
         $payload = $request->getContent();
@@ -30,34 +35,50 @@ class StripeWebhookController extends Controller
         }
 
         try {
-            switch ($event->type) {
-                case 'payment_intent.succeeded':
-                    $this->handlePaymentIntentSucceeded(
-                        $event->data->object
-                    );
-                    break;
+            $this->webhookEvents->process(
+                provider: 'stripe',
+                eventId: $event->id,
+                eventType: $event->type,
+                payload: json_decode(
+                    $payload,
+                    true,
+                    512,
+                    JSON_THROW_ON_ERROR
+                ),
+                handler: function () use ($event): void {
+                    switch ($event->type) {
+                        case 'payment_intent.succeeded':
+                            $this->handlePaymentIntentSucceeded(
+                                $event->data->object
+                            );
+                            break;
 
-                case 'payment_intent.payment_failed':
-                    $this->handlePaymentIntentFailed(
-                        $event->data->object
-                    );
-                    break;
+                        case 'payment_intent.payment_failed':
+                            $this->handlePaymentIntentFailed(
+                                $event->data->object
+                            );
+                            break;
 
-                case 'payment_intent.canceled':
-                    $this->handlePaymentIntentCanceled(
-                        $event->data->object
-                    );
-                    break;
-            }
+                        case 'payment_intent.canceled':
+                            $this->handlePaymentIntentCanceled(
+                                $event->data->object
+                            );
+                            break;
+                    }
+                }
+            );
         } catch (\RuntimeException $e) {
             return response($e->getMessage(), 422);
+        } catch (\JsonException $e) {
+            return response('Invalid webhook payload.', 400);
         }
 
         return response('Webhook received', 200);
     }
 
-    private function handlePaymentIntentSucceeded(object $paymentIntent): void
-    {
+    private function handlePaymentIntentSucceeded(
+        object $paymentIntent
+    ): void {
         if (! isset($paymentIntent->status)) {
             throw new \RuntimeException(
                 'Stripe payment intent status is missing.'
@@ -100,6 +121,12 @@ class StripeWebhookController extends Controller
             );
         }
 
+        if ($paymentIntent->amount <= 0) {
+            throw new \RuntimeException(
+                'Stripe payment amount must be greater than zero.'
+            );
+        }
+
         if (! isset($paymentIntent->currency)) {
             throw new \RuntimeException(
                 'Stripe payment currency is missing.'
@@ -112,10 +139,19 @@ class StripeWebhookController extends Controller
             );
         }
 
-        DB::transaction(function () use ($paymentIntent) {
+        if (trim($paymentIntent->currency) === '') {
+            throw new \RuntimeException(
+                'Stripe payment currency cannot be empty.'
+            );
+        }
+
+        DB::transaction(function () use ($paymentIntent): void {
             $payment = Payment::query()
                 ->where('provider', 'stripe')
-                ->where('stripe_payment_intent_id', $paymentIntent->id)
+                ->where(
+                    'stripe_payment_intent_id',
+                    $paymentIntent->id
+                )
                 ->lockForUpdate()
                 ->first();
 
@@ -129,12 +165,21 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-            if (in_array($order->status, ['canceled', 'failed', 'refunded'], true)) {
+            if (in_array(
+                $order->status,
+                ['canceled', 'failed', 'refunded'],
+                true
+            )) {
                 return;
             }
 
-            $stripeCurrency = strtolower($paymentIntent->currency);
-            $paymentCurrency = strtolower($payment->currency);
+            $stripeCurrency = strtolower(
+                $paymentIntent->currency
+            );
+
+            $paymentCurrency = strtolower(
+                $payment->currency
+            );
 
             if ($paymentCurrency !== $stripeCurrency) {
                 throw new \RuntimeException(
@@ -153,10 +198,14 @@ class StripeWebhookController extends Controller
             }
 
             /*
-            * Jangan pernah mengubah payment yang sudah sukses
-            * atau dibatalkan menjadi succeeded kembali.
-            */
-            if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
+             * Jangan pernah mengubah payment yang sudah
+             * succeeded atau canceled menjadi succeeded kembali.
+             */
+            if (in_array(
+                $payment->status,
+                ['succeeded', 'canceled'],
+                true
+            )) {
                 return;
             }
 
@@ -181,8 +230,9 @@ class StripeWebhookController extends Controller
         });
     }
 
-    private function handlePaymentIntentFailed(object $paymentIntent): void
-    {
+    private function handlePaymentIntentFailed(
+        object $paymentIntent
+    ): void {
         if (! isset($paymentIntent->id)) {
             throw new \RuntimeException(
                 'Stripe payment intent ID is missing.'
@@ -201,16 +251,25 @@ class StripeWebhookController extends Controller
             );
         }
 
+        if (! is_string($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status must be a string.'
+            );
+        }
+
         if ($paymentIntent->status !== 'requires_payment_method') {
             throw new \RuntimeException(
                 'Stripe payment intent has an invalid status for payment_failed event.'
             );
         }
 
-        DB::transaction(function () use ($paymentIntent) {
+        DB::transaction(function () use ($paymentIntent): void {
             $payment = Payment::query()
                 ->where('provider', 'stripe')
-                ->where('stripe_payment_intent_id', $paymentIntent->id)
+                ->where(
+                    'stripe_payment_intent_id',
+                    $paymentIntent->id
+                )
                 ->lockForUpdate()
                 ->first();
 
@@ -219,10 +278,14 @@ class StripeWebhookController extends Controller
             }
 
             /*
-            * Jangan pernah menurunkan payment yang sudah sukses
-            * atau dibatalkan.
-            */
-            if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
+             * Jangan pernah menurunkan payment yang sudah
+             * succeeded atau canceled.
+             */
+            if (in_array(
+                $payment->status,
+                ['succeeded', 'canceled'],
+                true
+            )) {
                 return;
             }
 
@@ -232,7 +295,11 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-            if (in_array($order->status, ['completed', 'canceled', 'failed', 'refunded'], true)) {
+            if (in_array(
+                $order->status,
+                ['completed', 'canceled', 'failed', 'refunded'],
+                true
+            )) {
                 return;
             }
 
@@ -247,16 +314,17 @@ class StripeWebhookController extends Controller
                         'stripe_webhook_event' => 'payment_intent.payment_failed',
                         'stripe_payment_intent_status' => $paymentIntent->status,
                         'stripe_last_payment_error' => isset($paymentIntent->last_payment_error)
-                            ? (array) $paymentIntent->last_payment_error
-                            : null,
+                                ? (array) $paymentIntent->last_payment_error
+                                : null,
                     ],
                 ),
             ]);
         });
     }
 
-    private function handlePaymentIntentCanceled(object $paymentIntent): void
-    {
+    private function handlePaymentIntentCanceled(
+        object $paymentIntent
+    ): void {
         if (! isset($paymentIntent->id)) {
             throw new \RuntimeException(
                 'Stripe payment intent ID is missing.'
@@ -275,16 +343,25 @@ class StripeWebhookController extends Controller
             );
         }
 
+        if (! is_string($paymentIntent->status)) {
+            throw new \RuntimeException(
+                'Stripe payment intent status must be a string.'
+            );
+        }
+
         if ($paymentIntent->status !== 'canceled') {
             throw new \RuntimeException(
                 'Stripe payment intent has an invalid status for payment_intent.canceled event.'
             );
         }
 
-        DB::transaction(function () use ($paymentIntent) {
+        DB::transaction(function () use ($paymentIntent): void {
             $payment = Payment::query()
                 ->where('provider', 'stripe')
-                ->where('stripe_payment_intent_id', $paymentIntent->id)
+                ->where(
+                    'stripe_payment_intent_id',
+                    $paymentIntent->id
+                )
                 ->lockForUpdate()
                 ->first();
 
@@ -293,10 +370,14 @@ class StripeWebhookController extends Controller
             }
 
             /*
-            * Jangan pernah menurunkan payment yang sudah sukses,
-            * gagal, atau dibatalkan.
-            */
-            if (in_array($payment->status, ['succeeded', 'failed', 'canceled'], true)) {
+             * Jangan pernah menurunkan payment yang sudah
+             * succeeded, failed, atau canceled.
+             */
+            if (in_array(
+                $payment->status,
+                ['succeeded', 'failed', 'canceled'],
+                true
+            )) {
                 return;
             }
 
@@ -306,7 +387,11 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-            if (in_array($order->status, ['completed', 'canceled', 'failed', 'refunded'], true)) {
+            if (in_array(
+                $order->status,
+                ['completed', 'canceled', 'failed', 'refunded'],
+                true
+            )) {
                 return;
             }
 
@@ -320,7 +405,7 @@ class StripeWebhookController extends Controller
                     [
                         'stripe_webhook_event' => 'payment_intent.canceled',
                         'stripe_payment_intent_status' => $paymentIntent->status,
-                    ]
+                    ],
                 ),
             ]);
         });

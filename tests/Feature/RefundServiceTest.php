@@ -564,22 +564,17 @@ class RefundServiceTest extends TestCase
         $result = $service->process($refund);
 
         $this->assertSame(
-            Refund::STATUS_FAILED,
+            Refund::STATUS_PROCESSING,
             $result->status
         );
 
-        $this->assertNotNull(
+        $this->assertNull(
             $result->processed_at
-        );
-
-        $this->assertSame(
-            'Midtrans refund failed',
-            $result->metadata['error']
         );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
-            'status' => Refund::STATUS_FAILED,
+            'status' => Refund::STATUS_PROCESSING,
         ]);
     }
 
@@ -1911,22 +1906,17 @@ class RefundServiceTest extends TestCase
         $result = $service->process($refund);
 
         $this->assertSame(
-            Refund::STATUS_FAILED,
+            Refund::STATUS_PROCESSING,
             $result->status
         );
 
-        $this->assertNotNull(
+        $this->assertNull(
             $result->processed_at
-        );
-
-        $this->assertSame(
-            'Stripe refund failed',
-            $result->metadata['error']
         );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
-            'status' => Refund::STATUS_FAILED,
+            'status' => Refund::STATUS_PROCESSING,
         ]);
     }
 }

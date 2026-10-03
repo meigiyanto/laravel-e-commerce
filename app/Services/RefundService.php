@@ -46,13 +46,13 @@ class RefundService
 
             $amount = (float) $amount;
 
-            $refundableAmount = $this->refundableAmount($payment);
-
             if ($amount <= 0) {
                 throw ValidationException::withMessages([
                     'amount' => 'Nominal refund harus lebih besar dari 0.',
                 ]);
             }
+
+            $refundableAmount = $this->refundableAmount($payment);
 
             if ($amount > $refundableAmount) {
                 throw ValidationException::withMessages([
@@ -94,33 +94,56 @@ class RefundService
     }
 
     /**
-     * Memproses refund ke payment provider.
+     * Memproses refund yang masih berstatus requested.
      *
-     * Database transaction hanya digunakan untuk:
-     * - mengunci refund
-     * - mengunci payment
-     * - memvalidasi state
-     * - menghitung refundable amount
-     * - mengubah refund menjadi processing
+     * Transaction boundary:
      *
-     * Pemanggilan API provider dilakukan setelah
-     * transaction database selesai.
+     * 1. Lock Payment terlebih dahulu.
+     * 2. Lock Refund setelah Payment.
+     * 3. Validasi seluruh state di dalam transaction.
+     * 4. Claim refund dengan mengubahnya menjadi processing.
+     * 5. Commit transaction.
+     * 6. Baru setelah commit, panggil provider.
+     *
+     * Payment menjadi serialization point untuk seluruh refund
+     * yang berasal dari payment yang sama.
      */
     public function process(Refund $refund): Refund
     {
-        $refund = DB::transaction(function () use ($refund) {
-            $refund = Refund::query()
-                ->lockForUpdate()
-                ->findOrFail($refund->id);
+        /*
+        * payment_id merupakan foreign key yang immutable untuk refund.
+        *
+        * Kita hanya membaca refund terlebih dahulu untuk mengetahui
+        * Payment mana yang harus menjadi lock pertama.
+        *
+        * Lock belum dilakukan di sini.
+        */
+        $refundData = Refund::query()
+            ->select([
+                'id',
+                'payment_id',
+            ])
+            ->findOrFail($refund->id);
 
-            if ($refund->status !== Refund::STATUS_REQUESTED) {
-                throw ValidationException::withMessages([
-                    'refund' => 'Refund ini sudah diproses atau tidak dapat diproses kembali.',
-                ]);
-            }
+        $refund = DB::transaction(function () use ($refundData) {
+            /*
+            * ============================================================
+            * LOCK ORDER
+            * ============================================================
+            *
+            * Seluruh alur refund harus menggunakan urutan:
+            *
+            * Payment -> Refund
+            *
+            * Jangan mengubah urutan ini menjadi:
+            *
+            * Refund -> Payment
+            *
+            * karena request() juga mengunci Payment terlebih dahulu.
+            */
 
             $payment = Payment::query()
-                ->whereKey($refund->payment_id)
+                ->whereKey($refundData->payment_id)
                 ->lockForUpdate()
                 ->first();
 
@@ -130,12 +153,66 @@ class RefundService
                 ]);
             }
 
+            /*
+            * Setelah Payment terkunci, baru lock Refund.
+            *
+            * Dengan demikian dua proses refund terhadap Payment yang sama
+            * akan diserialisasi oleh row Payment.
+            */
+            $refund = Refund::query()
+                ->whereKey($refundData->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $refund) {
+                throw ValidationException::withMessages([
+                    'refund' => 'Refund tidak ditemukan.',
+                ]);
+            }
+
+            /*
+            * Hanya refund REQUESTED yang boleh di-claim.
+            *
+            * Jika worker/admin kedua datang bersamaan:
+            *
+            * Request A:
+            *   Payment locked
+            *   Refund locked
+            *   status -> processing
+            *   commit
+            *
+            * Request B:
+            *   menunggu Payment
+            *   setelah Payment dilepas:
+            *   membaca Refund = processing
+            *   ditolak
+            *
+            * Dengan demikian provider tidak dipanggil dua kali.
+            */
+            if ($refund->status !== Refund::STATUS_REQUESTED) {
+                throw ValidationException::withMessages([
+                    'refund' => 'Refund ini sudah diproses atau tidak dapat diproses kembali.',
+                ]);
+            }
+
+            /*
+            * Payment harus tetap succeeded ketika refund di-claim.
+            */
             if ($payment->status !== 'succeeded') {
                 throw ValidationException::withMessages([
                     'payment' => 'Payment belum berada pada status succeeded.',
                 ]);
             }
 
+            /*
+            * Karena Payment sedang di-lock, tidak ada request()
+            * lain yang dapat membuat refund baru untuk Payment ini
+            * sampai transaction selesai.
+            *
+            * Refund dengan status REQUESTED / APPROVED / PROCESSING /
+            * COMPLETED ikut dihitung sebagai dana yang sudah dicadangkan
+            * atau sudah direfund.
+            */
             $refundableAmount = $this->refundableAmount($payment);
 
             if ((float) $refund->amount > $refundableAmount) {
@@ -145,26 +222,61 @@ class RefundService
             }
 
             /*
-            * Validasi provider dilakukan SEBELUM status menjadi processing.
-            * Dengan demikian provider yang tidak didukung tetap REQUESTED.
+            * Provider harus divalidasi SEBELUM refund di-claim.
+            *
+            * Kalau provider tidak didukung:
+            *
+            * requested -> tetap requested
+            *
+            * bukan:
+            *
+            * requested -> processing -> failed
             */
-            if (! in_array($payment->provider, [
-                'stripe',
-                'midtrans',
-                'cod',
-            ], true)) {
+            if (! in_array(
+                $payment->provider,
+                ['stripe', 'midtrans', 'cod'],
+                true
+            )) {
                 throw ValidationException::withMessages([
                     'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
                 ]);
             }
 
+            /*
+            * ============================================================
+            * ATOMIC CLAIM
+            * ============================================================
+            *
+            * Setelah titik ini refund resmi dimiliki oleh proses ini.
+            *
+            * processing_at penting untuk recovery job/scheduler.
+            */
             $refund->update([
                 'status' => Refund::STATUS_PROCESSING,
+                'processing_at' => now(),
             ]);
 
-            return $refund->fresh(['order', 'payment']);
+            /*
+            * Fresh relation digunakan setelah lock dan update.
+            *
+            * Provider dipanggil DI LUAR transaction.
+            */
+            return $refund->fresh([
+                'order',
+                'payment',
+            ]);
         });
 
+        /*
+        * ================================================================
+        * PROVIDER CALL OUTSIDE DATABASE TRANSACTION
+        * ================================================================
+        *
+        * Jangan pernah memegang database transaction ketika melakukan
+        * HTTP request ke Stripe/Midtrans.
+        *
+        * Kalau provider lambat, database row lock tidak ikut tertahan.
+        */
         return match ($refund->payment->provider) {
             'stripe' => $this->processStripe(
                 $refund,
@@ -187,19 +299,68 @@ class RefundService
     }
 
     /**
-     * Memproses refund melalui Stripe.
+     * Memulihkan refund yang terhenti pada status processing.
+     *
+     * Method ini DIPANGGIL oleh recovery job/scheduler,
+     * bukan oleh RefundController.
      */
-    protected function processStripe(
+    public function recoverProcessing(Refund $refund): Refund
+    {
+        $refund = Refund::query()
+            ->with(['order', 'payment'])
+            ->findOrFail($refund->id);
+
+        if ($refund->status !== Refund::STATUS_PROCESSING) {
+            return $refund;
+        }
+
+        if (! $refund->processing_at) {
+            return $refund;
+        }
+
+        return match ($refund->payment?->provider) {
+            'stripe' => $this->recoverStripe(
+                $refund,
+                $refund->payment
+            ),
+
+            'midtrans' => $this->recoverMidtrans(
+                $refund,
+                $refund->payment
+            ),
+
+            'cod' => $this->processCod($refund),
+
+            default => $this->markFailed(
+                $refund,
+                "Provider pembayaran [{$refund->payment?->provider}] tidak didukung."
+            ),
+        };
+    }
+
+    /**
+     * Recovery Stripe.
+     *
+     * PENTING:
+     * menggunakan idempotency key yang SAMA dengan processStripe().
+     * Jadi retry tidak membuat refund Stripe kedua.
+     */
+    protected function recoverStripe(
         Refund $refund,
-        Payment $payment
+        ?Payment $payment
     ): Refund {
+        if (! $payment) {
+            return $this->markFailed(
+                $refund,
+                'Payment untuk refund tidak ditemukan.'
+            );
+        }
+
         if (! $payment->stripe_payment_intent_id) {
-            $this->markFailed(
+            return $this->markFailed(
                 $refund,
                 'Stripe PaymentIntent ID tidak tersedia.'
             );
-
-            return $refund->fresh();
         }
 
         try {
@@ -210,38 +371,179 @@ class RefundService
                 $this->refundKey($refund)
             );
 
-            $status = match ($stripeRefund->status) {
-                'succeeded' => Refund::STATUS_COMPLETED,
-                'pending', 'requires_action' => Refund::STATUS_PROCESSING,
-                'failed' => Refund::STATUS_FAILED,
-                'canceled' => Refund::STATUS_REJECTED,
-                default => Refund::STATUS_PROCESSING,
-            };
+            return $this->storeStripeResult(
+                $refund,
+                $stripeRefund
+            );
+        } catch (\Throwable $exception) {
+            /*
+             * Jangan menganggap semua exception sebagai refund gagal.
+             *
+             * Pada kondisi network timeout, Stripe mungkin sebenarnya
+             * sudah menerima refund. Karena idempotency key tetap sama,
+             * recovery berikutnya dapat mengulangi request dengan aman.
+             *
+             * Oleh karena itu refund tetap PROCESSING.
+             */
+            $metadata = $refund->metadata ?? [];
+
+            $metadata['last_recovery_error'] = $exception->getMessage();
+            $metadata['last_recovery_attempt_at'] = now()->toIso8601String();
 
             $refund->update([
-                'status' => $status,
-                'reference_id' => $stripeRefund->id,
-                'processed_at' => $status === Refund::STATUS_COMPLETED
-                    ? now()
-                    : null,
-                'metadata' => [
-                    'stripe_refund' => $stripeRefund->toArray(),
-                ],
+                'status' => Refund::STATUS_PROCESSING,
+                'metadata' => $metadata,
             ]);
-
-            return $refund->fresh();
-        } catch (\Throwable $exception) {
-            $this->markFailed(
-                $refund,
-                $exception->getMessage()
-            );
 
             return $refund->fresh();
         }
     }
 
     /**
-     * Memproses refund melalui Midtrans.
+     * Recovery Midtrans.
+     *
+     * Menggunakan refund key yang sama.
+     */
+    protected function recoverMidtrans(
+        Refund $refund,
+        ?Payment $payment
+    ): Refund {
+        if (! $payment) {
+            return $this->markFailed(
+                $refund,
+                'Payment untuk refund tidak ditemukan.'
+            );
+        }
+
+        $identifier =
+            $payment->transaction_id
+            ?: $refund->order?->order_number;
+
+        if (! $identifier) {
+            return $this->markFailed(
+                $refund,
+                'Identifier transaksi Midtrans tidak tersedia.'
+            );
+        }
+
+        try {
+            $response = $this->midtrans->refund(
+                $identifier,
+                (int) round((float) $refund->amount),
+                $this->refundKey($refund),
+                $refund->reason
+            );
+
+            return $this->storeMidtransResult(
+                $refund,
+                $response
+            );
+        } catch (\Throwable $exception) {
+            /*
+             * Sama seperti Stripe:
+             * network error bersifat ambiguous.
+             * Jangan langsung menyatakan refund gagal.
+             */
+            $metadata = $refund->metadata ?? [];
+
+            $metadata['last_recovery_error'] = $exception->getMessage();
+            $metadata['last_recovery_attempt_at'] = now()->toIso8601String();
+
+            $refund->update([
+                'status' => Refund::STATUS_PROCESSING,
+                'metadata' => $metadata,
+            ]);
+
+            return $refund->fresh();
+        }
+    }
+
+    /**
+     * Memproses refund melalui Stripe untuk request baru.
+     */
+    protected function processStripe(
+        Refund $refund,
+        Payment $payment
+    ): Refund {
+        if (! $payment->stripe_payment_intent_id) {
+            return $this->markFailed(
+                $refund,
+                'Stripe PaymentIntent ID tidak tersedia.'
+            );
+        }
+
+        try {
+            $stripeRefund = $this->stripe->refund(
+                $payment->stripe_payment_intent_id,
+                (int) round((float) $refund->amount * 100),
+                'requested_by_customer',
+                $this->refundKey($refund)
+            );
+
+            return $this->storeStripeResult(
+                $refund,
+                $stripeRefund
+            );
+        } catch (\Throwable $exception) {
+            /*
+             * Request provider sudah dilakukan.
+             * Jika timeout/network error, jangan langsung failed karena
+             * provider mungkin sudah menerima refund.
+             */
+            $metadata = $refund->metadata ?? [];
+
+            $metadata['last_provider_error'] = $exception->getMessage();
+            $metadata['last_provider_attempt_at'] =
+                now()->toIso8601String();
+
+            $refund->update([
+                'status' => Refund::STATUS_PROCESSING,
+                'metadata' => $metadata,
+            ]);
+
+            return $refund->fresh();
+        }
+    }
+
+    /**
+     * Menyimpan hasil refund Stripe ke database.
+     */
+    protected function storeStripeResult(
+        Refund $refund,
+        object $stripeRefund
+    ): Refund {
+        $status = match ($stripeRefund->status ?? null) {
+            'succeeded' => Refund::STATUS_COMPLETED,
+
+            'pending',
+            'requires_action' => Refund::STATUS_PROCESSING,
+
+            'failed' => Refund::STATUS_FAILED,
+
+            'canceled' => Refund::STATUS_REJECTED,
+
+            default => Refund::STATUS_PROCESSING,
+        };
+
+        $metadata = $refund->metadata ?? [];
+
+        $metadata['stripe_refund'] =
+            $stripeRefund->toArray();
+
+        $refund->update([
+            'status' => $status,
+            'reference_id' => $stripeRefund->id ?? null,
+            'processed_at' => $status === Refund::STATUS_COMPLETED
+                ? now()
+                : null,
+            'metadata' => $metadata,
+        ]);
+
+        return $refund->fresh();
+    }
+
+    /**
+     * Memproses refund melalui Midtrans untuk request baru.
      */
     protected function processMidtrans(
         Refund $refund,
@@ -252,56 +554,73 @@ class RefundService
             ?: $refund->order->order_number;
 
         if (! $identifier) {
-            $this->markFailed(
+            return $this->markFailed(
                 $refund,
                 'Identifier transaksi Midtrans tidak tersedia.'
             );
-
-            return $refund->fresh();
         }
 
         try {
             $response = $this->midtrans->refund(
                 $identifier,
-                (int) round(
-                    (float) $refund->amount
-                ),
+                (int) round((float) $refund->amount),
                 $this->refundKey($refund),
                 $refund->reason
             );
 
-            $transactionStatus =
-                $response->transaction_status ?? null;
+            return $this->storeMidtransResult(
+                $refund,
+                $response
+            );
+        } catch (\Throwable $exception) {
+            $metadata = $refund->metadata ?? [];
 
-            $status = match ($transactionStatus) {
-                'refund',
-                'partial_refund' => Refund::STATUS_COMPLETED,
-
-                default => Refund::STATUS_PROCESSING,
-            };
+            $metadata['last_provider_error'] = $exception->getMessage();
+            $metadata['last_provider_attempt_at'] =
+                now()->toIso8601String();
 
             $refund->update([
-                'status' => $status,
-                'reference_id' => $response->refund_key
-                    ?? $response->refund_chargeback_id
-                    ?? null,
-                'processed_at' => $status === Refund::STATUS_COMPLETED
-                    ? now()
-                    : null,
-                'metadata' => [
-                    'midtrans' => (array) $response,
-                ],
+                'status' => Refund::STATUS_PROCESSING,
+                'metadata' => $metadata,
             ]);
 
             return $refund->fresh();
-        } catch (\Throwable $exception) {
-            $this->markFailed(
-                $refund,
-                $exception->getMessage()
-            );
-
-            return $refund->fresh();
         }
+    }
+
+    /**
+     * Menyimpan hasil refund Midtrans.
+     */
+    protected function storeMidtransResult(
+        Refund $refund,
+        object $response
+    ): Refund {
+        $transactionStatus =
+            $response->transaction_status ?? null;
+
+        $status = match ($transactionStatus) {
+            'refund',
+            'partial_refund' => Refund::STATUS_COMPLETED,
+
+            default => Refund::STATUS_PROCESSING,
+        };
+
+        $metadata = $refund->metadata ?? [];
+
+        $metadata['midtrans'] = (array) $response;
+
+        $refund->update([
+            'status' => $status,
+            'reference_id' => $response->refund_key
+                ?? $response->refund_chargeback_id
+                ?? null,
+            'processed_at' => $status === Refund::STATUS_COMPLETED
+                ? now()
+                : null,
+            'metadata' => $metadata,
+        ]);
+
+        return $refund->fresh();
     }
 
     /**
@@ -312,31 +631,17 @@ class RefundService
     ): Refund {
         $refund->update([
             'status' => Refund::STATUS_APPROVED,
+            'processed_at' => now(),
         ]);
 
         return $refund->fresh();
     }
 
     /**
-     * Menandai refund dengan provider yang tidak didukung.
-     */
-    protected function failUnsupportedProvider(
-        Refund $refund
-    ): Refund {
-        $message = "Provider pembayaran [{$refund->payment->provider}] belum didukung untuk refund.";
-
-        $this->markFailed(
-            $refund,
-            $message
-        );
-
-        throw ValidationException::withMessages([
-            'provider' => $message,
-        ]);
-    }
-
-    /**
-     * Membuat idempotency key untuk refund.
+     * Membuat idempotency key yang stabil untuk satu refund.
+     *
+     * Jangan menggunakan random UUID/timestamp di sini.
+     * Recovery harus menggunakan key yang sama.
      */
     protected function refundKey(
         Refund $refund
@@ -345,12 +650,12 @@ class RefundService
     }
 
     /**
-     * Menandai refund sebagai gagal.
+     * Menandai refund sebagai gagal secara deterministik.
      */
     protected function markFailed(
         Refund $refund,
         string $message
-    ): void {
+    ): Refund {
         $metadata = $refund->metadata ?? [];
 
         $metadata['error'] = $message;
@@ -360,5 +665,7 @@ class RefundService
             'processed_at' => now(),
             'metadata' => $metadata,
         ]);
+
+        return $refund->fresh();
     }
 }

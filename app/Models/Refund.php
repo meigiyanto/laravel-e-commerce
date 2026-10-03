@@ -32,6 +32,7 @@ class Refund extends Model
         'provider',
         'reference_id',
         'requested_at',
+        'processing_at',
         'processed_at',
         'metadata',
     ];
@@ -39,6 +40,7 @@ class Refund extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'requested_at' => 'datetime',
+        'processing_at' => 'datetime',
         'processed_at' => 'datetime',
         'metadata' => 'array',
     ];

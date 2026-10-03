@@ -21,11 +21,8 @@ class MidtransPaymentController extends Controller
     public function show(Order $order)
     {
         abort_unless($order->user_id === auth()->id(), 403);
-
         $order->load(['payment', 'items.product', 'user']);
-
         $payment = $order->payment;
-
         if (! $payment) {
             abort(404, 'Data pembayaran tidak ditemukan.');
         }
@@ -442,5 +439,13 @@ class MidtransPaymentController extends Controller
             'expired' => 'Pembayaran Midtrans telah kedaluwarsa.',
             default => 'Pembayaran belum berhasil diselesaikan.',
         };
+    }
+
+    private function webhookEventId(array $payload): string
+    {
+        $normalized = $payload;
+        ksort($normalized);
+
+        return hash('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
     }
 }
