@@ -14,6 +14,7 @@ use App\Http\Controllers\CompareController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MidtransPaymentController;
+use App\Http\Controllers\StripeWebhookController;
 
 /**
  * Dashboard
@@ -35,6 +36,8 @@ Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('stor
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
 
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
+
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
 |------------------------------------------------------------
@@ -74,7 +77,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
-
 });
 
 /*
