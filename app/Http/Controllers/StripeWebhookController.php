@@ -71,7 +71,9 @@ class StripeWebhookController extends Controller
         }
 
         if ($paymentIntent->status !== 'succeeded') {
-            return;
+            throw new \RuntimeException(
+                'Stripe payment intent has an invalid status for payment_intent.succeeded event.'
+            );
         }
 
         if (! isset($paymentIntent->id)) {
@@ -98,6 +100,18 @@ class StripeWebhookController extends Controller
             );
         }
 
+        if (! isset($paymentIntent->currency)) {
+            throw new \RuntimeException(
+                'Stripe payment currency is missing.'
+            );
+        }
+
+        if (! is_string($paymentIntent->currency)) {
+            throw new \RuntimeException(
+                'Stripe payment currency must be a string.'
+            );
+        }
+
         DB::transaction(function () use ($paymentIntent) {
             $payment = Payment::query()
                 ->where('provider', 'stripe')
@@ -115,14 +129,8 @@ class StripeWebhookController extends Controller
                 return;
             }
 
-           if (in_array($order->status, ['canceled', 'failed', 'refunded'], true)) {
+            if (in_array($order->status, ['canceled', 'failed', 'refunded'], true)) {
                 return;
-            }
-            
-            if (! is_string($paymentIntent->currency)) {
-                throw new \RuntimeException(
-                    'Stripe payment currency must be a string.'
-                );
             }
 
             $stripeCurrency = strtolower($paymentIntent->currency);
@@ -163,7 +171,7 @@ class StripeWebhookController extends Controller
                     [
                         'stripe_webhook_event' => 'payment_intent.succeeded',
                         'stripe_payment_intent_status' => $paymentIntent->status,
-                    ]
+                    ],
                 ),
             ]);
 
@@ -238,10 +246,10 @@ class StripeWebhookController extends Controller
                     [
                         'stripe_webhook_event' => 'payment_intent.payment_failed',
                         'stripe_payment_intent_status' => $paymentIntent->status,
-                        'stripe_last_payment_error' => $paymentIntent->last_payment_error
+                        'stripe_last_payment_error' => isset($paymentIntent->last_payment_error)
                             ? (array) $paymentIntent->last_payment_error
                             : null,
-                    ]
+                    ],
                 ),
             ]);
         });
