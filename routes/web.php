@@ -107,6 +107,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Refund Management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
     Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
+    Route::post('/refunds/{refund}/process', [AdminRefundController::class, 'process'])->name('refunds.process');
+    Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');    
     
     // Stock Management
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');

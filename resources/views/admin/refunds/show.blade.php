@@ -50,23 +50,47 @@
 
     @php
         $statusClass = match ($refund->status) {
-            'requested' => 'bg-warning text-dark',
-            'approved' => 'bg-primary',
-            'processing' => 'bg-info text-dark',
-            'completed' => 'bg-success',
-            'rejected',
-            'failed' => 'bg-danger',
-            default => 'bg-secondary',
+            \App\Models\Refund::STATUS_REQUESTED =>
+                'bg-warning text-dark',
+
+            \App\Models\Refund::STATUS_APPROVED =>
+                'bg-primary',
+
+            \App\Models\Refund::STATUS_PROCESSING =>
+                'bg-info text-dark',
+
+            \App\Models\Refund::STATUS_COMPLETED =>
+                'bg-success',
+
+            \App\Models\Refund::STATUS_REJECTED,
+            \App\Models\Refund::STATUS_FAILED =>
+                'bg-danger',
+
+            default =>
+                'bg-secondary',
         };
 
         $statusLabel = match ($refund->status) {
-            'requested' => 'Requested',
-            'approved' => 'Approved',
-            'processing' => 'Processing',
-            'completed' => 'Completed',
-            'rejected' => 'Rejected',
-            'failed' => 'Failed',
-            default => ucfirst($refund->status),
+            \App\Models\Refund::STATUS_REQUESTED =>
+                'Requested',
+
+            \App\Models\Refund::STATUS_APPROVED =>
+                'Approved',
+
+            \App\Models\Refund::STATUS_PROCESSING =>
+                'Processing',
+
+            \App\Models\Refund::STATUS_COMPLETED =>
+                'Completed',
+
+            \App\Models\Refund::STATUS_REJECTED =>
+                'Rejected',
+
+            \App\Models\Refund::STATUS_FAILED =>
+                'Failed',
+
+            default =>
+                ucfirst($refund->status),
         };
     @endphp
 
@@ -78,6 +102,7 @@
             {{-- Refund Information --}}
             <div class="card card-bordered mb-4">
                 <div class="card-inner">
+
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="title mb-0">
                             Refund Information
@@ -90,6 +115,7 @@
 
                     <div class="row g-4">
 
+                        {{-- Refund ID --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Refund ID
@@ -100,6 +126,7 @@
                             </strong>
                         </div>
 
+                        {{-- Order --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Order
@@ -121,6 +148,7 @@
                             @endif
                         </div>
 
+                        {{-- Amount --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Nominal Refund
@@ -136,6 +164,7 @@
                             </strong>
                         </div>
 
+                        {{-- Provider --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Provider
@@ -146,6 +175,7 @@
                             </strong>
                         </div>
 
+                        {{-- Requested --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Requested At
@@ -157,6 +187,7 @@
                             </span>
                         </div>
 
+                        {{-- Processed --}}
                         <div class="col-md-6">
                             <div class="text-soft small">
                                 Processed At
@@ -172,6 +203,7 @@
 
                     <hr>
 
+                    {{-- Reason --}}
                     <div>
                         <div class="text-soft small mb-1">
                             Alasan Refund
@@ -182,6 +214,7 @@
                         </div>
                     </div>
 
+                    {{-- Provider Reference --}}
                     @if($refund->reference_id)
                         <hr>
 
@@ -195,19 +228,125 @@
                             </code>
                         </div>
                     @endif
+
                 </div>
             </div>
 
+            {{-- Provider Result --}}
+            @if($refund->status === \App\Models\Refund::STATUS_COMPLETED)
+
+                <div class="alert alert-success mb-4">
+                    <div class="fw-bold mb-1">
+                        Refund berhasil diselesaikan
+                    </div>
+
+                    <div>
+                        Dana refund telah berhasil diproses oleh
+                        <strong>
+                            {{ ucfirst($refund->provider ?? '-') }}
+                        </strong>.
+                    </div>
+
+                    @if($refund->reference_id)
+                        <div class="mt-2">
+                            Reference:
+                            <code>{{ $refund->reference_id }}</code>
+                        </div>
+                    @endif
+                </div>
+
+            @elseif($refund->status === \App\Models\Refund::STATUS_PROCESSING)
+
+                <div class="alert alert-info mb-4">
+                    <div class="fw-bold mb-1">
+                        Refund sedang diproses
+                    </div>
+
+                    <div>
+                        Provider
+                        <strong>
+                            {{ ucfirst($refund->provider ?? '-') }}
+                        </strong>
+                        masih memproses refund ini.
+                    </div>
+
+                    @if($refund->reference_id)
+                        <div class="mt-2">
+                            Reference:
+                            <code>{{ $refund->reference_id }}</code>
+                        </div>
+                    @endif
+                </div>
+
+            @elseif($refund->status === \App\Models\Refund::STATUS_FAILED)
+
+                <div class="alert alert-danger mb-4">
+                    <div class="fw-bold mb-1">
+                        Refund gagal diproses
+                    </div>
+
+                    <div>
+                        Provider
+                        <strong>
+                            {{ ucfirst($refund->provider ?? '-') }}
+                        </strong>
+                        gagal menyelesaikan refund ini.
+                    </div>
+
+                    @if(data_get($refund->metadata, 'error'))
+                        <div class="mt-2">
+                            <div class="text-soft small mb-1">
+                                Error
+                            </div>
+
+                            <code>
+                                {{ data_get($refund->metadata, 'error') }}
+                            </code>
+                        </div>
+                    @endif
+                </div>
+
+            @elseif($refund->status === \App\Models\Refund::STATUS_REJECTED)
+
+                <div class="alert alert-danger mb-4">
+                    <div class="fw-bold mb-1">
+                        Refund ditolak
+                    </div>
+
+                    <div>
+                        Pengajuan refund ini telah ditolak dan
+                        tidak dapat diproses kembali.
+                    </div>
+                </div>
+
+            @elseif($refund->status === \App\Models\Refund::STATUS_APPROVED)
+
+                <div class="alert alert-primary mb-4">
+                    <div class="fw-bold mb-1">
+                        Refund disetujui
+                    </div>
+
+                    <div>
+                        Refund telah disetujui dan tidak lagi
+                        menunggu tindakan admin.
+                    </div>
+                </div>
+
+            @endif
+
             {{-- Order Information --}}
             @if($refund->order)
+
                 <div class="card card-bordered">
                     <div class="card-inner">
+
                         <h5 class="title mb-4">
                             Order Information
                         </h5>
 
                         <div class="row g-4">
 
+                            {{-- Customer --}}
                             <div class="col-md-6">
                                 <div class="text-soft small">
                                     Customer
@@ -218,6 +357,7 @@
                                 </strong>
                             </div>
 
+                            {{-- Phone --}}
                             <div class="col-md-6">
                                 <div class="text-soft small">
                                     Phone
@@ -228,6 +368,7 @@
                                 </strong>
                             </div>
 
+                            {{-- Order Status --}}
                             <div class="col-md-6">
                                 <div class="text-soft small">
                                     Order Status
@@ -238,6 +379,7 @@
                                 </strong>
                             </div>
 
+                            {{-- Order Total --}}
                             <div class="col-md-6">
                                 <div class="text-soft small">
                                     Order Total
@@ -253,6 +395,7 @@
                                 </strong>
                             </div>
 
+                            {{-- Shipping --}}
                             <div class="col-12">
                                 <div class="text-soft small">
                                     Shipping Address
@@ -264,8 +407,10 @@
                             </div>
 
                         </div>
+
                     </div>
                 </div>
+
             @endif
 
         </div>
@@ -276,11 +421,13 @@
             {{-- Payment --}}
             <div class="card card-bordered mb-4">
                 <div class="card-inner">
+
                     <h5 class="title mb-4">
                         Payment
                     </h5>
 
                     @if($refund->payment)
+
                         <div class="mb-3">
                             <div class="text-soft small">
                                 Status
@@ -331,36 +478,169 @@
                                 ) }}
                             </strong>
                         </div>
+
                     @else
+
                         <div class="alert alert-warning mb-0">
                             Payment tidak ditemukan.
                         </div>
+
                     @endif
+
                 </div>
             </div>
 
-            {{-- Action placeholder --}}
+            {{-- Refund Action --}}
             <div class="card card-bordered">
                 <div class="card-inner">
+
                     <h5 class="title mb-3">
                         Refund Action
                     </h5>
 
                     @if($refund->status === \App\Models\Refund::STATUS_REQUESTED)
-                        <div class="alert alert-info">
-                            Refund ini menunggu tindakan admin.
+
+                        <div class="alert alert-warning">
+                            <div class="fw-bold mb-1">
+                                Menunggu tindakan admin
+                            </div>
+
+                            <div class="small">
+                                Pastikan nominal, alasan, order,
+                                dan informasi pembayaran sudah benar
+                                sebelum mengambil tindakan.
+                            </div>
                         </div>
 
-                        <p class="text-soft mb-0">
-                            Tombol Process Refund dan Reject Refund
-                            akan ditambahkan pada tahap berikutnya.
-                        </p>
-                    @else
-                        <div class="alert alert-secondary mb-0">
-                            Refund ini sudah memiliki status
-                            <strong>{{ $statusLabel }}</strong>.
+                        <div class="d-grid gap-2">
+
+                            {{-- Process --}}
+                            <form
+                                method="POST"
+                                action="{{ route(
+                                    'admin.refunds.process',
+                                    $refund
+                                ) }}"
+                                onsubmit="
+                                    return confirm(
+                                        'Anda akan memproses refund sebesar Rp {{ number_format($refund->amount, 0, ',', '.') }} melalui {{ ucfirst($refund->provider ?? '-') }}. Setelah diproses, refund tidak dapat dikembalikan ke status Requested. Lanjutkan?'
+                                    );
+                                "
+                            >
+                                @csrf
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary w-100"
+                                >
+                                    Process Refund
+                                </button>
+                            </form>
+
+                            {{-- Reject --}}
+                            <form
+                                method="POST"
+                                action="{{ route(
+                                    'admin.refunds.reject',
+                                    $refund
+                                ) }}"
+                                onsubmit="
+                                    return confirm(
+                                        'Anda akan menolak refund ini. Refund yang ditolak tidak dapat diproses kembali. Lanjutkan?'
+                                    );
+                                "
+                            >
+                                @csrf
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-outline-danger w-100"
+                                >
+                                    Reject Refund
+                                </button>
+                            </form>
+
                         </div>
+
+                    @elseif($refund->status === \App\Models\Refund::STATUS_COMPLETED)
+
+                        <div class="alert alert-success mb-0">
+                            Refund sudah selesai diproses.
+
+                            @if($refund->reference_id)
+                                <div class="mt-2">
+                                    Provider Reference:
+                                    <code>
+                                        {{ $refund->reference_id }}
+                                    </code>
+                                </div>
+                            @endif
+                        </div>
+
+                    @elseif($refund->status === \App\Models\Refund::STATUS_PROCESSING)
+
+                        <div class="alert alert-info mb-0">
+                            Refund masih diproses oleh provider.
+
+                            @if($refund->reference_id)
+                                <div class="mt-2">
+                                    Provider Reference:
+                                    <code>
+                                        {{ $refund->reference_id }}
+                                    </code>
+                                </div>
+                            @endif
+                        </div>
+
+                    @elseif($refund->status === \App\Models\Refund::STATUS_FAILED)
+
+                        <div class="alert alert-danger mb-0">
+                            Refund gagal diproses.
+
+                            @if(data_get($refund->metadata, 'error'))
+                                <div class="mt-2">
+                                    <strong>Error:</strong>
+
+                                    <div class="mt-1">
+                                        {{ data_get(
+                                            $refund->metadata,
+                                            'error'
+                                        ) }}
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                    @elseif($refund->status === \App\Models\Refund::STATUS_REJECTED)
+
+                        <div class="alert alert-danger mb-0">
+                            Refund telah ditolak.
+
+                            <div class="mt-1">
+                                Refund ini tidak dapat diproses kembali.
+                            </div>
+                        </div>
+
+                    @elseif($refund->status === \App\Models\Refund::STATUS_APPROVED)
+
+                        <div class="alert alert-primary mb-0">
+                            Refund telah disetujui.
+
+                            <div class="mt-1">
+                                Tidak diperlukan tindakan admin lebih lanjut.
+                            </div>
+                        </div>
+
+                    @else
+
+                        <div class="alert alert-secondary mb-0">
+                            Refund ini memiliki status
+                            <strong>{{ $statusLabel }}</strong>.
+                            Tidak ada tindakan yang tersedia.
+                        </div>
+
                     @endif
+
                 </div>
             </div>
 
