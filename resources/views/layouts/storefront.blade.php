@@ -331,14 +331,6 @@
                 </form>
 
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="{{ route('storefront.home') }}"
-                        >
-                            Home
-                        </a>
-                    </li>
                 @auth
                     <li class="nav-item">
                         <a
