@@ -7,8 +7,8 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
-use Stripe\Stripe;
 use Stripe\Webhook;
+use Stripe\WebhookSignature;
 use Tests\TestCase;
 
 class StripeWebhookTest extends TestCase
@@ -54,7 +54,7 @@ class StripeWebhookTest extends TestCase
 
         Config::set('services.stripe.webhook_secret', $secret);
 
-        $signature = Webhook::generateTestHeaderString(
+        $signature = WebhookSignature::generateSignatureHeader(
             $payload,
             $secret
         );
@@ -185,7 +185,7 @@ class StripeWebhookTest extends TestCase
 
         Config::set('services.stripe.webhook_secret', $secret);
 
-        $signature = Webhook::generateTestHeaderString(
+        $signature = WebhookSignature::generateSignatureHeader(
             $payload,
             $secret
         );

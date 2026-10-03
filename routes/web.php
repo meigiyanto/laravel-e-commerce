@@ -15,6 +15,7 @@ use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MidtransPaymentController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\RefundController;
 
 /**
  * Dashboard
@@ -28,15 +29,10 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
-
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
-
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
-
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
-
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
-
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
@@ -45,6 +41,10 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
+    // Refund
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
     Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');

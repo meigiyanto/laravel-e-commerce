@@ -39,7 +39,7 @@ class MidtransNotificationTest extends TestCase
         [$order, $payment] = $this->createPendingMidtransPayment();
 
         Config::set(
-            'services.midtrans.server_key',
+            'midtrans.server_key',
             'test-server-key'
         );
 
@@ -81,7 +81,7 @@ class MidtransNotificationTest extends TestCase
         [$order, $payment] = $this->createPendingMidtransPayment();
 
         Config::set(
-            'services.midtrans.server_key',
+            'midtrans.server_key',
             'test-server-key'
         );
 
@@ -117,7 +117,7 @@ class MidtransNotificationTest extends TestCase
         [$order, $payment] = $this->createPendingMidtransPayment();
 
         Config::set(
-            'services.midtrans.server_key',
+            'midtrans.server_key',
             'test-server-key'
         );
 
@@ -175,7 +175,7 @@ class MidtransNotificationTest extends TestCase
         ]);
 
         Config::set(
-            'services.midtrans.server_key',
+            'midtrans.server_key',
             'test-server-key'
         );
 
