@@ -38,7 +38,7 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <table class="nowrap table table-bordered table-striped">
+             <table class="datatable-init nowrap table">
                 <thead>
                     <tr>
                         <th>ID</th>
