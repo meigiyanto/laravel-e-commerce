@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Order #' . $order->order_number)
 @section('header', 'Order Detail')

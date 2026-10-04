@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Edit Sub-Category')
 @section('header', 'Edit Sub-Category')

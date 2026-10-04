@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Refund #' . $refund->id)
 @section('header', 'Refund Detail')
