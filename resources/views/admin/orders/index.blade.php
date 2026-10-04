@@ -64,7 +64,7 @@
             {{-- Search & Filter --}}
             <form method="GET" action="{{ route('admin.orders.index') }}" class="row g-2 mb-4">
                 <div class="col-md-6">
-                    <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Cari nomor order, customer, email, atau telepon">
+                    <input type="text" name="search" value="{{ $search }}" class="form-control-sm form-control" placeholder="Cari nomor order, customer, email, atau telepon">
                 </div>
                 <div class="col-md-3">
                     <select name="status" class="form-select">
@@ -74,15 +74,11 @@
                         @endforeach
                     </select>
                 </div>
-
-
                 <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-lg btn-primary flex-grow-1">Filter</button>
-                    @if($search || $status)
-                        <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary">
-                            Reset
-                        </a>
-                    @endif
+                    <button type="submit" class="btn btn-lg btn-primary flex-grow-2">Filter</button>
+                @if($search || $status)
+                    <button type="submit" class="btn btn-lg btn-secondary" onclick="window.location.href='{{ route('admin.orders.index') }}">Reset</button>
+                @endif
                 </div>
             </form>
 

@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
         table.dataset.dtInitialized = 'true';
 
         new DataTable(table, {
+            responsive: {
+                details: true
+            },
             pageLength: 10,
             lengthMenu: [
                 [10, 25, 50, 100],
@@ -19,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
             searching: true,
             paging: true,
             info: true,
-
             language: {
                 search: '',
                 searchPlaceholder: 'Search...',
@@ -35,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     previous: 'Previous',
                 },
             },
-
             columnDefs: [
                 {
                     targets: 'no-sort',

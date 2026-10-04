@@ -413,6 +413,21 @@
                                     My Profile
                                 </a>
                             </li>
+                            <li>
+                                <form
+                                    method="POST"
+                                    action="{{ route('logout') }}"
+                                >
+                                    @csrf
+                                    <button
+                                        type="submit"
+                                        class="dropdown-item"
+                                    >
+                                        <i class="bi bi-box-arrow-right me-1"></i>
+                                        Logout
+                                    </button>
+                                </form>
+                            </li>
                         </ul>
                     </li>
                 @else

@@ -32,8 +32,8 @@
         <div class="card card-bordered">
             <div class="card-inner">
                 @if ($orders->count())
-                    <div class="table-responsive">
-                        <table class="table table-middle">
+                    <div>
+                        <table class="table table-striped table-middle js-datatable">
                             <thead>
                                 <tr>
                                     <th>Order</th>
@@ -68,12 +68,12 @@
                                         <td>
                                             @php
                                                 $statusClass = match ($order->status) {
-                                                    'pending' => 'bg-warning text-dark',
-                                                    'processing' => 'bg-info text-dark',
-                                                    'shipped' => 'bg-primary',
-                                                    'completed' => 'bg-success',
-                                                    'cancelled' => 'bg-danger',
-                                                    default => 'bg-secondary',
+                                                    'pending' => 'bg-warning text-dark p-1',
+                                                    'processing' => 'bg-info text-dark p-1',
+                                                    'shipped' => 'bg-primary p-1',
+                                                    'completed' => 'bg-success p-1',
+                                                    'cancelled' => 'bg-danger p-1',
+                                                    default => 'bg-secondary p-1',
                                                 };
                                                 $statusLabel = match ($order->status) {
                                                     'pending' => 'Pending',
@@ -88,20 +88,41 @@
                                         </td>
                                         {{-- Action --}}
                                         <td class="text-end">
-                                            <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-outline-primary">Detail</a>
+                                            <div class="btn-group">
+                                                 @if (
+                                                    $order->status === 'completed' &&
+                                                    $order->payment &&
+                                                    $order->payment->status === 'succeeded'
+                                                )
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('orders.refund.store', $order) }}"
+                                                        class="d-inline"
+                                                    >
+                                                        @csrf
+
+                                                        <input
+                                                            type="hidden"
+                                                            name="amount"
+                                                            value="{{ $order->total }}"
+                                                        >
+
+                                                        <input
+                                                            type="hidden"
+                                                            name="reason"
+                                                            value="Refund order completed"
+                                                        >
+                                                        <button type="button" class="btn btn-outline-danger" onclick="return confirm('Ajukan refund untuk order #{{ $order->order_number }} sebesar Rp {{ number_format($order->total, 0, ',', '.') }}?')">Refund</button>
+                                                    </form>
+                                                @endif
+                                                <button type="button" class="btn btn-outline-primary js-order-detail" onclick="window.location.href='{{ route('orders.show', $order) }}'">Detail</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-
-                    {{-- Pagination --}}
-                    @if ($orders->hasPages())
-                        <div class="mt-4">
-                            {{ $orders->links() }}
-                        </div>
-                    @endif
                 @else
                     {{-- Empty --}}
                     <div class="text-center py-5">

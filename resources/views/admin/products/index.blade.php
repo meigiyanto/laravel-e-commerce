@@ -36,7 +36,7 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <div class="table-responsive">
+            <div>
                 <table class="table table-bordered table-striped js-datatable">
                     <thead>
                         <tr>
@@ -81,13 +81,22 @@
 
                                 <td>
                                     <div class="btn-group">
-                                        <a
+                                        <!-- <a
                                             href="{{ route('admin.products.edit', $product) }}"
                                             class="btn btn-sm btn-secondary"
                                             title="Edit"
                                         >
                                             <em class="ni ni-edit"></em>
-                                        </a>
+                                        </a> -->
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-sm btn-secondary"
+                                            title="Delete"
+                                            onclick="window.location.href='{{ route('admin.products.edit', $product) }}"
+                                        >
+                                            <em class="ni ni-edit"></em>
+                                        </button>
 
                                         <form
                                             method="POST"
@@ -99,7 +108,7 @@
 
                                             <button
                                                 type="submit"
-                                                class="btn btn-sm btn-danger"
+                                                class="btn btn-sm btn-danger pt-1"
                                                 title="Delete"
                                             >
                                                 <em class="ni ni-trash"></em>

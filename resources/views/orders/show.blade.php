@@ -70,13 +70,12 @@
     <div class="nk-block">
         <div class="card card-bordered">
             <div class="card-inner">
-                <h5 class="title mb-4">Produk Pesanan</h5>
-
-                <div class="table-responsive">
-                    <table class="table table-middle">
+                <h5 class="title">Produk Pesanan</h5>
+                <div>
+                    <table class="table table-middle table-striped my-3">
                         <thead>
                             <tr>
-                                <th>Produk</th>
+                                <th>Nama Produk</th>
                                 <th>Harga</th>
                                 <th>Qty</th>
                                 <th class="text-end">Subtotal</th>
@@ -85,7 +84,7 @@
                         <tbody>
                             @foreach ($order->items as $item)
                                 @if ($order->status === 'completed' && $item->product)
-                                    <div class="mt-2">
+                                    <div class="my-2">
                                         <a href="{{ route('storefront.product', $item->product->slug) }}#review" class="btn btn-sm btn-outline-primary">
                                             <em class="icon ni ni-star"></em>
                                             Beri Review
@@ -95,11 +94,11 @@
                                 <tr>
                                     {{-- Product --}}
                                     <td>
-                                        <div class="d-flex align-items-center gap-3">
-                                            @if ($item->product?->image)
+                                        <div class="d-flex align-items-center gap-5">
+                                            @if (!$item->product?->image)
                                                 <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product_name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
                                             @else
-                                                <div class="d-flex align-items-center justify-content-center bg-light" style="width: 60px; height: 60px; border-radius: 6px;">
+                                                <div class="d-flex align-items-center justify-content-center bg-light" style="width: 40px; height: 40px; border-radius: 6px;">
                                                     <em class="icon ni ni-img"></em>
                                                 </div>
                                             @endif
@@ -121,7 +120,6 @@
                             @endforeach
                         </tbody>
                     </table>
-
                 </div>
             </div>
         </div>
