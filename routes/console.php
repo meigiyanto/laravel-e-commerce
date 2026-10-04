@@ -6,25 +6,27 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::command('recover:processing-refunds')->everyFiveMinutes();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::call(function () {
-    Refund::query()
-        ->where('status', Refund::STATUS_PROCESSING)
-        ->whereNotNull('processing_at')
-        ->where(
-            'processing_at',
-            '<=',
-            now()->subMinutes(10)
-        )
-        ->pluck('id')
-        ->each(
-            fn (int $refundId) => RecoverProcessingRefund::dispatch($refundId)
-        );
-})
-    ->everyFiveMinutes()
-    ->name('refund-recovery')
-    ->onOneServer()
-    ->withoutOverlapping();
+// Schedule::call(function () {
+//     Refund::query()
+//         ->where('status', Refund::STATUS_PROCESSING)
+//         ->whereNotNull('processing_at')
+//         ->where(
+//             'processing_at',
+//             '<=',
+//             now()->subMinutes(10)
+//         )
+//         ->pluck('id')
+//         ->each(
+//             fn (int $refundId) => RecoverProcessingRefund::dispatch($refundId)
+//         );
+// })
+//     ->everyFiveMinutes()
+//     ->name('refund-recovery')
+//     ->onOneServer()
+//     ->withoutOverlapping();

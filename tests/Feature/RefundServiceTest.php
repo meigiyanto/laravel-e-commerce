@@ -1793,6 +1793,14 @@ class RefundServiceTest extends TestCase
             $result->status
         );
 
+        $this->assertNotNull(
+            $result->processing_at
+        );
+
+        $this->assertNull(
+            $result->processed_at
+        );
+
         $this->assertSame(
             'refund-key-123',
             $result->reference_id
@@ -1918,5 +1926,757 @@ class RefundServiceTest extends TestCase
             'id' => $refund->id,
             'status' => Refund::STATUS_PROCESSING,
         ]);
+    }
+
+    public function test_recover_processing_returns_only_timed_out_refunds(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $stuckRefund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund stuck',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $recentRefund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund masih baru',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(10),
+            'processing_at' => now()->subMinutes(5),
+        ]);
+
+        $requestedRefund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Belum diproses',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => null,
+        ]);
+
+        $service = app(RefundService::class);
+
+        $refunds = $service->recoverProcessing();
+
+        $this->assertCount(1, $refunds);
+
+        $this->assertTrue(
+            $refunds->contains('id', $stuckRefund->id)
+        );
+
+        $this->assertFalse(
+            $refunds->contains('id', $recentRefund->id)
+        );
+
+        $this->assertFalse(
+            $refunds->contains('id', $requestedRefund->id)
+        );
+    }
+
+    public function test_recover_refund_ignores_non_processing_refund(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'stripe',
+            'requested_at' => now(),
+            'processing_at' => null,
+        ]);
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_REQUESTED,
+            $result->status
+        );
+
+        $this->assertNull($result->processing_at);
+    }
+    
+    public function test_recover_refund_ignores_processing_refund_without_processing_at(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now(),
+            'processing_at' => null,
+        ]);
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNull($result->processing_at);
+    }
+
+    public function test_recover_refund_allows_processing_refund_with_processing_at(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $processingAt = now()->subMinutes(20);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(25),
+            'processing_at' => $processingAt,
+        ]);
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNotNull($result->processing_at);
+
+        $this->assertEquals(
+            $processingAt->timestamp,
+            $result->processing_at->timestamp
+        );
+    }
+
+    public function test_recover_refund_stripe_success_completes_refund(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Recovery test',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_123',
+            'object' => 'refund',
+            'amount' => 5000000,
+            'currency' => 'idr',
+            'status' => 'succeeded',
+            'payment_intent' => 'pi_test_123',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $stripe->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andReturn($stripeRefund);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+
+        $this->assertSame(
+            're_test_123',
+            $result->reference_id
+        );
+
+        $this->assertNotNull($result->processed_at);
+    }
+
+    public function test_recover_refund_stripe_pending_keeps_processing(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Recovery pending test',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_pending',
+            'object' => 'refund',
+            'amount' => 5000000,
+            'currency' => 'idr',
+            'status' => 'pending',
+            'payment_intent' => 'pi_test_123',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $stripe->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andThrow(
+                new \RuntimeException('Stripe timeout')
+            );
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNull($result->processed_at);
+    }
+
+    public function test_recover_refund_stripe_failed_marks_refund_failed(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Recovery failed test',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_failed',
+            'object' => 'refund',
+            'amount' => 5000000,
+            'currency' => 'idr',
+            'status' => 'failed',
+            'payment_intent' => 'pi_test_123',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $stripe
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andReturn($stripeRefund);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_FAILED,
+            $result->status
+        );
+
+        $this->assertNull($result->processed_at);
+    }
+
+    public function test_recover_refund_stripe_exception_keeps_refund_processing(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'stripe_payment_intent_id' => 'pi_test_123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Recovery exception test',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $stripe
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andThrow(
+                new \RuntimeException('Stripe timeout')
+            );
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNull($result->processed_at);
+
+        $this->assertSame(
+            'Stripe timeout',
+            $result->metadata['last_provider_error']
+        );
+
+        $this->assertNotNull(
+            $result->metadata['last_provider_attempt_at']
+        );
+    }
+
+    public function test_recover_refund_midtrans_success_completes_refund(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'ORDER-123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund Midtrans',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'midtrans',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $response = (object) [
+            'transaction_status' => 'refund',
+            'refund_key' => 'refund-' . $refund->id,
+        ];
+
+        $midtrans = Mockery::mock(MidtransService::class);
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'ORDER-123',
+                50000,
+                'refund-' . $refund->id,
+                'Refund Midtrans'
+            )
+            ->andReturn($response);
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+
+        $this->assertNotNull(
+            $result->processed_at
+        );
+
+        $this->assertSame(
+            'refund-' . $refund->id,
+            $result->reference_id
+        );
+    }
+
+    public function test_recover_refund_midtrans_unknown_status_keeps_processing(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'ORDER-123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund Midtrans pending',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'midtrans',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $response = (object) [
+            'transaction_status' => 'pending',
+            'refund_key' => 'refund-' . $refund->id,
+        ];
+
+        $midtrans = Mockery::mock(MidtransService::class);
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'ORDER-123',
+                50000,
+                'refund-' . $refund->id,
+                'Refund Midtrans pending'
+            )
+            ->andReturn($response);
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNull(
+            $result->processed_at
+        );
+    }
+
+    public function test_recover_refund_midtrans_exception_keeps_refund_processing(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'ORDER-123',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund Midtrans timeout',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'midtrans',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $midtrans = Mockery::mock(MidtransService::class);
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'ORDER-123',
+                50000,
+                'refund-' . $refund->id,
+                'Refund Midtrans timeout'
+            )
+            ->andThrow(
+                new \RuntimeException('Midtrans timeout')
+            );
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_PROCESSING,
+            $result->status
+        );
+
+        $this->assertNull(
+            $result->processed_at
+        );
+
+        $this->assertSame(
+            'Midtrans timeout',
+            $result->metadata['last_provider_error']
+        );
+    }
+
+    public function test_recover_refund_cod_approves_refund_without_calling_payment_provider(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'cod',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund COD recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'cod',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+        $stripe->shouldNotReceive('refund');
+
+        $midtrans = Mockery::mock(MidtransService::class);
+        $midtrans->shouldNotReceive('refund');
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_APPROVED,
+            $result->status
+        );
+
+        $this->assertNotNull(
+            $result->processed_at
+        );
     }
 }
