@@ -7,6 +7,8 @@
     <title>@yield('title', 'Admin Dashboard') - {{ config('app.name', 'Laravel E-Commerce Store') }}</title>
     <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
     @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
 </head>
 <body class="nk-body bg-lighter npc-general has-sidebar ui-shady">
     <div class="nk-app-root">
