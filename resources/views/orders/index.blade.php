@@ -1,11 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.customer')
 
 @section('title', 'My Orders')
-
 @section('header', 'My Orders')
 
 @section('content')
-<div class="nk-content-body">
     {{-- Header --}}
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
@@ -137,5 +135,4 @@
             </div>
         </div>
     </div>
-</div>
 @endsection

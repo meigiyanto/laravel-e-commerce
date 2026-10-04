@@ -1,13 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Edit Profile')
-
 @section('header', 'Edit Profile')
 
 @section('content')
-
-<div class="nk-content-body">
-    <div class="nk-block-head nk-block-head-sm">
+     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
                 <h3 class="nk-block-title page-title">Profile</h3>
@@ -46,6 +43,4 @@
             @include('profile.partials.delete-user-form')
         </div>
     </div>
-
-</div>
 @endsection
