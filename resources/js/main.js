@@ -25,6 +25,7 @@
     });
     return obj;
   }
+
   // ClassInit @v1.0
   NioApp.ClassBody = function () {
     NioApp.AddInBody(_sidebar);
@@ -114,10 +115,13 @@
         self.closest("li").addClass('active current-page').parents().closest("li").addClass("active current-page");
         self.closest("li").children('.nk-menu-sub').css('display', 'block');
         self.parents().closest("li").children('.nk-menu-sub').css('display', 'block');
+        /*
         (_self$parents = self.parents('.nk-menu-item')[self.parents('.nk-menu-item').length - 1]) === null || _self$parents === void 0 || _self$parents.scrollIntoView({
           behavior: "smooth",
-          block: "start"
+          block: "start".
         });
+        */
+
       } else {
         self.closest("li").removeClass('active current-page').parents().closest("li:not(.current-page)").removeClass("active");
       }
@@ -1083,8 +1087,11 @@
     NioApp.BS.progress('[data-progress]');
     NioApp.BS.fileinput('.form-file-input');
     NioApp.BS.modalfix();
-    NioApp.BS.ddfix();
-    NioApp.BS.tabfix();
+    // Bootstrap 5 handles dropdown positioning and lifecycle natively.
+    // The legacy DashLite ddfix uses Bootstrap 4's jQuery .dropdown() API,
+    // which conflicts with Bootstrap 5's data-bs-toggle implementation.
+    // NioApp.BS.ddfix();
+    // NioApp.BS.tabfix();
     NioApp.BS.urlPram();
   };
 
@@ -1159,4 +1166,4 @@
   };
   NioApp.init();
   return NioApp;
-}(NioApp, jQuery);
+}(window.NioApp, jQuery);
