@@ -394,7 +394,7 @@
     }
   };
 
-  //On change validation for third party plugins
+  // On change validation for third party plugins
   NioApp.Validate.OnChange = function (elm) {
     $(elm).on('change', function () {
       $(this).valid();
