@@ -10,9 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
         table.dataset.dtInitialized = 'true';
 
         new DataTable(table, {
-            responsive: {
-                details: true
-            },
             pageLength: 10,
             lengthMenu: [
                 [10, 25, 50, 100],

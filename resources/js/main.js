@@ -8,6 +8,7 @@
   var $win = $(window),
     $body = $('body'),
     $doc = $(document),
+
     //class names
     _body_theme = 'nio-theme',
     _menu = 'nk-menu',

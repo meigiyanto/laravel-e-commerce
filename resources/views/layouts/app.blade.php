@@ -6,7 +6,7 @@
         <title>{{ config('app.name', 'Laravel E-Commerce Store') }}</title>
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}" />
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/main.js'])
         {{-- Eruda hanya untuk development --}}
         @if(app()->environment('local'))
             <script src="https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.min.js"></script>

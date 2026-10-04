@@ -37,7 +37,7 @@
         <div class="card-inner">
 
             <div>
-                <table class="table table-bordered table-striped js-datatable">
+                <table class="table table-bordered table-striped datatable-init">
                     <thead>
                         <tr>
                             <th>#</th>
