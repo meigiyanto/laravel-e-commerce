@@ -1,208 +1,116 @@
-<!-- sidebar @s -->
-<div
-    class="nk-sidebar nk-sidebar-fixed is-light"
-    data-content="sidebarMenu"
->
-
-    {{-- Sidebar header --}}
+<div class="nk-sidebar" data-content="sidebarMenu">
     <div class="nk-sidebar-element nk-sidebar-head">
         <div class="nk-sidebar-brand">
             <a
-                href="{{ url('/admin/dashboard') }}"
+                href="{{ route('admin.dashboard') }}"
                 class="logo-link nk-sidebar-logo"
             >
-                <img
-                    class="logo-light logo-img"
-                    src="{{ asset('images/logo.png') }}"
-                    srcset="{{ asset('images/logo2x.png') }} 2x"
-                    alt="{{ config('app.name') }}"
-                >
-
-                <img
-                    class="logo-dark logo-img"
-                    src="{{ asset('images/logo-dark.png') }}"
-                    srcset="{{ asset('images/logo-dark2x.png') }} 2x"
-                    alt="{{ config('app.name') }}"
-                >
-
-                <img
-                    class="logo-small logo-img logo-img-small"
-                    src="{{ asset('images/logo-small.png') }}"
-                    srcset="{{ asset('images/logo-small2x.png') }} 2x"
-                    alt="{{ config('app.name') }}"
-                >
-
+                <span class="logo-text">
+                    MeiStore
+                </span>
             </a>
-
         </div>
-
-        {{-- Sidebar controls --}}
-        <div class="nk-menu-trigger me-n2">
-            {{-- Mobile --}}
+        <div class="nk-menu-trigger mr-n2">
             <a
                 href="#"
                 class="nk-nav-toggle nk-quick-nav-icon d-xl-none"
                 data-target="sidebarMenu"
-                aria-label="Open sidebar"
             >
-
                 <em class="icon ni ni-arrow-left"></em>
-            </a>
-
-            {{-- Desktop compact --}}
-            <a
-                href="#"
-                class="nk-nav-compact nk-quick-nav-icon d-none d-xl-inline-flex"
-                data-target="sidebarMenu"
-                aria-label="Compact sidebar"
-            >
-
-                <em class="icon ni ni-menu"></em>
-
             </a>
         </div>
     </div>
-
-
-    {{-- Sidebar body --}}
-    <div class="nk-sidebar-element nk-sidebar-body">
+    <div class="nk-sidebar-element">
         <div class="nk-sidebar-content">
-            <div
-                class="nk-sidebar-menu"
-                data-simplebar
-            >
-
+            <div class="nk-sidebar-menu">
                 <ul class="nk-menu">
-                    {{-- Dashboard --}}
                     <li class="nk-menu-heading">
-
                         <h6 class="overline-title text-primary-alt">
-                            Dashboard &amp; Panels
+                            Administration
                         </h6>
-
                     </li>
-
-
                     <li class="nk-menu-item">
                         <a
-                            href="{{ url('/admin/dashboard') }}"
+                            href="{{ route('admin.dashboard') }}"
                             class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">
-                                <em class="icon ni ni-home"></em>
-
+                                <em class="icon ni ni-dashboard"></em>
                             </span>
-
                             <span class="nk-menu-text">
                                 Dashboard
                             </span>
-
                         </a>
-
                     </li>
-
-
-                    {{-- Products --}}
                     <li class="nk-menu-heading">
-
                         <h6 class="overline-title text-primary-alt">
-                            E-Commerce
+                            Catalog
                         </h6>
-
                     </li>
-
-
-                    <li class="nk-menu-item has-sub">
+                    <li class="nk-menu-item">
                         <a
-                            href="#"
-                            class="nk-menu-link nk-menu-toggle"
-                            aria-expanded="false"
+                            href="{{ route('admin.products.index') }}"
+                            class="nk-menu-link"
                         >
-
                             <span class="nk-menu-icon">
                                 <em class="icon ni ni-package"></em>
                             </span>
-
                             <span class="nk-menu-text">
                                 Products
                             </span>
                         </a>
-
-
-                        <ul class="nk-menu-sub">
-                            <li class="nk-menu-item">
-                                <a
-                                    href="{{ url('/admin/products') }}"
-                                    class="nk-menu-link"
-                                >
-
-                                    <span class="nk-menu-text">
-                                        All Products
-                                    </span>
-
-                                </a>
-
-                            </li>
-                            <li class="nk-menu-item">
-                                <a
-                                    href="{{ url('/admin/products') }}"
-                                    class="nk-menu-link"
-                                >
-
-                                    <span class="nk-menu-text">
-                                        Manage Products
-                                    </span>
-                                </a>
-                            </li>
-                        </ul>
                     </li>
-
-
-                    {{-- Categories --}}
-                    <li class="nk-menu-item has-sub">
+                    <li class="nk-menu-item">
                         <a
-                            href="#"
-                            class="nk-menu-link nk-menu-toggle"
-                            aria-expanded="false"
+                            href="{{ route('admin.categories.index') }}"
+                            class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">
-                                <em class="icon ni ni-list-round"></em>
+                                <em class="icon ni ni-list"></em>
                             </span>
                             <span class="nk-menu-text">
                                 Categories
                             </span>
                         </a>
-
-
-                        <ul class="nk-menu-sub">
-                            <li class="nk-menu-item">
-                                <a
-                                    href="{{ url('/admin/categories') }}"
-                                    class="nk-menu-link"
-                                >
-                                    <span class="nk-menu-text">
-                                        All Categories
-                                    </span>
-                                </a>
-                            </li>
-                            <li class="nk-menu-item">
-                                <a
-                                    href="{{ url('/admin/sub-categories') }}"
-                                    class="nk-menu-link"
-                                >
-                                    <span class="nk-menu-text">
-                                        All Sub Categories
-                                    </span>
-                                </a>
-                            </li>
-                        </ul>
                     </li>
-
-
-                    {{-- Orders --}}
                     <li class="nk-menu-item">
                         <a
-                            href="{{ url('/orders') }}"
+                            href="{{ route('admin.sub-categories.index') }}"
+                            class="nk-menu-link"
+                        >
+                            <span class="nk-menu-icon">
+                                <em class="icon ni ni-list-thumb"></em>
+                            </span>
+                            <span class="nk-menu-text">
+                                Sub Categories
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nk-menu-item">
+                        <a
+                            href="{{ route('admin.inventory.index') }}"
+                            class="nk-menu-link"
+                        >
+                            <span class="nk-menu-icon">
+                                <em class="icon ni ni-truck"></em>
+                            </span>
+                            <span class="nk-menu-text">
+                                Inventory
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nk-menu-heading">
+
+                        <h6 class="overline-title text-primary-alt">
+                            Sales
+                        </h6>
+
+                    </li>
+
+                    <li class="nk-menu-item">
+
+                        <a
+                            href="{{ route('admin.orders.index') }}"
                             class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">
@@ -213,19 +121,28 @@
                             </span>
                         </a>
                     </li>
-
-
-                    {{-- Users --}}
+                    <li class="nk-menu-item">
+                        <a
+                            href="{{ route('admin.refunds.index') }}"
+                            class="nk-menu-link"
+                        >
+                            <span class="nk-menu-icon">
+                                <em class="icon ni ni-reply"></em>
+                            </span>
+                            <span class="nk-menu-text">
+                                Refunds
+                            </span>
+                        </a>
+                    </li>
                     <li class="nk-menu-heading">
-
                         <h6 class="overline-title text-primary-alt">
-                            Management
+                            Users
                         </h6>
 
                     </li>
                     <li class="nk-menu-item">
                         <a
-                            href="{{ url('/admin/users') }}"
+                            href="{{ route('admin.users.index') }}"
                             class="nk-menu-link"
                         >
                             <span class="nk-menu-icon">
@@ -236,9 +153,26 @@
                             </span>
                         </a>
                     </li>
+                    <li class="nk-menu-heading">
+                        <h6 class="overline-title text-primary-alt">
+                            Store
+                        </h6>
+                    </li>
+                    <li class="nk-menu-item">
+                        <a
+                            href="{{ route('storefront.home') }}"
+                            class="nk-menu-link"
+                        >
+                            <span class="nk-menu-icon">
+                                <em class="icon ni ni-home"></em>
+                            </span>
+                            <span class="nk-menu-text">
+                                Visit Store
+                            </span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>
     </div>
 </div>
-<!-- sidebar @e -->

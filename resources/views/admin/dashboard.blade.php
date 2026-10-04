@@ -1,17 +1,19 @@
 @extends('layouts.app')
 
 @section('title', 'Admin Dashboard')
-@section('header', 'Admin Dashboard')
 
 @section('content')
-<div class="nk-content-body">
-
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
-                <h3 class="nk-block-title page-title">Admin Dashboard</h3>
+                <h3 class="nk-block-title page-title">
+                    Dashboard
+                </h3>
+
                 <div class="nk-block-des text-soft">
-                    <p>Selamat datang kembali,{{ Auth::user()->name }}.</p>
+                    <p>
+                        Selamat datang di Admin Panel MeiStore.
+                    </p>
                 </div>
             </div>
         </div>
@@ -19,73 +21,7 @@
 
     <div class="nk-block">
         <div class="row g-gs">
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group align-start mb-0">
-                            <div class="card-title">
-                                <h6 class="title">
-                                    User Management
-                                </h6>
-                            </div>
-
-                            <div class="card-tools">
-                                <em class="icon ni ni-users"></em>
-                            </div>
-                        </div>
-
-                        <div class="card-amount mt-2">
-                            <span class="amount">
-                                Manage Users
-                            </span>
-                        </div>
-
-                        <div class="mt-3">
-                            <a
-                                href="{{ route('admin.users.index') }}"
-                                class="btn btn-primary"
-                            >
-                                Manage User
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group align-start mb-0">
-                            <div class="card-title">
-                                <h6 class="title">
-                                    Categories
-                                </h6>
-                            </div>
-
-                            <div class="card-tools">
-                                <em class="icon ni ni-list-thumb"></em>
-                            </div>
-                        </div>
-
-                        <div class="card-amount mt-2">
-                            <span class="amount">
-                                Manage Categories
-                            </span>
-                        </div>
-
-                        <div class="mt-3">
-                            <a
-                                href="{{ route('admin.categories.index') }}"
-                                class="btn btn-primary"
-                            >
-                                Manage Category
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
+            <div class="col-sm-6 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -94,25 +30,25 @@
                                     Products
                                 </h6>
                             </div>
-
                             <div class="card-tools">
-                                <em class="icon ni ni-package"></em>
+                                <div class="icon-circle icon-circle-lg bg-primary-dim">
+                                    <em class="icon ni ni-package"></em>
+                                </div>
                             </div>
                         </div>
-
-                        <div class="card-amount mt-2">
-                            <span class="amount">
-                                Manage Products
+                        <div class="data">
+                            <div class="amount">
+                                {{ $productsCount ?? 0 }}
+                            </div>
+                            <span class="sub-text">
+                                Total Products
                             </span>
-                        </div>
-
-                        <div class="mt-3">
-                            <a href="{{ route('admin.products.index') }}" class="btn btn-primary">Manage Product</a>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col-lg-4">
+
+            <div class="col-sm-6 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -123,24 +59,78 @@
                             </div>
 
                             <div class="card-tools">
-                                <em class="icon ni ni-cart"></em>
+                                <div class="icon-circle icon-circle-lg bg-success-dim">
+                                    <em class="icon ni ni-cart"></em>
+                               </div>
                             </div>
                         </div>
 
-                        <div class="card-amount mt-2">
-                            <span class="amount">
-                                Manage Orders
-                            </span>
-                        </div>
+                        <div class="data">
+                            <div class="amount">
+                                {{ $ordersCount ?? 0 }}
+                            </div>
 
-                        <div class="mt-3">
-                            <a href="{{ route('admin.orders.index') }}" class="btn btn-primary">Manage Order</a>
+                            <span class="sub-text">
+                                Total Orders
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <div class="col-sm-6 col-lg-3">
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <div class="card-title-group align-start mb-0">
+                            <div class="card-title">
+                                <h6 class="title">
+                                    Customers
+                                </h6>
+                            </div>
+                            <div class="card-tools">
+                                <div class="icon-circle icon-circle-lg bg-info-dim">                                    <em class="icon ni ni-users"></em>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="data">
+                            <div class="amount">
+                                {{ $usersCount ?? 0 }}
+                            </div>
+                            <span class="sub-text">
+                                Total Customers
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-lg-3">
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <div class="card-title-group align-start mb-0">
+                            <div class="card-title">
+                                <h6 class="title">
+                                    Categories
+                                </h6>
+                            </div>
+                            <div class="card-tools">
+                                <div class="icon-circle icon-circle-lg bg-warning-dim">
+                                    <em class="icon ni ni-list"></em>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="data">
+                            <div class="amount">
+                                {{ $categoriesCount ?? 0 }}
+                            </div>
+                            <span class="sub-text">
+                                Total Categories
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 @endsection

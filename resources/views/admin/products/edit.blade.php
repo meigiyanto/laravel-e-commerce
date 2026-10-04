@@ -4,7 +4,6 @@
 @section('header', 'Edit Product')
 
 @section('content')
-<div class="nk-content-body">
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
@@ -191,5 +190,4 @@
             </form>
         </div>
     </div>
-</div>
 @endsection

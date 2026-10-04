@@ -4,7 +4,6 @@
 @section('header', 'Order Management')
 
 @section('content')
-<div class="nk-content-body">
     {{-- Header --}}
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
@@ -74,10 +73,10 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-lg btn-primary flex-grow-2">Filter</button>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-md btn-primary flex-grow-2">Filter</button>
                 @if($search || $status)
-                    <button type="submit" class="btn btn-lg btn-secondary" onclick="window.location.href='{{ route('admin.orders.index') }}">Reset</button>
+                    <button type="submit" class="btn btn-md btn-secondary" onclick="window.location.href='{{ route('admin.orders.index') }}">Reset</button>
                 @endif
                 </div>
             </form>
@@ -148,5 +147,4 @@
 
         </div>
     </div>
-</div>
 @endsection

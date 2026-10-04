@@ -4,7 +4,6 @@
 @section('header', 'Users')
 
 @section('content')
-<div class="nk-content-body">
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
@@ -95,10 +94,8 @@
                         User not found.
                     </div>
                 @endif
-            </div>           
+            </div
 
         </div>
     </div>
-
-</div>
 @endsection

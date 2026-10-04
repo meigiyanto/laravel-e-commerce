@@ -4,8 +4,6 @@
 @section('header', 'Refund Management')
 
 @section('content')
-<div class="nk-content-body">
-
     {{-- Header --}}
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
@@ -125,7 +123,7 @@
                     </select>
                 </div>
 
-                <div class="col-md-3 d-flex gap-2">
+                <div class="col-md-3">
                     <button
                         type="submit"
                         class="btn btn-primary flex-grow-1"
@@ -134,12 +132,21 @@
                     </button>
 
                     @if($search || $status)
+                        <button
+                            type="button"
+                            class="btn btn-secondary flex-grow-1"
+                            onclick="window.location.href={{ route('admin.refunds.index') }}"
+                        >
+                            Reset
+                        </button>
+                        {{--
                         <a
                             href="{{ route('admin.refunds.index') }}"
                             class="btn btn-secondary"
                         >
                             Reset
                         </a>
+                        --}}
                     @endif
                 </div>
             </form>
@@ -273,6 +280,4 @@
 
         </div>
     </div>
-
-</div>
 @endsection

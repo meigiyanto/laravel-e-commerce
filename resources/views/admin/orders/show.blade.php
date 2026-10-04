@@ -4,7 +4,6 @@
 @section('header', 'Order Detail')
 
 @section('content')
-<div class="nk-content-body">
     {{-- Header --}}
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
@@ -181,5 +180,4 @@
             </div>
         </div>
     </div>
-</div>
 @endsection
