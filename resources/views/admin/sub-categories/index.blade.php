@@ -35,8 +35,8 @@
     </div>
 
     <div class="card card-bordered">
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped js-datatable">
+        <div class="card card-inner">
+            <table class="table table-bordered table-striped datatable-init">
                 <thead>
                     <tr>
                         <th>#</th>

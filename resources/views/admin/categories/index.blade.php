@@ -37,8 +37,8 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <div class="table-responsive">
-                <table class="table table-middle js-datatable">
+            <div>
+                <table class="table table-middle datatable-init">
                     <thead>
                         <tr>
                             <th>ID</th>
