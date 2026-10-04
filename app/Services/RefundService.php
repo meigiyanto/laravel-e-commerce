@@ -229,7 +229,11 @@ class RefundService
             *
             * requested -> processing -> failed
             */
-            if (! in_array($payment->provider,['stripe', 'midtrans', 'cod'],true)) {            
+            if (! in_array(
+                $payment->provider,
+                ['stripe', 'midtrans', 'cod'],
+                true
+            )) {
                 throw ValidationException::withMessages([
                     'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
                 ]);
