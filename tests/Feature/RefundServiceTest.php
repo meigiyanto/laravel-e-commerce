@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\MidtransService;
 use App\Services\RefundService;
 use App\Services\StripePaymentService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -2677,6 +2678,174 @@ class RefundServiceTest extends TestCase
 
         $this->assertNotNull(
             $result->processed_at
+        );
+    }
+
+    public function test_recover_refund_does_not_call_stripe_provider_again_after_completion(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+            'stripe_payment_intent_id' => 'pi_test_123',
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund idempotency recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_123',
+            'status' => 'succeeded',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $stripe
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andReturn($stripeRefund);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $firstResult = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $firstResult->status
+        );
+
+        $secondResult = $service->recoverRefund(
+            $firstResult->fresh()
+        );
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $secondResult->status
+        );
+    }
+
+    public function test_concurrent_recovery_does_not_call_stripe_provider_twice(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+            'stripe_payment_intent_id' => 'pi_test_123',
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund concurrent recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_123',
+            'status' => 'succeeded',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $stripe
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andReturnUsing(function () use (
+                $service,
+                $refund,
+                $stripeRefund
+            ) {
+                /*
+                * Simulasikan recovery kedua masuk ketika
+                * recovery pertama masih berada dalam proses
+                * provider.
+                */
+                $service->recoverRefund(
+                    $refund->fresh()
+                );
+
+                return $stripeRefund;
+            });
+
+        $service = app(RefundService::class);
+
+        $lock = Cache::lock(
+            'refund-recovery:'.$refund->id,
+            60
+        );
+
+        $this->assertTrue($lock->get());
+
+        $this->assertFalse(
+            Cache::lock(
+                'refund-recovery:'.$refund->id,
+                60
+            )->get()
+        );
+
+        $lock->release();
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
         );
     }
 }

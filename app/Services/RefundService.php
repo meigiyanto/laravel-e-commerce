@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -312,35 +313,48 @@ class RefundService
     public function recoverRefund(
         Refund $refund
     ): Refund {
-        $refund = Refund::query()
-            ->with(['order', 'payment'])
-            ->findOrFail($refund->id);
+        $lock = Cache::lock(
+            'refund-recovery:'.$refund->id,
+            60
+        );
 
-        if ($refund->status !== Refund::STATUS_PROCESSING) {
-            return $refund;
+        if (! $lock->get()) {
+            return $refund->fresh();
         }
 
-        if (! $refund->processing_at) {
-            return $refund;
+        try {
+            $refund = Refund::query()
+                ->with(['order', 'payment'])
+                ->findOrFail($refund->id);
+
+            if ($refund->status !== Refund::STATUS_PROCESSING) {
+                return $refund;
+            }
+
+            if (! $refund->processing_at) {
+                return $refund;
+            }
+
+            return match ($refund->payment?->provider) {
+                'stripe' => $this->recoverStripe(
+                    $refund,
+                    $refund->payment
+                ),
+
+                'midtrans' => $this->recoverMidtrans(
+                    $refund,
+                    $refund->payment
+                ),
+
+                'cod' => $this->processCod(
+                    $refund
+                ),
+
+                default => $refund,
+            };
+        } finally {
+            $lock->release();
         }
-
-        return match ($refund->payment?->provider) {
-            'stripe' => $this->recoverStripe(
-                $refund,
-                $refund->payment
-            ),
-
-            'midtrans' => $this->recoverMidtrans(
-                $refund,
-                $refund->payment
-            ),
-
-            'cod' => $this->processCod(
-                $refund
-            ),
-
-            default => $refund,
-        };
     }
 
     /**
