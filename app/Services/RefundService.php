@@ -315,7 +315,9 @@ class RefundService
     ): Refund {
         $lock = Cache::lock(
             'refund-recovery:'.$refund->id,
-            60
+            (int) config(
+                'services.refund.recovery_lock_ttl_seconds'
+            )
         );
 
         if (! $lock->get()) {

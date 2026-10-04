@@ -22,6 +22,16 @@ class MidtransService
 
         Config::$is3ds =
             config('midtrans.is_3ds', true);
+
+        $timeout = (int) config(
+            'services.refund.provider_timeout_seconds',
+            80
+        );
+
+        Config::$curlOptions = Config::$curlOptions + [
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_CONNECTTIMEOUT => min($timeout, 30),
+        ];
     }
 
     /**

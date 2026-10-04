@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use Midtrans\Config;
 use App\Services\MidtransService;
 use App\Services\RefundService;
 use App\Services\StripePaymentService;
@@ -14,11 +15,34 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Stripe\Refund as StripeRefund;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\CurlClient;
 use Tests\TestCase;
 
 class RefundServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_midtrans_service_uses_configured_provider_timeout(): void
+    {
+        Config::$curlOptions = [];
+
+        config([
+            'services.refund.provider_timeout_seconds' => 75,
+        ]);
+
+        app(MidtransService::class);
+
+        $this->assertSame(
+            75,
+            Config::$curlOptions[CURLOPT_TIMEOUT]
+        );
+
+        $this->assertSame(
+            30,
+            Config::$curlOptions[CURLOPT_CONNECTTIMEOUT]
+        );
+    }
 
     public function test_pending_payment_cannot_be_refunded(): void
     {
@@ -2827,7 +2851,7 @@ class RefundServiceTest extends TestCase
 
         $lock = Cache::lock(
             'refund-recovery:'.$refund->id,
-            60
+            (int) config('services.refund.recovery_lock_ttl_seconds')
         );
 
         $this->assertTrue($lock->get());
@@ -2835,7 +2859,7 @@ class RefundServiceTest extends TestCase
         $this->assertFalse(
             Cache::lock(
                 'refund-recovery:'.$refund->id,
-                60
+                (int) config('services.refund.recovery_lock_ttl_seconds')
             )->get()
         );
 
@@ -2846,6 +2870,362 @@ class RefundServiceTest extends TestCase
         $this->assertSame(
             Refund::STATUS_COMPLETED,
             $result->status
+        );
+    }
+
+    public function test_concurrent_recovery_does_not_call_midtrans_provider_twice(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+            'transaction_id' => 'midtrans-test-123',
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund concurrent Midtrans recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'midtrans',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $midtransResponse = (object) [
+            'transaction_status' => 'refund',
+            'refund_key' => 'refund-test-123',
+        ];
+
+        $midtrans = Mockery::mock(MidtransService::class);
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $midtrans
+            ->shouldReceive('refund')
+            ->once()
+            ->with(
+                'midtrans-test-123',
+                50000,
+                'refund-'.$refund->id,
+                $refund->reason
+            )
+            ->andReturnUsing(function () use (
+                $service,
+                $refund,
+                $midtransResponse
+            ) {
+                /*
+                * Simulasikan recovery kedua masuk ketika
+                * recovery pertama masih berada di provider.
+                */
+                $service->recoverRefund(
+                    $refund->fresh()
+                );
+
+                return $midtransResponse;
+            });
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+    }
+
+    public function test_concurrent_recovery_for_cod_does_not_process_refund_twice(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'cod',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund concurrent COD recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'cod',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+        $stripe->shouldNotReceive('refund');
+
+        $midtrans = Mockery::mock(MidtransService::class);
+        $midtrans->shouldNotReceive('refund');
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $this->app->instance(
+            MidtransService::class,
+            $midtrans
+        );
+
+        $service = app(RefundService::class);
+
+        $firstResult = $service->recoverRefund($refund);
+
+        $secondResult = $service->recoverRefund(
+            $firstResult->fresh()
+        );
+
+        $this->assertSame(
+            Refund::STATUS_APPROVED,
+            $firstResult->status
+        );
+
+        $this->assertSame(
+            Refund::STATUS_APPROVED,
+            $secondResult->status
+        );
+
+        $this->assertNotNull(
+            $firstResult->processed_at
+        );
+
+        $this->assertNotNull(
+            $secondResult->processed_at
+        );
+    }
+
+    public function test_expired_recovery_lock_can_allow_second_stripe_recovery(): void
+    {
+        $user = User::factory()->create();
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+            'stripe_payment_intent_id' => 'pi_test_123',
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Refund expired lock recovery',
+            'status' => Refund::STATUS_PROCESSING,
+            'provider' => 'stripe',
+            'requested_at' => now()->subMinutes(30),
+            'processing_at' => now()->subMinutes(20),
+        ]);
+
+        $stripeRefund = \Stripe\Refund::constructFrom([
+            'id' => 're_test_123',
+            'status' => 'succeeded',
+        ]);
+
+        $stripe = Mockery::mock(StripePaymentService::class);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripe
+        );
+
+        $service = app(RefundService::class);
+
+        $firstLock = Mockery::mock(
+            \Illuminate\Contracts\Cache\Lock::class
+        );
+
+        $secondLock = Mockery::mock(
+            \Illuminate\Contracts\Cache\Lock::class
+        );
+
+        $firstLock
+            ->shouldReceive('get')
+            ->once()
+            ->andReturn(true);
+
+        $firstLock
+            ->shouldReceive('release')
+            ->once();
+
+        $secondLock
+            ->shouldReceive('get')
+            ->once()
+            ->andReturn(true);
+
+        $secondLock
+            ->shouldReceive('release')
+            ->once();
+
+        Cache::shouldReceive('lock')
+            ->once()
+            ->with(
+                'refund-recovery:'.$refund->id,
+                (int) config(
+                    'services.refund.recovery_lock_ttl_seconds'
+                )
+            )
+            ->andReturn($firstLock);
+
+        Cache::shouldReceive('lock')
+            ->once()
+            ->with(
+                'refund-recovery:'.$refund->id,
+                (int) config(
+                    'services.refund.recovery_lock_ttl_seconds'
+                )
+            )
+            ->andReturn($secondLock);$stripe
+            ->shouldReceive('refund')
+            ->twice()
+            ->with(
+                'pi_test_123',
+                5000000,
+                'requested_by_customer',
+                'refund-'.$refund->id
+            )
+            ->andReturnUsing(
+                function () use (
+                    $service,
+                    $refund,
+                    $stripeRefund
+                ) {
+                    static $callCount = 0;
+
+                    $callCount++;
+
+                    if ($callCount === 1) {
+                        /*
+                        * Recovery pertama masih berada
+                        * di dalam provider call.
+                        *
+                        * Simulasikan lock pertama sudah
+                        * expired sehingga recovery kedua
+                        * berhasil memperoleh lock.
+                        */
+                        $service->recoverRefund(
+                            $refund->fresh()
+                        );
+                    }
+
+                    return $stripeRefund;
+                }
+            );
+
+        $result = $service->recoverRefund($refund);
+
+        $this->assertSame(
+            Refund::STATUS_COMPLETED,
+            $result->status
+        );
+    }
+
+    public function test_recovery_lock_ttl_is_greater_than_provider_timeout(): void
+    {
+        $providerTimeout = (int) config(
+            'services.refund.provider_timeout_seconds'
+        );
+
+        $lockTtl = (int) config(
+            'services.refund.recovery_lock_ttl_seconds'
+        );
+
+        $this->assertGreaterThan(
+            $providerTimeout,
+            $lockTtl
+        );
+    }
+
+    public function test_recovery_lock_uses_configured_ttl(): void
+    {
+        $refund = new Refund();
+        $refund->id = 12345;
+
+        $lock = Mockery::mock(
+            \Illuminate\Contracts\Cache\Lock::class
+        );
+
+        Cache::shouldReceive('lock')
+            ->once()
+            ->with(
+                'refund-recovery:12345',
+                (int) config(
+                    'services.refund.recovery_lock_ttl_seconds'
+                )
+            )
+            ->andReturn($lock);
+
+        $result = Cache::lock(
+            'refund-recovery:'.$refund->id,
+            (int) config(
+                'services.refund.recovery_lock_ttl_seconds'
+            )
+        );
+
+        $this->assertSame(
+            $lock,
+            $result
+        );
+    }
+
+    public function test_stripe_payment_service_uses_configured_provider_timeout(): void
+    {
+        config([
+            'services.refund.provider_timeout_seconds' => 75,
+        ]);
+
+        app(StripePaymentService::class);
+
+        $client = ApiRequestor::httpClient();
+
+        $this->assertInstanceOf(
+            CurlClient::class,
+            $client
+        );
+
+        $this->assertSame(
+            75,
+            $client->getTimeout()
+        );
+
+        $this->assertSame(
+            30,
+            $client->getConnectTimeout()
         );
     }
 }

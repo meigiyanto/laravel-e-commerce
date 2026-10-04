@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\CurlClient;
 use App\Models\Order;
 use Stripe\PaymentIntent;
 use Stripe\Refund;
@@ -14,6 +16,20 @@ class StripePaymentService
         Stripe::setApiKey(
             config('services.stripe.secret')
         );
+
+        $timeout = (int) config(
+            'services.refund.provider_timeout_seconds',
+            80
+        );
+
+        $client = new CurlClient();
+
+        $client->setTimeout($timeout);
+        $client->setConnectTimeout(
+            min($timeout, CurlClient::DEFAULT_CONNECT_TIMEOUT)
+        );
+
+        ApiRequestor::setHttpClient($client);
     }
 
     public function createPaymentIntent(
