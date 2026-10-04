@@ -8,6 +8,5 @@ window.bootstrap = bootstrap;
 import './bundle.js';
 import Chart from 'chart.js/auto';
 window.Chart = Chart;
+
 import './main.js';
-import './sidebar.js';
-// import './datatables.js';

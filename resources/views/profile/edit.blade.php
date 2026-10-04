@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.customer')
 
 @section('title', 'Edit Profile')
 @section('header', 'Edit Profile')
