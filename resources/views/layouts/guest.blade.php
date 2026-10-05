@@ -7,8 +7,8 @@
     <title>@yield('title', config('app.name', 'E-Commerce Store'))</title>
     <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
+    @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+
     <link rel="stylesheet" href="{{ asset('css/auth.css') }}">
 </head>
 <body class="auth-page">
