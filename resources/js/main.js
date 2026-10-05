@@ -506,11 +506,21 @@
         var dom_normal = '<"row justify-between g-2' + btn_cls + '"<"col-7 col-sm-4 text-start"f><"col-5 col-sm-8 text-end"<"datatable-filter"<"d-flex justify-content-end g-2"' + btn + 'l>>>><"datatable-wrap ' + responsive + ' my-3"t><"row align-items-center"<"col-7 col-sm-12 col-md-9"p><"col-5 col-sm-12 col-md-3 text-start text-md-end"i>>';
         var dom_separate = '<"row justify-between g-2' + btn_cls + '"<"col-7 col-sm-4 text-start"f><"col-5 col-sm-8 text-end"<"datatable-filter"<"d-flex justify-content-end g-2"' + btn + 'l>>>><"' + responsive + ' my-3"t><"row align-items-center"<"col-7 col-sm-12 col-md-9"p><"col-5 col-sm-12 col-md-3 text-start text-md-end"i>>';
         var dom = $(this).hasClass('is-separate') ? dom_separate : dom_normal;
+        var no_sort = [];
+        $(this).find('thead th.no-sort').each(function () {
+            no_sort.push($(this).index());
+        });
         var def = {
             responsive: true,
             autoWidth: true,
             pagingType: "simple_numbers",
             dom: dom,
+            columnDefs: [
+                {
+                    targets: no_sort,
+                    orderable: false
+                }
+            ],
             language: {
               search: "",
               searchPlaceholder: "Type in to Search",
