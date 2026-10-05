@@ -20,5 +20,10 @@ export default defineConfig({
     build: {
         cssMinify: false,
         minify: false,
-    }
+    },
+    server: {
+        watch: {
+            usePolling: true,
+        }
+    },
 });
