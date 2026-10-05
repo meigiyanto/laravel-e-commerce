@@ -21,7 +21,9 @@
 
     @if ($products->isEmpty())
         <div class="alert alert-light border">
-            Unavailable product to compare.
+            <h3>Unavailable product to compare.</h3>
+            <p>Oops! There are no comparable products</p>
+            <a href="{{ url('shop') }}" class="btn btn-primary me-2"><i class="bi bi-cart"></i> Start Shopping</a>
         </div>
     @else
         <div class="table-respsonsive">
@@ -92,7 +94,5 @@
             </table>
         </div>
     @endif
-
-    <a href="{{ route('storefront.shop') }}" class="btn btn-primary mt-3">Back to Shop</a>
 </section>
 @endsection
