@@ -20,7 +20,6 @@
         >
 
             @if ($product->image_url)
-
                 <img
                     src="{{ $product->image_url }}"
                     alt="{{ $product->name }}"
@@ -37,19 +36,17 @@
                 >
                     <i class="bi bi-image"></i>
                 </div>
-
             @endif
-
         </a>
 
 
         {{-- Product actions --}}
         @auth
-
             <div class="store-product-actions">
 
                 <form
                     action="{{ route('wishlist.store', $product) }}"
+                    class="wishlist-form"
                     method="POST"
                 >
                     @csrf
@@ -67,6 +64,7 @@
 
                 <form
                     action="{{ route('compare.store', $product) }}"
+                    class="compare-form"
                     method="POST"
                 >
                     @csrf

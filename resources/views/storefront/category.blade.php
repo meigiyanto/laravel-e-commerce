@@ -106,87 +106,98 @@
          PRODUCT LIST
     ========================================================== --}}
     <section class="store-section pt-3">
-
         <div class="container">
-
             {{-- Toolbar --}}
-            <div
-                class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 p-3"
-                style="
-                    border: 1px solid var(--store-border);
-                    border-radius: var(--store-radius);
-                    background: #fff;
-                "
-            >
+            <div class="d-flex align-items-center gap-2">
 
-                <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted d-none d-sm-inline">
+                    Urutkan:
+                </span>
 
-                    <i class="bi bi-grid-3x3-gap text-muted"></i>
+                <form
+                    action="{{ url()->current() }}"
+                    method="GET"
+                    class="m-0"
+                >
 
-                    <span class="small text-muted">
-                        Menampilkan
-                        <strong class="text-dark">
-                            {{ $products->firstItem() ?? 0 }}
-                        </strong>
-                        -
-                        <strong class="text-dark">
-                            {{ $products->lastItem() ?? 0 }}
-                        </strong>
-                        dari
-                        <strong class="text-dark">
-                            {{ $products->total() }}
-                        </strong>
-                        produk
-                    </span>
+                    @foreach (request()->except('sort', 'page') as $key => $value)
 
-                </div>
+                        @if (is_array($value))
 
+                            @foreach ($value as $item)
+                                <input
+                                    type="hidden"
+                                    name="{{ $key }}[]"
+                                    value="{{ $item }}"
+                                >
+                            @endforeach
 
-                <div class="d-flex align-items-center gap-2">
+                        @else
 
-                    <span class="small text-muted d-none d-sm-inline">
-                        Urutkan:
-                    </span>
+                            <input
+                                type="hidden"
+                                name="{{ $key }}"
+                                value="{{ $value }}"
+                            >
+
+                        @endif
+
+                    @endforeach
+
 
                     <select
+                        name="sort"
                         class="form-select form-select-sm"
-                        style="width: auto; min-width: 150px;"
-                        onchange="changeCategorySort(this.value)"
+                        onchange="this.form.submit()"
                     >
-                        <option
-                            value=""
-                            {{ request('sort') === null ? 'selected' : '' }}
-                        >
-                            Default
-                        </option>
 
                         <option
-                            value="latest"
-                            {{ request('sort') === 'latest' ? 'selected' : '' }}
+                            value=""
+                            @selected(! request('sort'))
                         >
                             Terbaru
                         </option>
 
                         <option
-                            value="price_low"
-                            {{ request('sort') === 'price_low' ? 'selected' : '' }}
+                            value="oldest"
+                            @selected(request('sort') === 'oldest')
                         >
-                            Harga terendah
+                            Terlama
+                        </option>
+
+                        <option
+                            value="price_low"
+                            @selected(request('sort') === 'price_low')
+                        >
+                            Harga Terendah
                         </option>
 
                         <option
                             value="price_high"
-                            {{ request('sort') === 'price_high' ? 'selected' : '' }}
+                            @selected(request('sort') === 'price_high')
                         >
-                            Harga tertinggi
+                            Harga Tertinggi
+                        </option>
+
+                        <option
+                            value="name_asc"
+                            @selected(request('sort') === 'name_asc')
+                        >
+                            Nama A - Z
+                        </option>
+
+                        <option
+                            value="name_desc"
+                            @selected(request('sort') === 'name_desc')
+                        >
+                            Nama Z - A
                         </option>
 
                     </select>
 
-                </div>
+                </form>
 
             </div>
-
 
             {{-- =================================================
                  PRODUCTS
@@ -204,15 +215,11 @@
                      PAGINATION
                 ================================================== --}}
                 @if ($products->hasPages())
-
                     <div class="d-flex justify-content-center mt-5">
-
-                        {{ $products->withQueryString()->links() }}
+                        {{ $products->onEachSide(1)->links('pagination::bootstrap-5') }}
 
                     </div>
-
                 @endif
-
             @else
 
                 {{-- =================================================
@@ -295,145 +302,6 @@
 
         window.location.href = url.toString();
     }
-
-
-    /**
-     * AJAX add-to-cart.
-     */
-    document.addEventListener('DOMContentLoaded', function () {
-
-        const forms = document.querySelectorAll(
-            '.category-add-cart-form'
-        );
-
-        forms.forEach(function (form) {
-
-            form.addEventListener('submit', async function (event) {
-
-                event.preventDefault();
-
-                const button =
-                    form.querySelector('button[type="submit"]');
-
-                if (!button) {
-                    return;
-                }
-
-                const originalHTML = button.innerHTML;
-
-                button.disabled = true;
-
-                button.innerHTML = `
-                    <span
-                        class="spinner-border spinner-border-sm"
-                        role="status"
-                        aria-hidden="true"
-                    ></span>
-
-                    Menambahkan...
-                `;
-
-
-                try {
-
-                    const response = await fetch(
-                        form.action,
-                        {
-                            method: 'POST',
-
-                            headers: {
-                                'X-CSRF-TOKEN':
-                                    document
-                                        .querySelector(
-                                            'meta[name="csrf-token"]'
-                                        )
-                                        .getAttribute('content'),
-
-                                'Accept':
-                                    'application/json',
-
-                                'X-Requested-With':
-                                    'XMLHttpRequest'
-                            },
-
-                            body: new FormData(form)
-                        }
-                    );
-
-
-                    const data =
-                        await response.json();
-
-
-                    if (!response.ok) {
-                        throw new Error(
-                            data.message ||
-                            'Gagal menambahkan produk.'
-                        );
-                    }
-
-
-                    /*
-                     * Update cart badge from
-                     * the response when available.
-                     */
-                    if (
-                        typeof window.updateCartBadge ===
-                        'function'
-                    ) {
-                        if (
-                            typeof data.cart_count !==
-                            'undefined'
-                        ) {
-                            window.updateCartBadge(
-                                data.cart_count
-                            );
-                        }
-                    }
-
-
-                    /*
-                     * Show global notification.
-                     */
-                    if (
-                        typeof window.showStoreNotification ===
-                        'function'
-                    ) {
-                        window.showStoreNotification(
-                            data.message ||
-                            'Produk berhasil ditambahkan ke keranjang.',
-                            'success'
-                        );
-                    }
-
-
-                } catch (error) {
-
-                    if (
-                        typeof window.showStoreNotification ===
-                        'function'
-                    ) {
-                        window.showStoreNotification(
-                            error.message ||
-                            'Terjadi kesalahan.',
-                            'danger'
-                        );
-                    }
-
-                } finally {
-
-                    button.disabled = false;
-
-                    button.innerHTML =
-                        originalHTML;
-
-                }
-
-            });
-
-        });
-
-    });
 </script>
 
 @endpush
