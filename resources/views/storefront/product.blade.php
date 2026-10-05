@@ -466,7 +466,6 @@
     id="reviews"
     class="store-section store-product-reviews"
 >
-
     <div class="container">
 
         <div class="store-section-header">
@@ -892,13 +891,9 @@
      RELATED PRODUCTS
 ========================================================= --}}
 @if ($relatedProducts->isNotEmpty())
-
-    <section class="store-section pt-0">
-
+    <section class="store-section mt-2">
         <div class="container">
-
             <div class="store-section-header">
-
                 <div>
 
                     <h2 class="store-section-title">

@@ -57,4 +57,11 @@ class Product extends Model
     {
         return $this->belongsToMany(User::class, 'wishlists')->withTimestamps();
     }
+
+    public function specifications(): HasMany
+    {
+        return $this->hasMany(ProductSpecification::class)
+            ->orderBy('specification_group')
+            ->orderBy('sort_order');
+    }
 }

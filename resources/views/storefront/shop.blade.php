@@ -3,7 +3,6 @@
 @section('title', 'Shop - MeiStore')
 
 @section('content')
-
 {{-- =========================================================
      BREADCRUMB
 ========================================================= --}}
@@ -161,9 +160,7 @@
      ACTIVE FILTERS
 ========================================================= --}}
 @if (request('q') || request('category'))
-
     <section class="pb-3">
-
         <div class="container">
 
             <div class="d-flex flex-wrap align-items-center gap-2">
@@ -586,11 +583,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                const originalHtml =
-                    button.innerHTML;
-
+                const originalHtml = button.innerHTML;
                 button.disabled = true;
-
                 button.innerHTML = `
                     <span
                         class="spinner-border spinner-border-sm"
@@ -603,7 +597,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 try {
-
                     const response = await fetch(
                         form.action,
                         {
@@ -612,13 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             headers: {
                                 'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest',
-
-                                'X-CSRF-TOKEN':
-                                    document
-                                        .querySelector(
-                                            'meta[name="csrf-token"]'
-                                        )
-                                        .getAttribute('content'),
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                             },
 
                             body: new FormData(form),
@@ -626,17 +613,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     );
 
 
-                    const data =
-                        await response.json();
+                    const data = await response.json();
 
 
                     if (!response.ok || !data.success) {
-
-                        throw new Error(
-                            data.message ||
-                            'Gagal menambahkan produk ke keranjang.'
-                        );
-
+                        throw new Error(data.message || 'Gagal menambahkan produk ke keranjang.');
                     }
 
 
@@ -677,28 +658,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 } catch (error) {
 
-                    if (
-                        typeof window.showStoreNotification ===
-                        'function'
-                    ) {
-
+                    if (typeof window.showStoreNotification === 'function') {
                         window.showStoreNotification(
-                            error.message ||
-                            'Terjadi kesalahan.',
-                            'danger'
+                            error.message || 'Terjadi kesalahan.', 'danger'
                         );
-
                     } else {
-
-                        alert(
-                            error.message ||
-                            'Terjadi kesalahan.'
-                        );
-
+                        alert(error.message || 'Terjadi kesalahan.');
                     }
 
                 } finally {
-
                     button.disabled = false;
                     button.innerHTML = originalHtml;
 
@@ -924,5 +892,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
-
 @endpush
