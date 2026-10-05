@@ -14,11 +14,11 @@
     <div class="nk-app-root">
         <div class="nk-main">
 
-            @include('layouts.partials.aside')
+            @include('layouts.partials.dashboard.aside')
 
             <div class="nk-wrap">
 
-                @include('layouts.partials.header')
+                @include('layouts.partials.dashboard.header')
 
                 <div class="nk-content">
                     <div class="container-fluid">
@@ -46,7 +46,7 @@
                     </div>
                 </div>
 
-                @include('layouts.partials.footer')
+                @include('layouts.partials.dashboard.footer')
 
             </div>
         </div>

@@ -94,10 +94,7 @@ class StorefrontController extends Controller
             ->take(4)
             ->get();
 
-        return view('storefront.product', compact(
-            'product',
-            'relatedProducts'
-        ));
+        return view('storefront.product', compact('product','relatedProducts'));
     }
 
     public function category(string $slug)

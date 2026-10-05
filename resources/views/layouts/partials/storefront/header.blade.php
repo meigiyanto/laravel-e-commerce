@@ -47,9 +47,7 @@
 
                 {{-- Header actions --}}
                 <div class="store-header-actions ms-auto">
-
                     @auth
-
                         {{-- Wishlist --}}
                         @php
                             $wishlistCount = auth()->user()->wishlistProducts()->count();
@@ -171,30 +169,20 @@
                                 </li>
 
                                 <li>
-                                    <a
-                                        class="dropdown-item"
-                                        href="{{ route('dashboard') }}"
-                                    >
+                                    <a class="dropdown-item" href="{{ route('dashboard') }}">
                                         <i class="bi bi-speedometer2 me-2"></i>
                                         Dashboard
                                     </a>
                                 </li>
-
                                 <li>
-                                    <a
-                                        class="dropdown-item"
-                                        href="{{ route('orders.index') }}"
-                                    >
+                                    <a  class="dropdown-item" href="{{ route('orders.index') }}">
                                         <i class="bi bi-bag me-2"></i>
                                         Pesanan Saya
                                     </a>
                                 </li>
 
                                 <li>
-                                    <a
-                                        class="dropdown-item"
-                                        href="{{ route('profile.edit') }}"
-                                    >
+                                    <a class="dropdown-item" href="{{ route('profile.edit') }}" >
                                         <i class="bi bi-person me-2"></i>
                                         Profil
                                     </a>
@@ -204,12 +192,8 @@
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
-
                                     <li>
-                                        <a
-                                            class="dropdown-item"
-                                            href="{{ route('admin.dashboard') }}"
-                                        >
+                                        <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
                                             <i class="bi bi-shield-check me-2"></i>
                                             Admin Panel
                                         </a>
@@ -219,7 +203,6 @@
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>
-
                                 <li>
                                     <form
                                         method="POST"

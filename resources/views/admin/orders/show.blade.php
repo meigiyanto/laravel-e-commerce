@@ -39,7 +39,7 @@
 
     <div class="row g-4">
         {{-- LEFT --}}
-        <div class="col-lg-8">
+        <div class="col-lg-8 col-md-8">
             {{-- Order Items --}}
             <div class="card card-bordered mb-4">
                 <div class="card-inner">
@@ -74,38 +74,11 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Shipping --}}
-            <div class="card card-bordered">
-                <div class="card-inner">
-                    <h5 class="title mb-4">Informasi Pengiriman</h5>
-                    <div class="mb-3">
-                        <div class="text-soft small">Nama Penerima</div>
-                        <strong>{{ $order->customer_name }}</strong>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="text-soft small">Nomor Telepon</div>
-                        <strong>{{ $order->phone }}</strong>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="text-soft small">Alamat</div>
-                        <div>{{ $order->shipping_address }}</div>
-                    </div>
-
-                    @if($order->notes)
-                        <div>
-                            <div class="text-soft small">Catatan</div>
-                            <div>{{ $order->notes }}</div>
-                        </div>
-                    @endif
-                </div>
-            </div>
         </div>
+        {{-- END LEFT --}}
 
         {{-- RIGHT --}}
-        <div class="col-lg-4">
+        <div class="col-lg-4 col-md-4">
             {{-- Status --}}
             <div class="card card-bordered mb-4">
                 <div class="card-inner">
@@ -150,34 +123,74 @@
                     </form>
                 </div>
             </div>
+        </div>
+        {{-- END RIGHT --}}
+    </div>
 
-            {{-- Customer --}}
-            <div class="card card-bordered">
-                <div class="card-inner">
-                    <h5 class="title mb-4">Customer</h5>
-                    <div class="mb-3">
-                        <div class="text-soft small">Name</div>
-                        <strong>{{ $order->user?->name ?? $order->customer_name }}</strong>
+        <div class="row">
+            {{-- LEFT --}}
+            <div class="col-md-6">
+                {{-- Shipping --}}
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <h5 class="title mb-4">Informasi Pengiriman</h5>
+                        <div class="mb-3">
+                            <div class="text-soft small">Nama Penerima</div>
+                            <strong>{{ $order->customer_name }}</strong>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-soft small">Nomor Telepon</div>
+                            <strong>{{ $order->phone }}</strong>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="text-soft small">Alamat</div>
+                            <div>{{ $order->shipping_address }}</div>
+                        </div>
+
+                        @if($order->notes)
+                            <div>
+                                <div class="text-soft small">Catatan</div>
+                                <div>{{ $order->notes }}</div>
+                            </div>
+                        @endif
                     </div>
-                    <div class="mb-3">
-                        <div class="text-soft small">Email</div>
-                        <div>{{ $order->user?->email ?? '-' }}</div>
-                    </div>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">Subtotal</span>
-                        <span>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-soft">Shipping</span>
-                        <span>Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <strong>Total</strong>
-                        <strong class="text-primary">Rp {{ number_format($order->total, 0, ',', '.') }}
+                </div>
+            </div>
+            {{-- END LEFT --}}
+
+            {{-- RIGHT --}}
+            <div class="col-md-6">
+                {{-- Customer --}}
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <h5 class="title mb-4">Customer</h5>
+                        <div class="mb-3">
+                            <div class="text-soft small">Name</div>
+                            <strong>{{ $order->user?->name ?? $order->customer_name }}</strong>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-soft small">Email</div>
+                            <div>{{ $order->user?->email ?? '-' }}</div>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-soft">Subtotal</span>
+                            <span>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-soft">Shipping</span>
+                            <span>Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <strong>Total</strong>
+                            <strong class="text-primary">Rp {{ number_format($order->total, 0, ',', '.') }}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+        {{-- END RIGHT --}}
     </div>
 @endsection
