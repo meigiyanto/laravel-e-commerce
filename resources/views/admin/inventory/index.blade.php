@@ -137,6 +137,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label">Stock Status</label>
+                   
                             <div class="form-control-wrap">
                                 <select
                                     name="stock_status"
