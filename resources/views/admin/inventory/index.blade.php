@@ -139,6 +139,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label">Stock Status</label>
+                   
                             <div class="form-control-wrap">
                                 <select
                                     name="stock_status"
@@ -194,8 +195,8 @@
             </form>
 
             {{-- Table --}}
-            <div class="table-responsive">
-                <table class="table table-hover js-datatable">
+            <div>
+                <table class="table table-hover datatable-init">
                     <thead>
                         <tr>
                             <th>Product</th>

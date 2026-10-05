@@ -13,34 +13,44 @@
 <body class="nk-body bg-lighter npc-general has-sidebar ui-shady">
     <div class="nk-app-root">
         <div class="nk-main">
+
             @include('layouts.partials.aside')
+
             <div class="nk-wrap">
+
                 @include('layouts.partials.header')
+
                 <div class="nk-content">
                     <div class="container-fluid">
                         <div class="nk-content-inner">
                             <div class="nk-content-body">
+
                                 @if (session('success'))
                                     <div class="alert alert-pro alert-success alert-dismissible">
                                         <div class="alert-text">{{ session('success') }}</div>
                                         <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"><em class="icon ni ni-cross"></em></button>
                                     </div>
                                 @endif
+
                                 @if (session('error'))
                                     <div class="alert alert-pro alert-danger alert-dismissible">
                                         <div class="alert-text">{{ session('error') }}</div>
                                         <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"><em class="icon ni ni-cross"></em></button>
                                     </div>
                                 @endif
+
                                 @yield('content')
+
                             </div>
                         </div>
                     </div>
                 </div>
+
                 @include('layouts.partials.footer')
+
             </div>
         </div>
     </div>
-@stack('scripts')
+    @stack('scripts')
 </body>
 </html>
