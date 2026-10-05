@@ -3,103 +3,14 @@
    Shared admin table styling
    ========================================================= */
 
+/*
+|--------------------------------------------------------------------------
+| Container
+|--------------------------------------------------------------------------
+*/
+
 .dt-container {
     width: 100%;
-}
-
-/*
-|--------------------------------------------------------------------------
-| Top / Bottom controls
-|--------------------------------------------------------------------------
-*/
-
-.dt-container .dt-layout-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-}
-
-.dt-container .dt-layout-row:last-child {
-    margin-top: 1rem;
-    margin-bottom: 0;
-}
-
-.dt-container .dt-layout-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-/*
-|--------------------------------------------------------------------------
-| Search
-|--------------------------------------------------------------------------
-*/
-
-.dt-container .dt-search {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.dt-container .dt-search label {
-    display: none;
-}
-
-.dt-container .dt-search input {
-    min-width: 240px;
-    min-height: 38px;
-
-    border: 1px solid #dbdfea;
-    border-radius: 0.375rem;
-
-    background: #fff;
-    color: #364a63;
-
-    padding: 0.375rem 0.75rem;
-}
-
-.dt-container .dt-search input:focus {
-    border-color: #6576ff;
-    outline: 0;
-
-    box-shadow:
-        0 0 0 0.2rem rgba(101, 118, 255, 0.15);
-}
-
-/*
-|--------------------------------------------------------------------------
-| Length selector
-|--------------------------------------------------------------------------
-*/
-
-.dt-container .dt-length {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.dt-container .dt-length select {
-    min-height: 38px;
-
-    border: 1px solid #dbdfea;
-    border-radius: 0.375rem;
-
-    background: #fff;
-    color: #364a63;
-
-    padding: 0.375rem 2rem 0.375rem 0.75rem;
-}
-
-.dt-container .dt-length select:focus {
-    border-color: #6576ff;
-    outline: 0;
-
-    box-shadow:
-        0 0 0 0.2rem rgba(101, 118, 255, 0.15);
 }
 
 /*
@@ -137,11 +48,6 @@
     font-size: 0.875rem;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Pagination
-|--------------------------------------------------------------------------
-*/
 /*
 |--------------------------------------------------------------------------
 | Pagination
@@ -210,6 +116,7 @@
     margin-left: -1px !important;
 }
 
+/* Hover */
 .dt-container
 .dt-paging
 .dt-paging-button:hover:not(.disabled):not(.current) {
@@ -221,6 +128,7 @@
     color: #364a63 !important;
 }
 
+/* Current page */
 .dt-container
 .dt-paging
 .dt-paging-button.current {
@@ -232,6 +140,7 @@
     color: #fff !important;
 }
 
+/* Disabled */
 .dt-container
 .dt-paging
 .dt-paging-button.disabled {
@@ -241,31 +150,4 @@
 
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-/*
-|--------------------------------------------------------------------------
-| Responsive
-|--------------------------------------------------------------------------
-*/
-
-@media (max-width: 767.98px) {
-    .dt-container .dt-layout-row {
-        align-items: stretch;
-    }
-
-    .dt-container .dt-layout-cell {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .dt-container .dt-search,
-    .dt-container .dt-search input {
-        width: 100%;
-    }
-
-    .dt-container .dt-paging {
-        justify-content: flex-end;
-        flex-wrap: wrap;
-    }
 }

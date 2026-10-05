@@ -48,20 +48,13 @@ await import('toastr');
 
 // ClipboardJS
 const ClipboardModule = await import('clipboard');
+const ClipboardJS = ClipboardModule.default;
 
-console.log('Clipboard module:', ClipboardModule);
-console.log('Clipboard default:', ClipboardModule.default);
-console.log('ClipboardJS export:', ClipboardModule.ClipboardJS);
-
-// const ClipboardJS = ClipboardModule.default ?? ClipboardModule.ClipboardJS;
-
-/*
 if (typeof ClipboardJS !== 'function') {
     throw new Error('ClipboardJS constructor not found.');
 }
 
 window.ClipboardJS = ClipboardJS;
-*/
 
 // NoUISlider
 await import('nouislider');

@@ -72,7 +72,7 @@
                             <div class="form-control-wrap">
                                 <select
                                     id="sub_category_id"
-                                    class="form-select"
+                                    class="form-select js-select2"
                                     data-search="on"
                                     name="sub_category_id"
                                     required
