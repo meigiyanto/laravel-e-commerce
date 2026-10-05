@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -28,6 +30,21 @@ class Product extends Model
         'stock' => 'integer',
     ];
 
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image) {
+            return null;
+        }
+
+        if (Str::startsWith($this->image, [
+            'http://',
+            'https://',
+        ])) {
+            return $this->image;
+        }
+
+        return Storage::url($this->image);
+    }
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
