@@ -13,8 +13,10 @@
 
     @if ($products->isEmpty())
         <div class="alert alert-light border">
-            <i class="bi bi-heart me-2"></i>
-            Belum ada produk di wishlist.
+            <h3>Wishlist Empty</h3>
+            <p><i class="bi bi-heart me-2"></i>
+            Oops! Wishlist is empty.</p>
+            <a href="{{ route('storefront.shop') }}" class="btn btn-primary"><i class="bi bi-cart"></i> Start Shopping</a>
         </div>
     @else
         <div class="row g-4">

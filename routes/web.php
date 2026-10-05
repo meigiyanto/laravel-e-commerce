@@ -35,13 +35,14 @@ Route::post('/payment/midtrans/notification', [MidtransPaymentController::class,
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
-|------------------------------------------------------------
+|----------------------------------------------------------
 | Cart Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
     // Refund
     Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
+
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
     Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
@@ -77,7 +78,7 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-|------------------------------------------------------------| Authenticated User Routes
+|-----------------------------------------------------------| Authenticated User Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
@@ -96,7 +97,7 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-|------------------------------------------------------------| Admin Routes
+|-----------------------------------------------------------| Admin Routes
 |----------------------------------------------------------
 */
 
@@ -126,7 +127,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
     // Sub Category CRUD
-    Route::resource('sub-categories', SubCategoryController::class)->except(['show']);
+    Route::resource('sub-categories', SubCategoryController::class)->parameters(['sub-categories' => 'id'])->except(['show']);
 
     // Category CRUD
     Route::resource('categories', CategoryController::class)->except(['show']);

@@ -3,227 +3,819 @@
 @section('title', 'MeiStore - Toko Online')
 
 @section('content')
-    {{-- Hero --}}
-    <section class="container py-4 py-lg-5">
-        <div class="hero">
-            <div class="hero-content p-4 p-md-5">
-                <div class="row align-items-center">
-                    <div class="col-lg-7">
-                        <span class="badge bg-light text-primary mb-3">
-                            Belanja Lebih Mudah
-                        </span>
-                        <h1 class="hero-title mb-3">
-                            Temukan Produk
-                            Favoritmu di MeiStore
-                        </h1>
-                        <p class="hero-text mb-4">
-                            Jelajahi berbagai produk pilihan mulai dari
-                            elektronik, fashion, rumah tangga, hingga
-                            kebutuhan olahraga.
-                        </p>
-                        <a
-                            href="{{ route('storefront.shop') }}"
-                            class="btn btn-light btn-lg px-4"
-                        >
-                            Belanja Sekarang
-                            <i class="bi bi-arrow-right ms-2"></i>
-                        </a>
-                    </div>
-                    <div class="col-lg-5 d-none d-lg-block text-center">
-                        <i
-                            class="bi bi-bag-heart-fill"
-                            style="font-size: 11rem; opacity: .9;"
-                        ></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    {{-- Categories --}}
-    <section class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="section-title mb-1">
-                    Kategori
-                </h2>
-                <p class="text-muted mb-0">
-                    Temukan produk berdasarkan kategori
+    {{-- =========================================================
+         HERO
+    ========================================================== --}}
+    <section class="store-hero">
+
+        <div class="container">
+            <div class="store-hero-content">
+
+                <span class="store-hero-label">
+                    <i class="bi bi-stars me-2"></i>
+                    Selamat datang di MeiStore
+                </span>
+
+                <h1 class="store-hero-title">
+                    Temukan Produk
+                    Favoritmu di Satu Tempat
+                </h1>
+
+                <p class="store-hero-text">
+                    Jelajahi berbagai produk pilihan mulai dari
+                    elektronik, fashion, kebutuhan rumah tangga,
+                    hingga kebutuhan sehari-hari.
                 </p>
-            </div>
-            <a
-                href="{{ route('storefront.shop') }}"
-                class="section-link"
-            >
-                Lihat Semua
-                <i class="bi bi-arrow-right"></i>
-            </a>
-        </div>
 
-        <div class="row g-3">
-            @forelse ($categories as $category)
-                <div class="col-6 col-lg-3">
+                <div class="d-flex flex-wrap gap-2 mt-4">
+
                     <a
-                        href="{{ route('storefront.category', $category->slug) }}"
-                        class="d-block"
+                        href="{{ route('storefront.shop') }}"
+                        class="store-btn-primary"
                     >
-
-                        <div class="category-card">
-
-                            @if ($category->image)
-                                <img
-                                    src="{{ $category->image }}"
-                                    alt="{{ $category->name }}"
-                                    loading="lazy"
-                                >
-                            @else
-                                <div class="h-100 d-flex align-items-center justify-content-center bg-secondary">
-                                    <i class="bi bi-grid text-white fs-1"></i>
-                                </div>
-                            @endif
-                            <div class="category-overlay">
-                                <div>
-                                    <h3 class="category-name">
-                                        {{ $category->name }}
-                                    </h3>
-
-                                    <div class="category-count">
-                                        {{ $category->products_count }}
-                                        produk
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        Belanja Sekarang
+                        <i class="bi bi-arrow-right"></i>
                     </a>
+
+                    @if ($categories->isNotEmpty())
+                        <a
+                            href="#categories"
+                            class="btn btn-outline-dark px-4 py-2"
+                        >
+                            Lihat Kategori
+                        </a>
+                    @endif
+
                 </div>
-            @empty
-                <div class="col-12">
-                    <div class="alert alert-light border">
-                        Belum ada kategori produk.
-                    </div>
-                </div>
-            @endforelse
+
+            </div>
         </div>
+
     </section>
 
-    {{-- Latest Products --}}
-    <section class="container py-5">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="section-title mb-1">
-                    Produk Terbaru
-                </h2>
 
-                <p class="text-muted mb-0">
-                    Produk terbaru yang tersedia di toko
-                </p>
+    {{-- =========================================================
+         CATEGORY SECTION
+    ========================================================== --}}
+    <section
+        id="categories"
+        class="store-section"
+    >
+        <div class="container">
+
+            <div class="store-section-header">
+
+                <div>
+                    <h2 class="store-section-title">
+                        Belanja Berdasarkan Kategori
+                    </h2>
+
+                    <p class="store-section-subtitle">
+                        Temukan produk sesuai kebutuhan Anda.
+                    </p>
+                </div>
+
+                <a
+                    href="{{ route('storefront.shop') }}"
+                    class="store-section-link"
+                >
+                    Lihat Semua
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
             </div>
 
-            <a
-                href="{{ route('storefront.shop') }}"
-                class="section-link"
-            >
-                Lihat Semua
-                <i class="bi bi-arrow-right"></i>
-            </a>
+
+            @if ($categories->isNotEmpty())
+
+                <div class="row g-3">
+
+                    @foreach ($categories as $category)
+
+                        <div class="col-6 col-md-4 col-lg-3">
+
+                            <a
+                                href="{{ route('storefront.category', $category->slug) }}"
+                                class="d-block h-100"
+                            >
+
+                                <div class="store-category-card">
+
+                                    @if ($category->image)
+
+                                        <img
+                                            src="{{ $category->image }}"
+                                            alt="{{ $category->name }}"
+                                            loading="lazy"
+                                        >
+
+                                    @else
+
+                                        <div class="store-category-placeholder">
+                                            <i class="bi bi-grid-3x3-gap fs-1"></i>
+                                        </div>
+
+                                    @endif
+
+
+                                    <div class="store-category-overlay">
+
+                                        <div>
+
+                                            <h3 class="store-category-name">
+                                                {{ $category->name }}
+                                            </h3>
+
+                                            <div class="store-category-count">
+                                                {{ $category->products_count }}
+                                                produk
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </a>
+
+                        </div>
+
+                    @endforeach
+
+                </div>
+
+            @else
+
+                <div class="text-center py-5">
+
+                    <div class="mb-3">
+                        <i class="bi bi-grid fs-1 text-muted"></i>
+                    </div>
+
+                    <h4 class="fw-bold">
+                        Belum Ada Kategori
+                    </h4>
+
+                    <p class="text-muted mb-0">
+                        Kategori produk akan ditampilkan di sini.
+                    </p>
+
+                </div>
+
+            @endif
+
+        </div>
+    </section>
+
+
+    {{-- =========================================================
+         LATEST PRODUCTS
+    ========================================================== --}}
+    <section class="store-section bg-light">
+
+        <div class="container">
+
+            <div class="store-section-header">
+
+                <div>
+                    <h2 class="store-section-title">
+                        Produk Terbaru
+                    </h2>
+
+                    <p class="store-section-subtitle">
+                        Produk terbaru yang tersedia di MeiStore.
+                    </p>
+                </div>
+
+                <a
+                    href="{{ route('storefront.shop') }}"
+                    class="store-section-link"
+                >
+                    Lihat Semua
+                    <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+
+            </div>
+
+
+            @if ($latestProducts->isNotEmpty())
+
+                <div class="row g-3 g-md-4">
+
+                    @foreach ($latestProducts as $product)
+
+                        <div class="col-6 col-md-4 col-lg-3">
+
+                            <article class="store-product-card">
+
+                                {{-- Product image --}}
+                                <div class="store-product-image-wrap">
+
+                                    <a
+                                        href="{{ route('storefront.product', $product->slug) }}"
+                                    >
+
+                                        @if ($product->image)
+
+                                            <img
+                                                src="{{ $product->image }}"
+                                                alt="{{ $product->name }}"
+                                                class="store-product-image"
+                                                loading="lazy"
+                                            >
+
+                                        @else
+
+                                            <div class="store-product-placeholder">
+                                                <i class="bi bi-image"></i>
+                                            </div>
+
+                                        @endif
+
+                                    </a>
+
+
+                                    {{-- Product actions --}}
+                                    @auth
+
+                                        <div class="store-product-actions">
+
+                                            <form
+                                                action="{{ route('wishlist.store', $product) }}"
+                                                method="POST"
+                                            >
+                                                @csrf
+
+                                                <button
+                                                    type="submit"
+                                                    class="store-product-action"
+                                                    title="Tambah ke wishlist"
+                                                    aria-label="Tambah ke wishlist"
+                                                >
+                                                    <i class="bi bi-heart"></i>
+                                                </button>
+
+                                            </form>
+
+
+                                            <form
+                                                action="{{ route('compare.store', $product) }}"
+                                                method="POST"
+                                            >
+                                                @csrf
+
+                                                <button
+                                                    type="submit"
+                                                    class="store-product-action"
+                                                    title="Bandingkan produk"
+                                                    aria-label="Bandingkan produk"
+                                                >
+                                                    <i class="bi bi-bar-chart"></i>
+                                                </button>
+
+                                            </form>
+
+                                        </div>
+
+                                    @endauth
+
+                                </div>
+
+
+                                {{-- Product body --}}
+                                <div class="store-product-body">
+
+                                    @if ($product->category)
+
+                                        <div class="store-product-category">
+                                            {{ $product->category->name }}
+                                        </div>
+
+                                    @endif
+
+
+                                    <a
+                                        href="{{ route('storefront.product', $product->slug) }}"
+                                    >
+                                        <h3 class="store-product-name">
+                                            {{ $product->name }}
+                                        </h3>
+                                    </a>
+
+
+                                    <div class="store-product-price">
+                                        Rp {{ number_format($product->price, 0, ',', '.') }}
+                                    </div>
+
+
+                                    <div class="store-product-stock">
+
+                                        @if ($product->stock > 0)
+
+                                            <span class="text-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Stok {{ $product->stock }}
+                                            </span>
+
+                                        @else
+
+                                            <span class="text-danger">
+                                                <i class="bi bi-x-circle me-1"></i>
+                                                Stok habis
+                                            </span>
+
+                                        @endif
+
+                                    </div>
+
+
+                                    {{-- Product action --}}
+                                    <div class="store-product-footer">
+
+                                        @if ($product->stock > 0)
+
+                                            @auth
+
+                                                <form
+                                                    action="{{ route('cart.store') }}"
+                                                    method="POST"
+                                                    class="store-add-to-cart-form"
+                                                    data-product-id="{{ $product->id }}"
+                                                >
+                                                    @csrf
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="product_id"
+                                                        value="{{ $product->id }}"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="quantity"
+                                                        value="1"
+                                                    >
+
+                                                    <button
+                                                        type="submit"
+                                                        class="store-add-cart"
+                                                    >
+                                                        <i class="bi bi-cart-plus"></i>
+                                                        Tambah ke Keranjang
+                                                    </button>
+
+                                                </form>
+
+                                            @else
+
+                                                <a
+                                                    href="{{ route('login') }}"
+                                                    class="store-add-cart"
+                                                >
+                                                    <i class="bi bi-cart-plus"></i>
+                                                    Login untuk Belanja
+                                                </a>
+
+                                            @endauth
+
+                                        @else
+
+                                            <button
+                                                type="button"
+                                                class="store-add-cart"
+                                                disabled
+                                                style="opacity: .55; cursor: not-allowed;"
+                                            >
+                                                <i class="bi bi-x-circle"></i>
+                                                Stok Habis
+                                            </button>
+
+                                        @endif
+
+                                    </div>
+
+                                </div>
+
+                            </article>
+
+                        </div>
+
+                    @endforeach
+
+                </div>
+
+            @else
+
+                <div class="text-center py-5">
+
+                    <div class="mb-3">
+                        <i class="bi bi-box-seam fs-1 text-muted"></i>
+                    </div>
+
+                    <h4 class="fw-bold">
+                        Belum Ada Produk
+                    </h4>
+
+                    <p class="text-muted mb-0">
+                        Produk akan muncul di sini setelah
+                        ditambahkan melalui dashboard admin.
+                    </p>
+
+                </div>
+
+            @endif
+
         </div>
 
-        <div class="row g-4">
-            @forelse ($latestProducts as $product)
-                <div class="col-6 col-md-4 col-lg-3">
-                    <div class="product-card">
-                        <a
-                            href="{{ route('storefront.product', $product->slug) }}"
-                        >
-                            @if ($product->image)
-                                <img
-                                    src="{{ $product->image }}"
-                                    alt="{{ $product->name }}"
-                                    class="product-image"
-                                    loading="lazy"
-                                >
-                            @else
-                                <div
-                                    class="product-image d-flex align-items-center justify-content-center"
-                                >
-                                    <i class="bi bi-image fs-1 text-secondary"></i>
-                                </div>
-                            @endif
-                        </a>
+    </section>
 
-                        <div class="product-body">
-                            <div class="product-category">
-                                {{ $product->category?->name }}
-                            </div>
-                            <a
-                                href="{{ route('storefront.product', $product->slug) }}"
+
+    {{-- =========================================================
+         SHOPPING PROMOTION
+    ========================================================== --}}
+    <section class="store-section">
+
+        <div class="container">
+
+            <div
+                class="rounded-3 overflow-hidden"
+                style="
+                    background:
+                        linear-gradient(
+                            110deg,
+                            #fff7d6,
+                            #ffffff
+                        );
+                    border: 1px solid #f1e2a8;
+                "
+            >
+
+                <div class="row align-items-center g-0">
+
+                    <div class="col-lg-8">
+
+                        <div class="p-4 p-md-5">
+
+                            <span
+                                class="badge mb-3"
+                                style="
+                                    background: var(--store-primary);
+                                    color: var(--store-dark);
+                                "
                             >
-                                <h3 class="product-name">
-                                    {{ $product->name }}
-                                </h3>
-                            </a>
-                            <div class="product-price">
-                                Rp {{ number_format($product->price, 0, ',', '.') }}
-                            </div>
-                            <div class="product-stock mt-1">
-                                @if ($product->stock > 0)
-                                    <i class="bi bi-check-circle text-success"></i>
-                                    Stok {{ $product->stock }}
-                                @else
-                                    <i class="bi bi-x-circle text-danger"></i>
-                                    Stok habis
-                                @endif
-                            </div>
+                                <i class="bi bi-lightning-charge-fill me-1"></i>
+                                MeiStore
+                            </span>
+
+                            <h2 class="fw-bold mb-3">
+                                Temukan lebih banyak produk
+                                untuk kebutuhanmu.
+                            </h2>
+
+                            <p class="text-muted mb-4">
+                                Jelajahi seluruh katalog MeiStore dan
+                                temukan produk yang sesuai dengan kebutuhan
+                                Anda.
+                            </p>
+
                             <a
-                                href="{{ route('storefront.product', $product->slug) }}"
-                                class="btn btn-outline-primary w-100 mt-3"
+                                href="{{ route('storefront.shop') }}"
+                                class="store-btn-primary"
                             >
-                                Lihat Produk
+                                Jelajahi Semua Produk
+                                <i class="bi bi-arrow-right"></i>
                             </a>
-                            <form action="{{ route('wishlist.store', $product) }}" method="POST" class="mt-2">
-                                @csrf
-                                <button class="btn btn-outline-danger w-100">
-                                    <i class="bi bi-heart me-1"></i>
-                                    Wishlist
-                                </button>
-                            </form>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-lg-4 d-none d-lg-block text-center">
+
+                        <i
+                            class="bi bi-bag-check-fill"
+                            style="
+                                font-size: 9rem;
+                                color: var(--store-primary);
+                            "
+                        ></i>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    {{-- =========================================================
+         TRUST / SHOPPING BENEFITS
+    ========================================================== --}}
+    <section class="pb-5">
+
+        <div class="container">
+
+            <div class="row g-3">
+
+                <div class="col-6 col-lg-3">
+
+                    <div
+                        class="h-100 p-4 border rounded-3 bg-white"
+                    >
+                        <i
+                            class="bi bi-box-seam fs-2"
+                            style="color: var(--store-primary-dark);"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Produk Pilihan
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Produk dikelola melalui katalog
+                            MeiStore.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+
+                    <div
+                        class="h-100 p-4 border rounded-3 bg-white"
+                    >
+                        <i
+                            class="bi bi-cart-check fs-2"
+                            style="color: var(--store-primary-dark);"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Belanja Mudah
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Pilih produk, masukkan keranjang,
+                            lalu checkout.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+
+                    <div
+                        class="h-100 p-4 border rounded-3 bg-white"
+                    >
+                        <i
+                            class="bi bi-credit-card fs-2"
+                            style="color: var(--store-primary-dark);"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Pembayaran
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Dukungan proses pembayaran melalui
+                            sistem yang tersedia.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+
+                    <div
+                        class="h-100 p-4 border rounded-3 bg-white"
+                    >
+                        <i
+                            class="bi bi-shield-check fs-2"
+                            style="color: var(--store-primary-dark);"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Aman & Terpercaya
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Data dan proses belanja dikelola
+                            melalui aplikasi Laravel.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    {{-- =========================================================
+         SERVICE FEATURES
+    ========================================================== --}}
+    <section class="store-service-strip">
+        <div class="container">
+
+            <div class="row g-0">
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="store-service px-3">
+                        <span class="store-service-icon">
+                            <i class="bi bi-truck"></i>
+                        </span>
+
+                        <div>
+                            <strong>Pengiriman Aman</strong>
+                            <span>Pesanan dikirim dengan aman</span>
                         </div>
                     </div>
                 </div>
-            @empty
-                <div class="col-12">
-                    <div class="text-center py-5">
-                        <i class="bi bi-box-seam fs-1 text-muted"></i>
-                        <h4 class="mt-3">
-                            Belum ada produk
-                        </h4>
-                        <p class="text-muted">
-                            Produk akan muncul di sini setelah
-                            ditambahkan melalui admin.
-                        </p>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="store-service px-3">
+                        <span class="store-service-icon">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </span>
+
+                        <div>
+                            <strong>Pengembalian Mudah</strong>
+                            <span>Proses refund dan retur tersedia</span>
+                        </div>
                     </div>
                 </div>
-            @endforelse
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="store-service px-3">
+                        <span class="store-service-icon">
+                            <i class="bi bi-shield-check"></i>
+                        </span>
+
+                        <div>
+                            <strong>Pembayaran Aman</strong>
+                            <span>Transaksi diproses secara aman</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="store-service px-3">
+                        <span class="store-service-icon">
+                            <i class="bi bi-headset"></i>
+                        </span>
+
+                        <div>
+                            <strong>Customer Support</strong>
+                            <span>Siap membantu kebutuhan Anda</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </section>
 
-    {{-- CTA --}}
-    <section class="container pb-5">
-        <div class="bg-light rounded-4 p-4 p-md-5 text-center">
-            <i class="bi bi-stars fs-1 text-primary"></i>
-            <h2 class="fw-bold mt-3">
-                Siap menemukan produk favoritmu?
-            </h2>
-            <p class="text-muted">
-                Jelajahi seluruh koleksi produk MeiStore.
-            </p>
-            <a
-                href="{{ route('storefront.shop') }}"
-                class="btn btn-primary px-4"
-            >
-                Jelajahi Produk
-                <i class="bi bi-arrow-right ms-2"></i>
-            </a>
-        </div>
-    </section>
 @endsection
+
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        /*
+         * Add product to cart.
+         *
+         * This keeps the homepage compatible with
+         * the global cart badge defined by storefront.blade.php.
+         */
+        document.querySelectorAll(
+            '.store-add-to-cart-form'
+        ).forEach(function (form) {
+
+            form.addEventListener(
+                'submit',
+                async function (event) {
+
+                    event.preventDefault();
+
+                    const button =
+                        form.querySelector('button[type="submit"]');
+
+                    if (!button) {
+                        return;
+                    }
+
+                    const originalHtml =
+                        button.innerHTML;
+
+                    button.disabled = true;
+
+                    button.innerHTML = `
+                        <span
+                            class="spinner-border spinner-border-sm"
+                            aria-hidden="true"
+                        ></span>
+                        Menambahkan...
+                    `;
+
+                    try {
+
+                        const response =
+                            await fetch(
+                                form.action,
+                                {
+                                    method: 'POST',
+
+                                    headers: {
+                                        'X-CSRF-TOKEN':
+                                            document
+                                                .querySelector(
+                                                    'meta[name="csrf-token"]'
+                                                )
+                                                .getAttribute('content'),
+
+                                        'Accept':
+                                            'application/json',
+
+                                        'X-Requested-With':
+                                            'XMLHttpRequest'
+                                    },
+
+                                    body:
+                                        new FormData(form)
+                                }
+                            );
+
+
+                        const data =
+                            await response.json();
+
+
+                        if (!response.ok) {
+                            throw new Error(
+                                data.message ||
+                                'Produk gagal ditambahkan ke keranjang.'
+                            );
+                        }
+
+
+                        /*
+                         * Controller may return a cart count.
+                         */
+                        if (
+                            typeof data.cart_count !==
+                            'undefined'
+                        ) {
+                            window.updateCartBadge(
+                                data.cart_count
+                            );
+                        }
+
+
+                        window.showStoreNotification(
+                            data.message ||
+                            'Produk berhasil ditambahkan ke keranjang.',
+                            'success'
+                        );
+
+
+                    } catch (error) {
+
+                        /*
+                         * If the response is not JSON or
+                         * the endpoint behaves differently,
+                         * redirecting to the cart page is safer
+                         * than silently failing.
+                         */
+                        window.showStoreNotification(
+                            error.message ||
+                            'Terjadi kesalahan saat menambahkan produk.',
+                            'danger'
+                        );
+
+                    } finally {
+
+                        button.disabled = false;
+
+                        button.innerHTML =
+                            originalHtml;
+                    }
+
+                }
+            );
+
+        });
+
+    });
+</script>
+@endpush

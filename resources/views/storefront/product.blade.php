@@ -3,400 +3,1046 @@
 @section('title', $product->name . ' - MeiStore')
 
 @section('content')
-<section class="container py-4 py-lg-5">
-    {{-- Breadcrumb --}}
-    <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-                <a href="{{ route('storefront.home') }}">Home</a>
-            </li>
 
-            <li class="breadcrumb-item">
-                <a href="{{ route('storefront.shop') }}">Shop</a>
-            </li>
+{{-- =========================================================
+     BREADCRUMB
+========================================================= --}}
+<div class="store-breadcrumb">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
 
-            @if ($product->category)
                 <li class="breadcrumb-item">
-                    <a href="{{ route('storefront.category', $product->category->slug) }}">
-                        {{ $product->category->name }}
+                    <a href="{{ route('storefront.home') }}">
+                        <i class="bi bi-house me-1"></i>
+                        Home
                     </a>
                 </li>
-            @endif
-            <li class="breadcrumb-item active" aria-current="page">
-                {{ $product->name }}
-            </li>
-        </ol>
-    </nav>
 
+                <li class="breadcrumb-item">
+                    <a href="{{ route('storefront.shop') }}">
+                        Shop
+                    </a>
+                </li>
 
-    {{-- Product --}}
-    <div class="row g-4 g-lg-5">
-        {{-- Image --}}
-        <div class="col-lg-6">
-            <div class="product-detail-image-wrapper">
-                @if ($product->image)
-                    <img src="{{ $product->image }}" alt="{{ $product->name }}" class="product-detail-image">
-                @else
-                    <div class="product-detail-image-placeholder">
-                        <i class="bi bi-image"></i>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-
-        {{-- Information --}}
-        <div class="col-lg-6">
-            <div class="product-category mb-2">
-                {{ $product->category?->name ?? 'Tanpa kategori' }}
-                @if ($product->subCategory)
-                    <span class="mx-1">•</span>
-                    {{ $product->subCategory->name }}
-                @endif
-            </div>
-
-
-            <h1 class="display-6 fw-bold mb-3">
-                {{ $product->name }}
-            </h1>
-
-            <div class="mb-3">
-                @if ($product->reviews_count)
-                    <span class="text-warning">
-                        @for ($i = 1; $i <= 5; $i++)
-                            <i class="bi bi-star{{ $i <= round($product->reviews_avg_rating) ? '-fill' : '' }}"></i>
-                        @endfor
-                    </span>
-                    <strong>{{ number_format($product->reviews_avg_rating, 1) }}</strong>
-                    <span class="text-muted">({{ $product->reviews_count }} review)</span>
-                @else
-                    <span class="text-muted">Review unavailable</span>
-                @endif
-            </div>
-
-            <div class="product-detail-price mb-3">
-                Rp {{ number_format($product->price, 0, ',', '.') }}
-            </div>
-
-
-            {{-- Stock --}}
-            @if ($product->stock > 0)
-                <div class="alert alert-success d-inline-flex align-items-center py-2 px-3">
-                    <i class="bi bi-check-circle me-2"></i>
-                    Stok available: <strong class="ms-1">{{ $product->stock }}</strong>
-                </div>
-            @else
-                <div class="alert alert-danger d-inline-flex align-items-center py-2 px-3">
-                    <i class="bi bi-x-circle me-2"></i>
-                    Product is out of stock.
-                </div>
-            @endif
-
-
-            {{-- Description --}}
-            <div class="mt-4">
-                <h2 class="h5 fw-bold">Product Description</h2>
-                <div class="text-muted product-description">
-                    @if ($product->description)
-                        {!! nl2br(e($product->description)) !!}
-                    @else
-                        There is no product description yet.
-                    @endif
-                </div>
-            </div>
-
-            {{-- Add To Cart --}}
-            @if ($product->stock > 0)
-                @auth
-                    <form
-                        action="{{ route('cart.store') }}"
-                        method="POST"
-                        class="mt-4 add-to-cart-form"
-                    >
-                        @csrf
-
-                        <input
-                            type="hidden"
-                            name="product_id"
-                            value="{{ $product->id }}"
+                @if ($product->category)
+                    <li class="breadcrumb-item">
+                        <a
+                            href="{{ route(
+                                'storefront.category',
+                                $product->category->slug
+                            ) }}"
                         >
+                            {{ $product->category->name }}
+                        </a>
+                    </li>
+                @endif
 
-                        <div class="row g-2">
+                <li
+                    class="breadcrumb-item active"
+                    aria-current="page"
+                >
+                    {{ $product->name }}
+                </li>
 
-                            {{-- Quantity --}}
-                            <div class="col-4 col-sm-3">
-                                <label
-                                    for="quantity"
-                                    class="form-label fw-semibold"
-                                >
-                                    Quantity
-                                </label>
+            </ol>
+        </nav>
+    </div>
+</div>
 
-                                <input
-                                    type="number"
-                                    id="quantity"
-                                    name="quantity"
-                                    class="form-control add-to-cart-quantity"
-                                    value="1"
-                                    min="1"
-                                    max="{{ $product->stock }}"
-                                    required
-                                >
+
+{{-- =========================================================
+     PRODUCT DETAIL
+========================================================= --}}
+<section class="store-section pt-4 pt-lg-5">
+
+    <div class="container">
+
+        <div class="row g-4 g-lg-5">
+
+            {{-- =================================================
+                 PRODUCT IMAGE
+            ================================================== --}}
+            <div class="col-lg-6">
+
+                <div class="product-gallery">
+
+                    <div class="product-gallery-main">
+
+                        @if ($product->image)
+
+                            <img
+                                src="{{ $product->image }}"
+                                alt="{{ $product->name }}"
+                                class="product-gallery-image"
+                            >
+
+                        @else
+
+                            <div class="product-gallery-placeholder">
+                                <i class="bi bi-image"></i>
                             </div>
 
-                            {{-- Add To Cart --}}
-                            <div class="col">
-                                <label class="form-label d-block">
-                                    &nbsp;
-                                </label>
+                        @endif
 
-                                <button
-                                    type="submit"
-                                    class="btn btn-primary w-100 add-to-cart-button"
-                                >
-                                    <i class="bi bi-cart-plus me-2"></i>
-                                    Add to Cart
-                                </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {{-- =================================================
+                 PRODUCT INFORMATION
+            ================================================== --}}
+            <div class="col-lg-6">
+
+                {{-- Category --}}
+                <div class="store-product-detail-category">
+
+                    @if ($product->category)
+
+                        <a
+                            href="{{ route(
+                                'storefront.category',
+                                $product->category->slug
+                            ) }}"
+                        >
+                            {{ $product->category->name }}
+                        </a>
+
+                    @else
+                        Tanpa kategori
+                    @endif
+
+                    @if ($product->subCategory)
+
+                        <span class="mx-1">
+                            /
+                        </span>
+
+                        {{ $product->subCategory->name }}
+
+                    @endif
+
+                </div>
+
+
+                {{-- Product name --}}
+                <h1 class="store-product-detail-title">
+                    {{ $product->name }}
+                </h1>
+
+
+                {{-- Rating --}}
+                <div class="store-product-rating mb-3">
+
+                    @if ($product->reviews_count)
+
+                        <span class="store-rating-stars">
+
+                            @for ($i = 1; $i <= 5; $i++)
+
+                                <i
+                                    class="bi bi-star{{ $i <= round($product->reviews_avg_rating) ? '-fill' : '' }}"
+                                ></i>
+
+                            @endfor
+
+                        </span>
+
+                        <strong class="ms-2">
+                            {{ number_format(
+                                $product->reviews_avg_rating,
+                                1
+                            ) }}
+                        </strong>
+
+                        <a
+                            href="#reviews"
+                            class="text-muted ms-1"
+                        >
+                            {{ $product->reviews_count }}
+                            review
+                        </a>
+
+                    @else
+
+                        <span class="text-muted">
+                            Belum ada review
+                        </span>
+
+                    @endif
+
+                </div>
+
+
+                {{-- Price --}}
+                <div class="store-product-detail-price">
+                    Rp {{ number_format(
+                        $product->price,
+                        0,
+                        ',',
+                        '.'
+                    ) }}
+                </div>
+
+
+                {{-- Stock --}}
+                <div class="mt-3">
+
+                    @if ($product->stock > 0)
+
+                        <span class="store-stock-badge store-stock-available">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Stok tersedia
+                        </span>
+
+                        <span class="text-muted small ms-2">
+                            {{ $product->stock }} unit
+                        </span>
+
+                    @else
+
+                        <span class="store-stock-badge store-stock-empty">
+                            <i class="bi bi-x-circle me-1"></i>
+                            Stok habis
+                        </span>
+
+                    @endif
+
+                </div>
+
+
+                {{-- Description --}}
+                @if ($product->description)
+
+                    <div class="store-product-description mt-4">
+
+                        <h2>
+                            Deskripsi Produk
+                        </h2>
+
+                        <div>
+                            {!! nl2br(e($product->description)) !!}
+                        </div>
+
+                    </div>
+
+                @endif
+
+
+                {{-- =================================================
+                     PURCHASE AREA
+                ================================================== --}}
+                @if ($product->stock > 0)
+
+                    @auth
+
+                        <form
+                            action="{{ route('cart.store') }}"
+                            method="POST"
+                            class="add-to-cart-form mt-4"
+                        >
+
+                            @csrf
+
+                            <input
+                                type="hidden"
+                                name="product_id"
+                                value="{{ $product->id }}"
+                            >
+
+                            <div class="row g-2">
+
+                                {{-- Quantity --}}
+                                <div class="col-4 col-sm-3">
+
+                                    <label
+                                        for="quantity"
+                                        class="form-label fw-semibold"
+                                    >
+                                        Jumlah
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        id="quantity"
+                                        name="quantity"
+                                        value="1"
+                                        min="1"
+                                        max="{{ $product->stock }}"
+                                        class="form-control product-quantity"
+                                        required
+                                    >
+
+                                </div>
+
+
+                                {{-- Add cart --}}
+                                <div class="col">
+
+                                    <label class="form-label d-block">
+                                        &nbsp;
+                                    </label>
+
+                                    <button
+                                        type="submit"
+                                        class="store-add-cart add-to-cart-button"
+                                    >
+                                        <i class="bi bi-cart-plus"></i>
+                                        Tambah ke Keranjang
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </form>
+
+                    @else
+
+                        <div class="store-login-box mt-4">
+
+                            <div class="d-flex gap-3">
+
+                                <div class="store-login-box-icon">
+                                    <i class="bi bi-person-lock"></i>
+                                </div>
+
+                                <div>
+
+                                    <strong>
+                                        Login untuk membeli produk
+                                    </strong>
+
+                                    <p>
+                                        Silakan login terlebih dahulu
+                                        untuk menambahkan produk ke
+                                        keranjang.
+                                    </p>
+
+                                    <div class="d-flex gap-2 flex-wrap">
+
+                                        <a
+                                            href="{{ route('login') }}"
+                                            class="store-btn-primary"
+                                        >
+                                            Login
+                                        </a>
+
+                                        <a
+                                            href="{{ route('register') }}"
+                                            class="btn btn-outline-dark"
+                                        >
+                                            Daftar
+                                        </a>
+
+                                    </div>
+
+                                </div>
+
                             </div>
 
                         </div>
-                    </form>
+
+                    @endauth
+
                 @else
-                    <div class="alert alert-light border mt-4">
-                        <i class="bi bi-info-circle me-2"></i>
 
-                        Please login first to add products to your cart.
+                    <button
+                        type="button"
+                        class="btn btn-secondary w-100 mt-4"
+                        disabled
+                    >
+                        <i class="bi bi-x-circle me-2"></i>
+                        Produk sedang habis
+                    </button>
 
-                        <div class="mt-3">
+                @endif
+
+
+                {{-- =================================================
+                     WISHLIST / COMPARE
+                ================================================== --}}
+                @auth
+
+                    <div class="product-secondary-actions mt-3">
+
+                        <form
+                            action="{{ route(
+                                'wishlist.store',
+                                $product
+                            ) }}"
+                            method="POST"
+                        >
+
+                            @csrf
+
+                            <button
+                                type="submit"
+                                class="product-secondary-action"
+                            >
+                                <i class="bi bi-heart"></i>
+                                Wishlist
+                            </button>
+
+                        </form>
+
+
+                        <form
+                            action="{{ route(
+                                'compare.store',
+                                $product
+                            ) }}"
+                            method="POST"
+                        >
+
+                            @csrf
+
+                            <button
+                                type="submit"
+                                class="product-secondary-action"
+                            >
+                                <i class="bi bi-bar-chart"></i>
+                                Bandingkan
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                @endauth
+
+
+                {{-- Product information --}}
+                <div class="product-meta-list mt-4">
+
+                    <div>
+                        <span>Kategori</span>
+
+                        <strong>
+                            {{ $product->category?->name ?? '-' }}
+                        </strong>
+                    </div>
+
+                    @if ($product->subCategory)
+
+                        <div>
+                            <span>Subkategori</span>
+
+                            <strong>
+                                {{ $product->subCategory->name }}
+                            </strong>
+                        </div>
+
+                    @endif
+
+                    <div>
+                        <span>Ketersediaan</span>
+
+                        <strong>
+                            {{ $product->stock > 0
+                                ? 'Tersedia'
+                                : 'Habis' }}
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+{{-- =========================================================
+     REVIEWS
+========================================================= --}}
+<section
+    id="reviews"
+    class="store-section store-product-reviews"
+>
+
+    <div class="container">
+
+        <div class="store-section-header">
+
+            <div>
+                <h2 class="store-section-title">
+                    Review Produk
+                </h2>
+
+                <p class="store-section-subtitle">
+                    Pengalaman pelanggan setelah membeli produk ini.
+                </p>
+            </div>
+
+        </div>
+
+
+        <div class="row g-4">
+
+            {{-- =================================================
+                 REVIEW FORM
+            ================================================== --}}
+            <div class="col-lg-5">
+
+                @auth
+
+                    @php
+                        $myReview = $product->reviews
+                            ->firstWhere('user_id', auth()->id());
+
+                        $canReview = auth()->user()->orders()
+                            ->where('status', 'completed')
+                            ->whereHas(
+                                'items',
+                                fn ($q) => $q->where(
+                                    'product_id',
+                                    $product->id
+                                )
+                            )
+                            ->exists();
+                    @endphp
+
+
+                    @if ($myReview)
+
+                        <div class="review-form-card">
+
+                            <div class="review-form-header">
+
+                                <div>
+                                    <h3>
+                                        Review Anda
+                                    </h3>
+
+                                    <p>
+                                        Anda dapat memperbarui
+                                        review produk ini.
+                                    </p>
+                                </div>
+
+                                <i class="bi bi-pencil-square"></i>
+
+                            </div>
+
+                            <form
+                                action="{{ route(
+                                    'reviews.update',
+                                    $myReview
+                                ) }}"
+                                method="POST"
+                            >
+
+                                @csrf
+                                @method('PATCH')
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Rating
+                                </label>
+
+                                <select
+                                    name="rating"
+                                    class="form-select mb-3"
+                                    required
+                                >
+
+                                    @for ($i = 5; $i >= 1; $i--)
+
+                                        <option
+                                            value="{{ $i }}"
+                                            @selected(
+                                                $myReview->rating == $i
+                                            )
+                                        >
+                                            {{ $i }} Bintang
+                                        </option>
+
+                                    @endfor
+
+                                </select>
+
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Judul
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="title"
+                                    class="form-control mb-3"
+                                    value="{{ $myReview->title }}"
+                                    placeholder="Judul review"
+                                >
+
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Review
+                                </label>
+
+                                <textarea
+                                    name="comment"
+                                    class="form-control mb-3"
+                                    rows="4"
+                                    required
+                                >{{ $myReview->comment }}</textarea>
+
+
+                                <button
+                                    type="submit"
+                                    class="store-btn-primary w-100"
+                                >
+                                    <i class="bi bi-check2 me-1"></i>
+                                    Update Review
+                                </button>
+
+                            </form>
+
+
+                            <form
+                                action="{{ route(
+                                    'reviews.destroy',
+                                    $myReview
+                                ) }}"
+                                method="POST"
+                                class="mt-2"
+                            >
+
+                                @csrf
+                                @method('DELETE')
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-outline-danger btn-sm w-100"
+                                    onclick="return confirm('Hapus review ini?')"
+                                >
+                                    <i class="bi bi-trash me-1"></i>
+                                    Hapus Review
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    @elseif ($canReview)
+
+                        <div class="review-form-card">
+
+                            <div class="review-form-header">
+
+                                <div>
+                                    <h3>
+                                        Berikan Review
+                                    </h3>
+
+                                    <p>
+                                        Bagikan pengalaman Anda
+                                        mengenai produk ini.
+                                    </p>
+                                </div>
+
+                                <i class="bi bi-star"></i>
+
+                            </div>
+
+                            <form
+                                action="{{ route(
+                                    'reviews.store',
+                                    $product
+                                ) }}"
+                                method="POST"
+                            >
+
+                                @csrf
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Rating
+                                </label>
+
+                                <select
+                                    name="rating"
+                                    class="form-select mb-3"
+                                    required
+                                >
+
+                                    <option value="">
+                                        Pilih rating
+                                    </option>
+
+                                    @for ($i = 5; $i >= 1; $i--)
+
+                                        <option value="{{ $i }}">
+                                            {{ $i }} Bintang
+                                        </option>
+
+                                    @endfor
+
+                                </select>
+
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Judul
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="title"
+                                    class="form-control mb-3"
+                                    placeholder="Judul review"
+                                >
+
+
+                                <label
+                                    class="form-label fw-semibold"
+                                >
+                                    Review
+                                </label>
+
+                                <textarea
+                                    name="comment"
+                                    class="form-control mb-3"
+                                    rows="4"
+                                    placeholder="Bagaimana pengalaman Anda?"
+                                    required
+                                ></textarea>
+
+
+                                <button
+                                    type="submit"
+                                    class="store-btn-primary w-100"
+                                >
+                                    <i class="bi bi-send me-1"></i>
+                                    Kirim Review
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    @else
+
+                        <div class="review-info-card">
+
+                            <i class="bi bi-info-circle"></i>
+
+                            <div>
+
+                                <strong>
+                                    Review hanya untuk pembeli
+                                </strong>
+
+                                <p>
+                                    Anda dapat memberikan review
+                                    setelah membeli produk ini dan
+                                    pesanan berstatus
+                                    <strong>Completed</strong>.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    @endif
+
+                @else
+
+                    <div class="review-info-card">
+
+                        <i class="bi bi-person"></i>
+
+                        <div>
+
+                            <strong>
+                                Login untuk memberikan review
+                            </strong>
+
+                            <p>
+                                Silakan login terlebih dahulu
+                                untuk memberikan review.
+                            </p>
 
                             <a
                                 href="{{ route('login') }}"
-                                class="btn btn-primary"
+                                class="store-btn-primary"
                             >
                                 Login
                             </a>
 
-                            <a
-                                href="{{ route('register') }}"
-                                class="btn btn-outline-primary ms-2"
-                            >
-                                Sign Up
-                            </a>
-
                         </div>
+
                     </div>
+
                 @endauth
-            @else
-                <button
-                    type="button"
-                    class="btn btn-secondary w-100 mt-4"
-                    disabled
-                >
-                    <i class="bi bi-x-circle me-2"></i>
-                    Out of Stock
-                </button>
 
-            @endif
-        </div>
-    </div>
-
-    {{-- Product Compare --}}
-    <form action="{{ route('compare.store', $product) }}" method="POST" class="mt-2">
-        @csrf
-        <button class="btn btn-outline-secondary w-100">
-            <i class="bi bi-bar-chart me-1"></i>
-            Compare Product
-        </button>
-    </form>
-
-    {{-- Product Wishlist --}}
-    <form action="{{ route('wishlist.store', $product) }}" method="POST" class="mt-2">
-        @csrf
-        <button class="btn btn-outline-danger w-100">
-            <i class="bi bi-heart me-1"></i>
-            Add to Wishlist
-        </button>
-    </form>
-
-    {{-- Review Product --}}
-    <div id="review" class="mt-5 pt-5 border-top">
-        <h2 class="h4 fw-bold mb-4">Product Review</h2>
-        @auth
-            @php
-                $myReview = $product->reviews->firstWhere('user_id', auth()->id());
-                $canReview = auth()->user()->orders()
-                    ->where('status', 'completed')
-                    ->whereHas('items', fn ($q) => $q->where('product_id', $product->id))
-                    ->exists();
-            @endphp
-
-            @if ($myReview)
-                <div class="alert alert-light border">
-                    You have already given a review for this product
-                    Kamu sudah memberikan review untuk produk ini.
-                </div>
-
-                <form action="{{ route('reviews.update', $myReview) }}" method="POST" class="border rounded p-3 mb-4">
-                    @csrf
-                    @method('PATCH')
-
-                    <label class="form-label fw-semibold">Rating</label>
-                    <select name="rating" class="form-select mb-3" required>
-                        @for ($i = 5; $i >= 1; $i--)
-                            <option value="{{ $i }}" @selected($myReview->rating == $i)>
-                                {{ $i }} Star
-                            </option>
-                        @endfor
-                    </select>
-                    <input name="title" class="form-control mb-3" value="{{ $myReview->title }}" placeholder="Judul review">
-                    <textarea name="comment" class="form-control mb-3" rows="3" required>{{ $myReview->comment }}</textarea>
-                    <button class="btn btn-primary">Update Review</button>
-                </form>
-
-                <form action="{{ route('reviews.destroy', $myReview) }}" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this review?')">Delete Review</button>
-                </form>
-
-            @elseif ($canReview)
-                <form action="{{ route('reviews.store', $product) }}" method="POST"
-                    class="border rounded p-3 mb-4">
-                    @csrf
-
-                    <label class="form-label fw-semibold">Rating</label>
-
-                    <select name="rating" class="form-select mb-3" required>
-                        <option value="">Pilih rating</option>
-                        @for ($i = 5; $i >= 1; $i--)
-                            <option value="{{ $i }}">{{ $i }} Bintang</option>
-                        @endfor
-                    </select>
-
-                    <input name="title" class="form-control mb-3" placeholder="Review title">
-
-                    <textarea name="comment" class="form-control mb-3" rows="3" placeholder="How are your experience?" required></textarea>
-
-                    <button class="btn btn-primary">Submit Review</button>
-                </form>
-            @else
-                <div class="alert alert-light border">
-                    Review only available after you buy this product and order status <strong>Completed</strong>.
-                </div>
-            @endif
-        @else
-            <div class="alert alert-light border">
-                Please login to leave a review.
-            </div>
-        @endauth
-
-        @forelse ($product->reviews as $review)
-            <div class="border-bottom py-3">
-                <div class="d-flex justify-content-between">
-                    <strong>{{ $review->user->name }}</strong>
-
-                    @if ($review->is_verified)
-                        <span class="badge bg-success">
-                            Verified Purchase
-                        </span>
-                    @endif
-                </div>
-
-                <div class="text-warning my-1">
-                    @for ($i = 1; $i <= 5; $i++)
-                        <i class="bi bi-star{{ $i <= $review->rating ? '-fill' : '' }}"></i>
-                    @endfor
-                </div>
-
-                @if ($review->title)
-                    <strong>{{ $review->title }}</strong>
-                @endif
-
-                <p class="mb-1">{{ $review->comment }}</p>
-
-                <small class="text-muted">
-                    {{ $review->created_at->format('d M Y') }}
-                </small>
-            </div>
-        @empty
-            <p class="text-muted">Rewiew unavailable for this product.</p>
-        @endforelse
-    </div>
-
-    {{-- Related Products --}}
-    @if ($relatedProducts->isNotEmpty())
-        <div class="mt-5 pt-5 border-top">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="section-title mb-1">
-                        Related Product
-                    </h2>
-                    <p class="text-muted mb-0">
-                        Other products from the same category.
-                    </p>
-                </div>
-                @if ($product->category)
-                    <a
-                        href="{{ route('storefront.category', $product->category->slug) }}"
-                        class="section-link"
-                    >
-                        See all
-                        <i class="bi bi-arrow-right"></i>
-                    </a>
-                @endif
             </div>
 
-            <div class="row g-4">
-                @foreach ($relatedProducts as $relatedProduct)
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <div class="product-card">
-                            {{-- Product Image --}}
-                            <a
-                                href="{{ route(
-                                    'storefront.product',
-                                    $relatedProduct->slug
-                                ) }}"
-                            >
-                                @if ($relatedProduct->image)
-                                    <img
-                                        src="{{ $relatedProduct->image }}"
-                                        alt="{{ $relatedProduct->name }}"
-                                        class="product-image"
-                                        loading="lazy"
-                                    >
-                                @else
-                                    <div
-                                        class="product-image d-flex align-items-center justify-content-center"
-                                    >
-                                        <i
-                                            class="bi bi-image fs-1 text-secondary"
-                                        ></i>
+
+            {{-- =================================================
+                 REVIEW LIST
+            ================================================== --}}
+            <div class="col-lg-7">
+
+                <div class="review-list">
+
+                    @forelse ($product->reviews as $review)
+
+                        <article class="review-item">
+
+                            <div class="d-flex justify-content-between gap-3">
+
+                                <div>
+
+                                    <strong class="review-author">
+                                        {{ $review->user->name }}
+                                    </strong>
+
+                                    <div class="store-rating-stars mt-1">
+
+                                        @for ($i = 1; $i <= 5; $i++)
+
+                                            <i
+                                                class="bi bi-star{{ $i <= $review->rating ? '-fill' : '' }}"
+                                            ></i>
+
+                                        @endfor
+
                                     </div>
 
-                                @endif
-                            </a>
-
-                            {{-- Product Body --}}
-                            <div class="product-body">
-                                {{-- Category --}}
-                                <div class="product-category">
-                                    {{ $relatedProduct->category?->name ?? 'Tanpa kategori' }}
                                 </div>
 
-                                {{-- Product Name --}}
+
+                                @if ($review->is_verified)
+
+                                    <span class="review-verified">
+                                        <i class="bi bi-patch-check-fill me-1"></i>
+                                        Verified Purchase
+                                    </span>
+
+                                @endif
+
+                            </div>
+
+
+                            @if ($review->title)
+
+                                <h3 class="review-title">
+                                    {{ $review->title }}
+                                </h3>
+
+                            @endif
+
+
+                            <p class="review-comment">
+                                {{ $review->comment }}
+                            </p>
+
+
+                            <small class="review-date">
+                                {{ $review->created_at->format('d M Y') }}
+                            </small>
+
+                        </article>
+
+                    @empty
+
+                        <div class="review-empty">
+
+                            <i class="bi bi-chat-square-text"></i>
+
+                            <h3>
+                                Belum ada review
+                            </h3>
+
+                            <p>
+                                Jadilah pelanggan pertama yang
+                                memberikan review untuk produk ini.
+                            </p>
+
+                        </div>
+
+                    @endforelse
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+{{-- =========================================================
+     RELATED PRODUCTS
+========================================================= --}}
+@if ($relatedProducts->isNotEmpty())
+
+    <section class="store-section pt-0">
+
+        <div class="container">
+
+            <div class="store-section-header">
+
+                <div>
+
+                    <h2 class="store-section-title">
+                        Produk Terkait
+                    </h2>
+
+                    <p class="store-section-subtitle">
+                        Produk lain dari kategori yang sama.
+                    </p>
+
+                </div>
+
+                @if ($product->category)
+
+                    <a
+                        href="{{ route(
+                            'storefront.category',
+                            $product->category->slug
+                        ) }}"
+                        class="store-section-link"
+                    >
+                        Lihat semua
+                        <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+
+                @endif
+
+            </div>
+
+
+            <div class="row g-3 g-lg-4">
+
+                @foreach ($relatedProducts as $relatedProduct)
+
+                    <div class="col-6 col-md-4 col-lg-3">
+
+                        <article class="store-product-card">
+
+                            {{-- Image --}}
+                            <div class="store-product-image-wrap">
+
                                 <a
                                     href="{{ route(
                                         'storefront.product',
                                         $relatedProduct->slug
                                     ) }}"
                                 >
-                                    <h3 class="product-name">
-                                        {{ $relatedProduct->name }}
-                                    </h3>
+
+                                    @if ($relatedProduct->image)
+
+                                        <img
+                                            src="{{ $relatedProduct->image }}"
+                                            alt="{{ $relatedProduct->name }}"
+                                            class="store-product-image"
+                                            loading="lazy"
+                                        >
+
+                                    @else
+
+                                        <div class="store-product-placeholder">
+                                            <i class="bi bi-image"></i>
+                                        </div>
+
+                                    @endif
+
                                 </a>
 
-                                {{-- Price --}}
-                                <div class="product-price">
+
+                                {{-- Actions --}}
+                                @auth
+
+                                    <div class="store-product-actions">
+
+                                        <form
+                                            action="{{ route(
+                                                'wishlist.store',
+                                                $relatedProduct
+                                            ) }}"
+                                            method="POST"
+                                        >
+
+                                            @csrf
+
+                                            <button
+                                                type="submit"
+                                                class="store-product-action"
+                                                title="Wishlist"
+                                            >
+                                                <i class="bi bi-heart"></i>
+                                            </button>
+
+                                        </form>
+
+
+                                        <form
+                                            action="{{ route(
+                                                'compare.store',
+                                                $relatedProduct
+                                            ) }}"
+                                            method="POST"
+                                        >
+
+                                            @csrf
+
+                                            <button
+                                                type="submit"
+                                                class="store-product-action"
+                                                title="Compare"
+                                            >
+                                                <i class="bi bi-bar-chart"></i>
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                @endauth
+
+                            </div>
+
+
+                            {{-- Body --}}
+                            <div class="store-product-body">
+
+                                <div class="store-product-category">
+                                    {{ $relatedProduct->category?->name ?? 'Tanpa kategori' }}
+                                </div>
+
+
+                                <a
+                                    href="{{ route(
+                                        'storefront.product',
+                                        $relatedProduct->slug
+                                    ) }}"
+                                >
+
+                                    <h3 class="store-product-name">
+                                        {{ $relatedProduct->name }}
+                                    </h3>
+
+                                </a>
+
+
+                                <div class="store-product-price">
                                     Rp {{ number_format(
                                         $relatedProduct->price,
                                         0,
@@ -405,27 +1051,37 @@
                                     ) }}
                                 </div>
 
-                                {{-- Stock --}}
-                                <div class="product-stock mt-1">
+
+                                <div class="store-product-stock">
+
                                     @if ($relatedProduct->stock > 0)
+
                                         <i class="bi bi-check-circle text-success"></i>
-                                        Stock {{ $relatedProduct->stock }}
+                                        {{ $relatedProduct->stock }} tersedia
+
                                     @else
+
                                         <i class="bi bi-x-circle text-danger"></i>
-                                        Out of stock
+                                        Stok habis
+
                                     @endif
+
                                 </div>
 
 
-                                {{-- Add To Cart --}}
+                                {{-- Cart --}}
                                 @if ($relatedProduct->stock > 0)
+
                                     @auth
+
                                         <form
                                             action="{{ route('cart.store') }}"
                                             method="POST"
-                                            class="mt-3 add-to-cart-form"
+                                            class="add-to-cart-form store-product-footer"
                                         >
+
                                             @csrf
+
                                             <input
                                                 type="hidden"
                                                 name="product_id"
@@ -440,121 +1096,555 @@
 
                                             <button
                                                 type="submit"
-                                                class="btn btn-primary w-100 add-to-cart-button"
+                                                class="store-add-cart add-to-cart-button"
                                             >
-                                                <i class="bi bi-cart-plus me-1"></i>
-                                                Add to Cart
+                                                <i class="bi bi-cart-plus"></i>
+                                                Tambah
                                             </button>
+
                                         </form>
+
                                     @else
+
                                         <a
                                             href="{{ route('login') }}"
-                                            class="btn btn-primary w-100 mt-3"
+                                            class="store-add-cart store-product-footer"
                                         >
-                                            <i class="bi bi-cart-plus me-1"></i>
-                                            Login to Add Cart
+                                            <i class="bi bi-person"></i>
+                                            Login untuk membeli
                                         </a>
+
                                     @endauth
+
                                 @else
+
                                     <button
                                         type="button"
                                         class="btn btn-secondary w-100 mt-3"
                                         disabled
                                     >
-                                        <i class="bi bi-x-circle me-1"></i>
-                                        Out of Stock
+                                        Stok habis
                                     </button>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    @endif
 
-</section>
+                                @endif
+
+                            </div>
+
+                        </article>
+
+                    </div>
+
+                @endforeach
+
+            </div>
+
+        </div>
+
+    </section>
+
+@endif
+
 @endsection
 
+
+{{-- =========================================================
+     PAGE STYLES
+========================================================= --}}
 @push('styles')
 <style>
-    .product-detail-image-wrapper {
-        background: #f8f9fa;
-        border: 1px solid #e5e7eb;
-        border-radius: 1.25rem;
+
+    /* =========================================================
+       PRODUCT GALLERY
+    ========================================================== */
+
+    .product-gallery-main {
         overflow: hidden;
-        min-height: 450px;
+
+        border: 1px solid var(--store-border);
+        border-radius: var(--store-radius);
+
+        background: var(--store-light);
     }
 
-    .product-detail-image {
+    .product-gallery-image {
         width: 100%;
-        height: 520px;
-        object-fit: cover;
+        height: 560px;
+
         display: block;
+
+        object-fit: cover;
     }
 
-    .product-detail-image-placeholder {
-        height: 520px;
+    .product-gallery-placeholder {
+        height: 560px;
+
         display: flex;
         align-items: center;
         justify-content: center;
+
         color: #adb5bd;
+
         font-size: 5rem;
     }
 
-    .product-detail-price {
-        color: #0d6efd;
+
+    /* =========================================================
+       PRODUCT INFORMATION
+    ========================================================== */
+
+    .store-product-detail-category {
+        color: var(--store-muted);
+
+        font-size: .8rem;
+        font-weight: 700;
+
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .store-product-detail-category a {
+        color: var(--store-primary-dark);
+    }
+
+    .store-product-detail-category a:hover {
+        color: var(--store-dark);
+    }
+
+    .store-product-detail-title {
+        margin: .6rem 0 1rem;
+
+        color: var(--store-dark);
+
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        font-weight: 900;
+        line-height: 1.12;
+        letter-spacing: -.035em;
+    }
+
+    .store-product-rating {
+        display: flex;
+        align-items: center;
+
+        flex-wrap: wrap;
+
+        color: var(--store-muted);
+
+        font-size: .86rem;
+    }
+
+    .store-rating-stars {
+        color: var(--store-primary-dark);
+        letter-spacing: 1px;
+    }
+
+    .store-product-detail-price {
+        color: var(--store-dark);
+
         font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -.025em;
+    }
+
+
+    /* =========================================================
+       STOCK
+    ========================================================== */
+
+    .store-stock-badge {
+        display: inline-flex;
+        align-items: center;
+
+        padding: .45rem .75rem;
+
+        border-radius: 4px;
+
+        font-size: .8rem;
+        font-weight: 700;
+    }
+
+    .store-stock-available {
+        background: #eaf7ef;
+        color: #198754;
+    }
+
+    .store-stock-empty {
+        background: #fcebea;
+        color: var(--store-danger);
+    }
+
+
+    /* =========================================================
+       DESCRIPTION
+    ========================================================== */
+
+    .store-product-description {
+        padding-top: 1.25rem;
+
+        border-top: 1px solid var(--store-border);
+    }
+
+    .store-product-description h2 {
+        margin-bottom: .75rem;
+
+        color: var(--store-dark);
+
+        font-size: 1rem;
         font-weight: 800;
     }
 
-    .product-description {
+    .store-product-description > div {
+        color: var(--store-muted);
+
         line-height: 1.8;
     }
 
+
+    /* =========================================================
+       LOGIN BOX
+    ========================================================== */
+
+    .store-login-box {
+        padding: 1rem;
+
+        border: 1px solid var(--store-border);
+        border-radius: var(--store-radius);
+
+        background: var(--store-light);
+    }
+
+    .store-login-box-icon {
+        width: 42px;
+        height: 42px;
+
+        flex: 0 0 auto;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 50%;
+
+        background: #fff7d6;
+        color: var(--store-primary-dark);
+
+        font-size: 1.2rem;
+    }
+
+    .store-login-box strong {
+        color: var(--store-dark);
+    }
+
+    .store-login-box p {
+        margin: .35rem 0 .8rem;
+
+        color: var(--store-muted);
+
+        font-size: .85rem;
+    }
+
+
+    /* =========================================================
+       SECONDARY ACTIONS
+    ========================================================== */
+
+    .product-secondary-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .65rem;
+    }
+
+    .product-secondary-actions form {
+        flex: 1 1 180px;
+    }
+
+    .product-secondary-action {
+        width: 100%;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+
+        padding: .65rem .8rem;
+
+        border: 1px solid var(--store-border);
+        border-radius: 4px;
+
+        background: #fff;
+        color: var(--store-dark);
+
+        font-size: .84rem;
+        font-weight: 700;
+    }
+
+    .product-secondary-action:hover {
+        border-color: var(--store-primary);
+        background: #fffaf0;
+    }
+
+
+    /* =========================================================
+       PRODUCT META
+    ========================================================== */
+
+    .product-meta-list {
+        border-top: 1px solid var(--store-border);
+    }
+
+    .product-meta-list > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+
+        padding: .75rem 0;
+
+        border-bottom: 1px solid var(--store-border);
+
+        font-size: .84rem;
+    }
+
+    .product-meta-list span {
+        color: var(--store-muted);
+    }
+
+    .product-meta-list strong {
+        color: var(--store-dark);
+        text-align: right;
+    }
+
+
+    /* =========================================================
+       REVIEW
+    ========================================================== */
+
+    .store-product-reviews {
+        background: var(--store-light);
+    }
+
+    .review-form-card {
+        padding: 1.25rem;
+
+        border: 1px solid var(--store-border);
+        border-radius: var(--store-radius);
+
+        background: #fff;
+    }
+
+    .review-form-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+
+        margin-bottom: 1.25rem;
+    }
+
+    .review-form-header h3 {
+        margin: 0;
+
+        color: var(--store-dark);
+
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .review-form-header p {
+        margin: .3rem 0 0;
+
+        color: var(--store-muted);
+
+        font-size: .8rem;
+    }
+
+    .review-form-header > i {
+        color: var(--store-primary-dark);
+
+        font-size: 1.5rem;
+    }
+
+    .review-info-card {
+        display: flex;
+        gap: 1rem;
+
+        padding: 1.25rem;
+
+        border: 1px solid var(--store-border);
+        border-radius: var(--store-radius);
+
+        background: #fff;
+    }
+
+    .review-info-card > i {
+        color: var(--store-primary-dark);
+        font-size: 1.5rem;
+    }
+
+    .review-info-card strong {
+        color: var(--store-dark);
+    }
+
+    .review-info-card p {
+        margin: .4rem 0 1rem;
+
+        color: var(--store-muted);
+
+        font-size: .84rem;
+        line-height: 1.6;
+    }
+
+    .review-list {
+        overflow: hidden;
+
+        border: 1px solid var(--store-border);
+        border-radius: var(--store-radius);
+
+        background: #fff;
+    }
+
+    .review-item {
+        padding: 1.25rem;
+
+        border-bottom: 1px solid var(--store-border);
+    }
+
+    .review-item:last-child {
+        border-bottom: 0;
+    }
+
+    .review-author {
+        color: var(--store-dark);
+
+        font-size: .9rem;
+    }
+
+    .review-verified {
+        color: #198754;
+
+        font-size: .72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .review-title {
+        margin: .8rem 0 .35rem;
+
+        color: var(--store-dark);
+
+        font-size: .95rem;
+        font-weight: 800;
+    }
+
+    .review-comment {
+        margin: .4rem 0;
+
+        color: #555;
+
+        font-size: .86rem;
+        line-height: 1.7;
+    }
+
+    .review-date {
+        color: var(--store-muted);
+    }
+
+    .review-empty {
+        padding: 3rem 1.5rem;
+
+        color: var(--store-muted);
+
+        text-align: center;
+    }
+
+    .review-empty > i {
+        font-size: 2.5rem;
+    }
+
+    .review-empty h3 {
+        margin: 1rem 0 .35rem;
+
+        color: var(--store-dark);
+
+        font-size: 1rem;
+    }
+
+    .review-empty p {
+        margin: 0;
+
+        font-size: .84rem;
+    }
+
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================== */
+
+    @media (max-width: 991.98px) {
+
+        .product-gallery-image,
+        .product-gallery-placeholder {
+            height: 450px;
+        }
+
+    }
+
     @media (max-width: 767.98px) {
-        .product-detail-image-wrapper {
-            min-height: 300px;
+
+        .product-gallery-image,
+        .product-gallery-placeholder {
+            height: 330px;
         }
 
-        .product-detail-image,
-        .product-detail-image-placeholder {
-            height: 320px;
+        .store-product-detail-title {
+            font-size: 1.8rem;
         }
 
-        .product-detail-price {
+        .store-product-detail-price {
             font-size: 1.6rem;
         }
+
+        .product-meta-list > div {
+            align-items: flex-start;
+        }
+
+        .review-item {
+            padding: 1rem;
+        }
+
+        .review-verified {
+            font-size: .65rem;
+        }
+
     }
+
 </style>
 @endpush
 
+
+{{-- =========================================================
+     PAGE SCRIPTS
+========================================================= --}}
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    /*
-    |-------------------------------------------------------------    | Add To Cart AJAX
-    |------------------------------------------------------------
-    */
-
-    const forms = document.querySelectorAll('.add-to-cart-form');
+    const forms = document.querySelectorAll(
+        '.add-to-cart-form'
+    );
 
     forms.forEach(function (form) {
+
         form.addEventListener('submit', async function (event) {
+
             event.preventDefault();
-            const button = form.querySelector('.add-to-cart-button');
+
+            const button =
+                form.querySelector('.add-to-cart-button');
 
             if (!button) {
                 return;
             }
 
-            const originalHtml = button.innerHTML;
-
-            /*
-            |-----------------------------------------------------            | Disable Button
-            |----------------------------------------------------
-            */
+            const originalHtml =
+                button.innerHTML;
 
             button.disabled = true;
 
@@ -564,181 +1654,94 @@ document.addEventListener('DOMContentLoaded', function () {
                     role="status"
                     aria-hidden="true"
                 ></span>
-
-                Adding...
+                Menambahkan...
             `;
 
             try {
-
-                /*
-                |-------------------------------------------------                | Send AJAX Request
-                |------------------------------------------------
-                */
 
                 const response = await fetch(
                     form.action,
                     {
                         method: 'POST',
+
                         headers: {
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-CSRF-TOKEN':
+                                document
+                                    .querySelector(
+                                        'meta[name="csrf-token"]'
+                                    )
+                                    .getAttribute('content')
                         },
 
-                        body: new FormData(form),
+                        body: new FormData(form)
                     }
                 );
 
+                const data =
+                    await response.json();
 
-                /*
-                |-------------------------------------------------                | Parse Response
-                |-------------------------------------------------                */
-
-                const data = await response.json();
-
-
-                /*
-                |-------------------------------------------------                | Handle Error
-                |------------------------------------------------
-                */
-
-                if (!response.ok || !data.success) {
-                    throw new Error(data.message || 'Gagal menambahkan produk ke keranjang.');
+                if (
+                    !response.ok ||
+                    !data.success
+                ) {
+                    throw new Error(
+                        data.message ||
+                        'Gagal menambahkan produk ke keranjang.'
+                    );
                 }
 
 
                 /*
-                |-------------------------------------------------                | Update Cart Badge
-                |-------------------------------------------------                */
+                 * Use global storefront helper
+                 * provided by layouts.storefront.
+                 */
+                if (
+                    typeof window.updateCartBadge ===
+                    'function'
+                ) {
+                    window.updateCartBadge(
+                        data.cart_count
+                    );
+                }
 
-                updateCartBadge(
-                    data.cart_count
-                );
 
+                if (
+                    typeof window.showStoreNotification ===
+                    'function'
+                ) {
+                    window.showStoreNotification(
+                        data.message ||
+                        'Produk berhasil ditambahkan ke keranjang.',
+                        'success'
+                    );
+                }
 
-                /*
-                |-------------------------------------------------                | Show Notification
-                |-------------------------------------------------                */
-                showCartNotification(
-                    data.message,
-                    'success'
-                );
             } catch (error) {
-                showCartNotification(
-                    error.message ||
-                    'Terjadi kesalahan.',
-                    'danger'
-                );
+
+                if (
+                    typeof window.showStoreNotification ===
+                    'function'
+                ) {
+                    window.showStoreNotification(
+                        error.message ||
+                        'Terjadi kesalahan.',
+                        'danger'
+                    );
+                }
+
             } finally {
 
-                /*
-                |------------------------------------------------
-                | Restore Button
-                |------------------------------------------------
-                */
                 button.disabled = false;
                 button.innerHTML = originalHtml;
+
             }
+
         });
+
     });
 
-
-    /*
-    |-------------------------------------------------------------    | Update Cart Badge
-    |------------------------------------------------------------
-    */
-
-    function updateCartBadge(count) {
-        const badge = document.getElementById('cart-count-badge');
-        if (!badge) {
-            return;
-        }
-
-        const cartCount = Number(count) || 0;
-        badge.textContent = cartCount;
-
-        if (cartCount > 0) {
-            badge.classList.remove('d-none');
-        } else {
-            badge.classList.add('d-none');
-        }
-    }
-
-
-    /*
-    |-------------------------------------------------------------    | Cart Notification
-    |-------------------------------------------------------------    */
-
-    function showCartNotification(message, type) {
-
-        let container = document.getElementById('cart-notification-container');
-
-        /*
-        |---------------------------------------------------------        | Create Container
-        |---------------------------------------------------------        */
-
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'cart-notification-container';
-            container.className = 'position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '1080';
-            document.body.appendChild(container);
-        }
-
-
-        /*
-        |---------------------------------------------------------        | Create Alert
-        |---------------------------------------------------------        */
-
-        const alert = document.createElement('div');
-
-        alert.className = `alert alert-${type} alert-dismissible fade show shadow-sm`;
-
-
-        alert.setAttribute(
-            'role',
-            'alert'
-        );
-
-
-        const icon = type === 'success' ? 'check-circle' : 'exclamation-circle';
-
-        alert.innerHTML = `
-            <i class="bi bi-${icon} me-2"></i>
-
-            ${message}
-
-            <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="alert"
-                aria-label="Close"
-            ></button>
-        `;
-
-        container.appendChild(
-            alert
-        );
-
-        /*
-        |--------------------------------------------------------
-        | Auto Remove
-        |--------------------------------------------------------
-        */
-        setTimeout(function () {
-            if (!alert) {
-                return;
-            }
-
-            alert.classList.remove(
-                'show'
-            );
-
-            setTimeout(function () {
-                alert.remove();
-            }, 150);
-        }, 3000);
-    }
 });
 </script>
 @endpush

@@ -89,10 +89,10 @@
                                         </a> -->
 
                                         <button
-                                            type="submit"
+                                            type="button"
                                             class="btn btn-sm btn-secondary"
-                                            title="Delete"
-                                            onclick="window.location.href='{{ route('admin.products.edit', $product) }}"
+                                            title="Edit"
+                                            onclick="window.location.href='{{ route('admin.products.edit', $product) }}'"
                                         >
                                             <em class="ni ni-edit"></em>
                                         </button>

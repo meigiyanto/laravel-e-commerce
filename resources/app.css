@@ -1,6 +1,3 @@
-@import "bootstrap/dist/css/bootstrap.min.css";
-@import "bootstrap-icons/font/bootstrap-icons.min.css";
-
 :root {
     --store-primary: #fcb800;
     --store-primary-dark: #e5a800;
@@ -55,8 +52,9 @@ img {
     max-width: 100%;
 }
 
-/* ========================================================   TOP BAR
-======================================================== */
+/* =========================================================
+   TOP BAR
+========================================================= */
 
 .store-topbar {
     background: var(--store-dark);

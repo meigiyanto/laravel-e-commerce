@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-
 // use app\Services\RefundService;
 
 class OrderController extends Controller
@@ -19,10 +18,7 @@ class OrderController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view(
-            'orders.index',
-            compact('orders')
-        );
+        return view('storefront.orders.index', compact('orders'));
     }
 
     /**
@@ -76,9 +72,7 @@ class OrderController extends Controller
             ]);
         }
 
-        return view(
-            'orders.show',
-            compact('order')
+        return view('storefront.orders.show', compact('order')
         );
     }
 }
