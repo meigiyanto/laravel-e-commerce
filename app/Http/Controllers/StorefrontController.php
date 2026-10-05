@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
-use Illuminate\Http\Request;
 use App\Services\Storefront\ProductFilter;
+use Illuminate\Http\Request;
 
 class StorefrontController extends Controller
 {
@@ -24,6 +24,8 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->latest()
             ->take(8)
             ->get();
@@ -39,7 +41,9 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
-        ]);
+        ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews');
 
         $this->productFilter->apply(
             $query,
@@ -51,7 +55,9 @@ class StorefrontController extends Controller
             ->withQueryString();
 
         $categories = Category::with([
-            'subCategories',
+            'subCategories' => function ($query) {
+                $query->orderBy('name');
+            },
         ])
             ->orderBy('name')
             ->get();
@@ -82,13 +88,21 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->where('id', '!=', $product->id)
             ->where('category_id', $product->category_id)
             ->latest()
             ->take(4)
             ->get();
 
-        return view('storefront.product', compact('product','relatedProducts'));
+        return view(
+            'storefront.product',
+            compact(
+                'product',
+                'relatedProducts'
+            )
+        );
     }
 
     public function category(
@@ -104,6 +118,8 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->where(
                 'category_id',
                 $category->id

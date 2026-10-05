@@ -11,10 +11,26 @@ class ProductFilter
         Builder $query,
         Request $request
     ): Builder {
-        $this->search($query, $request->input('q'));
-        $this->category($query, $request->input('category'));
-        $this->subCategory($query, $request->input('subcategory'));
-        $this->sort($query, $request->input('sort'));
+        $this->search(
+            $query,
+            $request->input('q')
+        );
+
+        $this->category(
+            $query,
+            $request->input('category')
+        );
+
+        $this->subCategory(
+            $query,
+            $request->input('subcategory'),
+            $request->input('category')
+        );
+
+        $this->sort(
+            $query,
+            $request->input('sort')
+        );
 
         return $query;
     }
@@ -59,18 +75,39 @@ class ProductFilter
 
     private function subCategory(
         Builder $query,
-        mixed $value
+        mixed $subCategoryValue,
+        mixed $categoryValue
     ): void {
-        $slug = trim((string) $value);
+        $subCategorySlug = trim((string) $subCategoryValue);
+        $categorySlug = trim((string) $categoryValue);
 
-        if ($slug === '') {
+        if ($subCategorySlug === '') {
             return;
         }
 
-        $query->whereRelation(
+        /*
+         * Jika kategori dipilih, subkategori wajib
+         * berasal dari kategori tersebut.
+         */
+        $query->whereHas(
             'subCategory',
-            'slug',
-            $slug
+            function (Builder $subCategoryQuery) use (
+                $subCategorySlug,
+                $categorySlug
+            ) {
+                $subCategoryQuery->where(
+                    'slug',
+                    $subCategorySlug
+                );
+
+                if ($categorySlug !== '') {
+                    $subCategoryQuery->whereRelation(
+                        'category',
+                        'slug',
+                        $categorySlug
+                    );
+                }
+            }
         );
     }
 
@@ -79,7 +116,8 @@ class ProductFilter
         mixed $value
     ): void {
         match ((string) $value) {
-            'oldest' => $query->oldest(),
+            'oldest' => $query
+                ->oldest(),
 
             'price_low' => $query
                 ->orderBy('price')
@@ -97,7 +135,8 @@ class ProductFilter
                 ->orderByDesc('name')
                 ->orderByDesc('id'),
 
-            default => $query->latest(),
+            default => $query
+                ->latest(),
         };
     }
 }
