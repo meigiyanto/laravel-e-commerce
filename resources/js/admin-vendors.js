@@ -14,7 +14,10 @@ await import('slick-carousel');
 await import('simplebar');
 await import('sweetalert2');
 await import('toastr');
-await import('clipboard');
+// await import('clipboard');
+const ClipboardJS = (await import('clipboard')).default;
+window.ClipboardJS = ClipboardJS;
+
 await import('nouislider');
 await import('magnific-popup');
 

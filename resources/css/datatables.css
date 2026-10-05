@@ -3,7 +3,7 @@
    Shared admin table styling
    ========================================================= */
 
-.dataTables_wrapper {
+.dt-container {
     width: 100%;
 }
 
@@ -13,7 +13,7 @@
 |--------------------------------------------------------------------------
 */
 
-.dataTables_wrapper .dt-layout-row {
+.dt-container .dt-layout-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -22,12 +22,12 @@
     margin-bottom: 1rem;
 }
 
-.dataTables_wrapper .dt-layout-row:last-child {
+.dt-container .dt-layout-row:last-child {
     margin-top: 1rem;
     margin-bottom: 0;
 }
 
-.dataTables_wrapper .dt-layout-cell {
+.dt-container .dt-layout-cell {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -39,17 +39,17 @@
 |--------------------------------------------------------------------------
 */
 
-.dataTables_wrapper .dt-search {
+.dt-container .dt-search {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.dataTables_wrapper .dt-search label {
+.dt-container .dt-search label {
     display: none;
 }
 
-.dataTables_wrapper .dt-search input {
+.dt-container .dt-search input {
     min-width: 240px;
     min-height: 38px;
 
@@ -62,7 +62,7 @@
     padding: 0.375rem 0.75rem;
 }
 
-.dataTables_wrapper .dt-search input:focus {
+.dt-container .dt-search input:focus {
     border-color: #6576ff;
     outline: 0;
 
@@ -76,13 +76,13 @@
 |--------------------------------------------------------------------------
 */
 
-.dataTables_wrapper .dt-length {
+.dt-container .dt-length {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.dataTables_wrapper .dt-length select {
+.dt-container .dt-length select {
     min-height: 38px;
 
     border: 1px solid #dbdfea;
@@ -94,7 +94,7 @@
     padding: 0.375rem 2rem 0.375rem 0.75rem;
 }
 
-.dataTables_wrapper .dt-length select:focus {
+.dt-container .dt-length select:focus {
     border-color: #6576ff;
     outline: 0;
 
@@ -108,7 +108,7 @@
 |--------------------------------------------------------------------------
 */
 
-.dataTables_wrapper .dt-layout-table {
+.dt-container .dt-layout-table {
     width: 100%;
     overflow-x: auto;
 }
@@ -132,7 +132,7 @@
 |--------------------------------------------------------------------------
 */
 
-.dataTables_wrapper .dt-info {
+.dt-container .dt-info {
     color: #8091a7;
     font-size: 0.875rem;
 }
@@ -142,46 +142,103 @@
 | Pagination
 |--------------------------------------------------------------------------
 */
+/*
+|--------------------------------------------------------------------------
+| Pagination
+|--------------------------------------------------------------------------
+*/
 
-.dataTables_wrapper .dt-paging {
-    display: flex;
+.dt-container .dt-paging {
+    display: flex !important;
     align-items: center;
-    gap: 0.25rem;
 }
 
-.dataTables_wrapper .dt-paging .dt-paging-button {
-    min-width: 36px;
-    min-height: 36px;
+.dt-container .dt-paging nav {
+    display: inline-flex;
+    align-items: center;
+}
 
-    padding: 0.375rem 0.65rem;
+.dt-container .dt-paging .dt-paging-button {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
 
-    border: 1px solid #dbdfea;
-    border-radius: 0.375rem;
+    min-width: 36px !important;
+    height: 36px !important;
 
-    background: #fff;
-    color: #526484;
+    margin: 0 !important;
+    padding: 0.375rem 0.65rem !important;
+
+    border: 1px solid #dbdfea !important;
+    border-radius: 0 !important;
+
+    background: #fff !important;
+    background-image: none !important;
+
+    color: #526484 !important;
+
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+
+    text-align: center;
+    text-decoration: none !important;
 
     cursor: pointer;
 }
 
-.dataTables_wrapper
-    .dt-paging
-    .dt-paging-button:hover:not(.disabled):not(.current) {
-    background: #f5f6fa;
-    color: #364a63;
+/* First button */
+.dt-container
+.dt-paging
+.dt-paging-button:first-child {
+    border-top-left-radius: 0.375rem !important;
+    border-bottom-left-radius: 0.375rem !important;
 }
 
-.dataTables_wrapper
-    .dt-paging
-    .dt-paging-button.current {
-    border-color: #6576ff;
-    background: #6576ff;
-    color: #fff;
+/* Last button */
+.dt-container
+.dt-paging
+.dt-paging-button:last-child {
+    border-top-right-radius: 0.375rem !important;
+    border-bottom-right-radius: 0.375rem !important;
 }
 
-.dataTables_wrapper
-    .dt-paging
-    .dt-paging-button.disabled {
+/* Prevent doubled borders between buttons */
+.dt-container
+.dt-paging
+.dt-paging-button + .dt-paging-button {
+    margin-left: -1px !important;
+}
+
+.dt-container
+.dt-paging
+.dt-paging-button:hover:not(.disabled):not(.current) {
+    position: relative;
+    z-index: 2;
+
+    border-color: #dbdfea !important;
+    background: #f5f6fa !important;
+    color: #364a63 !important;
+}
+
+.dt-container
+.dt-paging
+.dt-paging-button.current {
+    position: relative;
+    z-index: 3;
+
+    border-color: #6576ff !important;
+    background: #6576ff !important;
+    color: #fff !important;
+}
+
+.dt-container
+.dt-paging
+.dt-paging-button.disabled {
+    border-color: #dbdfea !important;
+    background: #fff !important;
+    color: #526484 !important;
+
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -193,22 +250,21 @@
 */
 
 @media (max-width: 767.98px) {
-
-    .dataTables_wrapper .dt-layout-row {
+    .dt-container .dt-layout-row {
         align-items: stretch;
     }
 
-    .dataTables_wrapper .dt-layout-cell {
+    .dt-container .dt-layout-cell {
         width: 100%;
         justify-content: space-between;
     }
 
-    .dataTables_wrapper .dt-search,
-    .dataTables_wrapper .dt-search input {
+    .dt-container .dt-search,
+    .dt-container .dt-search input {
         width: 100%;
     }
 
-    .dataTables_wrapper .dt-paging {
+    .dt-container .dt-paging {
         justify-content: flex-end;
         flex-wrap: wrap;
     }

@@ -1,16 +1,13 @@
 import $ from 'jquery';
-
 window.$ = $;
 window.jQuery = $;
 
 // Bootstrap 5
 import * as bootstrap from 'bootstrap';
-
 window.bootstrap = bootstrap;
 
 // Chart.js
 import Chart from 'chart.js/auto';
-
 window.Chart = Chart;
 
 // Load legacy jQuery/vendor plugins setelah jQuery tersedia.
@@ -43,7 +40,7 @@ await import('./main.js');
 | Kita cukup memastikan TGL diinisialisasi sekali di sini.
 |
 */
-
+/*
 const NIO_TGL_INIT_FLAG = '__nioTglInitialized';
 
 if (
@@ -52,6 +49,18 @@ if (
     !window[NIO_TGL_INIT_FLAG]
 ) {
     window.NioApp.TGL.init();
-
     window[NIO_TGL_INIT_FLAG] = true;
+}
+*/
+
+// await import('./main.js');
+
+const NIO_DOC_READY_INIT_FLAG = '__nioDocReadyInitialized';
+
+if (document.readyState !== 'loading' && window.NioApp?.coms?.docReady && !window[NIO_DOC_READY_INIT_FLAG]) {
+    window.NioApp.coms.docReady.forEach(function (callback) {
+        callback();
+    });
+
+    window[NIO_DOC_READY_INIT_FLAG] = true;
 }
