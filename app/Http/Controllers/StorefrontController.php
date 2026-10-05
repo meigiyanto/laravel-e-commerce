@@ -76,6 +76,7 @@ class StorefrontController extends Controller
         $product = Product::with([
             'category',
             'subCategory',
+            'specifications',
             'reviews.user',
         ])
             ->withAvg('reviews', 'rating')
@@ -93,7 +94,10 @@ class StorefrontController extends Controller
             ->take(4)
             ->get();
 
-        return view('storefront.product', compact('product', 'relatedProducts'));
+        return view('storefront.product', compact(
+            'product',
+            'relatedProducts'
+        ));
     }
 
     public function category(string $slug)
