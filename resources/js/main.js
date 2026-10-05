@@ -1,5 +1,7 @@
 "use strict";
 
+const ClipboardJS = window.ClipboardJS;
+
 !function (NioApp, $) {
   "use strict";
 
