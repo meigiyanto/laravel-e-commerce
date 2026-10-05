@@ -3,8 +3,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "dev": "concurrently -k -n Laravel,Vite \"php artisan serve\" \"vite\"",
+        "build": "vite build"
     },
     "dependencies": {
         "@fullcalendar/bootstrap5": "^7.1.0",
@@ -44,6 +44,7 @@
     },
     "devDependencies": {
         "@vitejs/plugin-basic-ssl": "^2.1.0",
+        "concurrently": "^10.0.5",
         "laravel-vite-plugin": "^3.2.0",
         "vite": "^8.0.0"
     },

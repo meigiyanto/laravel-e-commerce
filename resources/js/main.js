@@ -544,14 +544,6 @@ const ClipboardJS = window.ClipboardJS;
           autoWidth: false
         }) : attr;
         $(this).DataTable(attr);
-        $(this).closest('.dt-container').find('.dt-length select').each(function () {
-          var $length = $(this);
-          if (!$length.hasClass('select2-hidden-accessible')) {
-            $length.select2({
-              minimumResultsForSearch: -1
-            });
-          }
-        });
         $('.dt-export-title').text(export_title);
       });
     }
