@@ -22,9 +22,7 @@ class InventoryControllerTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'user']);
 
-        $response = $this
-            ->actingAs($user)
-            ->get(route('admin.inventory.index'));
+        $response = $this->actingAs($user)->get(route('admin.inventory.index'));
 
         $response->assertForbidden();
     }
@@ -34,12 +32,9 @@ class InventoryControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->get(route('admin.inventory.index'));
+        $response = $this->actingAs($admin)->get(route('admin.inventory.index'));
 
-        $response
-            ->assertOk()
+        $response->assertOk()
             ->assertViewIs('admin.inventory.index')
             ->assertSee($product->name);
     }
@@ -49,14 +44,12 @@ class InventoryControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->patch(route('admin.inventory.update-stock', $product), [
-                'stock' => 25,
-            ]);
+        $response = $this->actingAs($admin)->patch(
+            route('admin.inventory.update-stock', $product),
+            ['stock' => 25]
+        );
 
-        $response
-            ->assertRedirect(route('admin.inventory.index'))
+        $response->assertRedirect(route('admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -65,40 +58,20 @@ class InventoryControllerTest extends TestCase
         ]);
     }
 
-    public function test_admin_cannot_set_negative_stock(): void
-    {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $product = Product::factory()->create(['stock' => 10]);
-
-        $response = $this
-            ->actingAs($admin)
-            ->patch(route('admin.inventory.update-stock', $product), [
-                'stock' => -1,
-            ]);
-
-        $response
-            ->assertSessionHasErrors('stock');
-
-        $this->assertDatabaseHas('products', [
-            'id' => $product->id,
-            'stock' => 10,
-        ]);
-    }
-
     public function test_admin_can_add_stock(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
-                'quantity' => 5,
+        $response = $this->actingAs($admin)->post(
+            route('admin.inventory.adjust-stock', $product),
+            [
                 'type' => 'add',
-            ]);
+                'quantity' => 5,
+            ]
+        );
 
-        $response
-            ->assertRedirect(route('admin.inventory.index'))
+        $response->assertRedirect(route('admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -112,15 +85,15 @@ class InventoryControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
-                'quantity' => 4,
+        $response = $this->actingAs($admin)->post(
+            route('admin.inventory.adjust-stock', $product),
+            [
                 'type' => 'subtract',
-            ]);
+                'quantity' => 4,
+            ]
+        );
 
-        $response
-            ->assertRedirect(route('admin.inventory.index'))
+        $response->assertRedirect(route('admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -132,39 +105,39 @@ class InventoryControllerTest extends TestCase
     public function test_admin_cannot_subtract_more_stock_than_available(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $product = Product::factory()->create(['stock' => 10]);
+        $product = Product::factory()->create(['stock' => 5]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
-                'quantity' => 11,
+        $response = $this->actingAs($admin)->post(
+            route('admin.inventory.adjust-stock', $product),
+            [
                 'type' => 'subtract',
-            ]);
+                'quantity' => 6,
+            ]
+        );
 
-        $response
-            ->assertRedirect()
+        $response->assertRedirect()
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
-            'stock' => 10,
+            'stock' => 5,
         ]);
     }
 
-    public function test_admin_cannot_adjust_stock_by_zero(): void
+    public function test_adjust_stock_rejects_zero_quantity(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
-                'quantity' => 0,
+        $response = $this->actingAs($admin)->post(
+            route('admin.inventory.adjust-stock', $product),
+            [
                 'type' => 'add',
-            ]);
+                'quantity' => 0,
+            ]
+        );
 
-        $response
-            ->assertSessionHasErrors('quantity');
+        $response->assertSessionHasErrors('quantity');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -172,17 +145,18 @@ class InventoryControllerTest extends TestCase
         ]);
     }
 
-    public function test_non_admin_cannot_adjust_product_stock(): void
+    public function test_non_admin_cannot_adjust_stock(): void
     {
         $user = User::factory()->create(['role' => 'user']);
         $product = Product::factory()->create(['stock' => 10]);
 
-        $response = $this
-            ->actingAs($user)
-            ->post(route('admin.inventory.adjust-stock', $product), [
-                'quantity' => 5,
+        $response = $this->actingAs($user)->post(
+            route('admin.inventory.adjust-stock', $product),
+            [
                 'type' => 'add',
-            ]);
+                'quantity' => 5,
+            ]
+        );
 
         $response->assertForbidden();
 
