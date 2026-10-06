@@ -10,13 +10,30 @@ return new class extends Migration
     public function up(): void
     {
         // Perbaiki data lama jika ada product yang tidak konsisten.
-        DB::statement('
-            UPDATE products
-            INNER JOIN sub_categories
-                ON sub_categories.id = products.sub_category_id
-            SET products.category_id = sub_categories.category_id
-            WHERE products.category_id <> sub_categories.category_id
-        ');
+        //
+        // Tidak menggunakan UPDATE ... INNER JOIN karena sintaks tersebut
+        // tidak didukung oleh SQLite yang digunakan oleh test suite.
+        DB::table('products')
+            ->whereNotNull('category_id')
+            ->whereNotNull('sub_category_id')
+            ->select('id', 'category_id', 'sub_category_id')
+            ->orderBy('id')
+            ->each(function ($product) {
+                $subCategoryCategoryId = DB::table('sub_categories')
+                    ->where('id', $product->sub_category_id)
+                    ->value('category_id');
+
+                if (
+                    $subCategoryCategoryId !== null
+                    && (int) $product->category_id !== (int) $subCategoryCategoryId
+                ) {
+                    DB::table('products')
+                        ->where('id', $product->id)
+                        ->update([
+                            'category_id' => $subCategoryCategoryId,
+                        ]);
+                }
+            });
 
         Schema::table('products', function (Blueprint $table) {
             $table->dropForeign(['category_id']);
