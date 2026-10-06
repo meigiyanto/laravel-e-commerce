@@ -103,13 +103,20 @@
                                 {{-- Product --}}
                                 <td>
                                     <div class="d-flex align-items-center gap-5">
-                                        @if (!$item->product?->image)
-                                            <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product_name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
-                                        @else
-                                            <div class="d-flex align-items-center justify-content-center bg-light" style="width: 40px; height: 40px; border-radius: 6px;">
-                                                <em class="icon ni ni-img"></em>
-                                            </div>
-                                        @endif
+                                    @if ($item->product?->image)
+                                        <img
+                                            src="{{ asset('storage/' . $item->product->image) }}"
+                                            alt="{{ $item->product_name }}"
+                                            style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;"
+                                        >
+                                    @else
+                                        <div
+                                            class="d-flex align-items-center justify-content-center bg-light"
+                                            style="width: 40px; height: 40px; border-radius: 6px;"
+                                        >
+                                            <i class="bi bi-image text-muted"></i>
+                                        </div>
+                                    @endif
                                         <div>
                                             <div class="fw-bold">{{ $item->product_name }}</div>
                                         </div>

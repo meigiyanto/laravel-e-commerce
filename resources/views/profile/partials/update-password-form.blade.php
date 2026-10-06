@@ -1,3 +1,7 @@
+@php
+    $passwordErrors = $errors->getBag('updatePassword');
+@endphp
+
 <section>
 
     <header class="section-header">
@@ -7,68 +11,82 @@
 
     <form
         method="POST"
-        action="{{ route('profile.update') }}"
+        action="{{ route('password.update') }}"
         class="auth-form"
     >
         @csrf
-        @method('PATCH')
+        @method('PUT')
 
         <div class="form-group mb-3">
-            <label for="current_password" class="form-label">Current Password</label>
+            <label for="current_password" class="form-label">
+                Current Password
+            </label>
+
             <input
                 id="current_password"
                 name="current_password"
                 type="password"
                 class="form-control"
-                value=""
+                autocomplete="current-password"
                 required
             >
 
-            @error('current_password')
-                <p class="form-error">{{ $message }}</p>
-            @enderror
+            @if ($passwordErrors->has('current_password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('current_password') }}
+                </p>
+            @endif
         </div>
 
         <div class="form-group mb-3">
-            <label for="new_password" class="form-label">New Password</label>
+            <label for="password" class="form-label">
+                New Password
+            </label>
+
             <input
-                id="new_password"
-                name="new_password"
+                id="password"
+                name="password"
                 type="password"
                 class="form-control"
-                value=""
+                autocomplete="new-password"
                 required
             >
 
-            @error('new_password')
-                <p class="form-error">{{ $message }}</p>
-            @enderror
+            @if ($passwordErrors->has('password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('password') }}
+                </p>
+            @endif
         </div>
 
         <div class="form-group mb-3">
-            <label for="confirm_password" class="form-label">Password Confirm</label>
+            <label for="password_confirmation" class="form-label">
+                Password Confirm
+            </label>
 
             <input
-                id="confirm_password"
-                name="confirm_password"
+                id="password_confirmation"
+                name="password_confirmation"
                 type="password"
                 class="form-control"
-                value=""
+                autocomplete="new-password"
                 required
             >
 
-            @error('confirm_password')
-                <p class="form-error">{{ $message }}</p>
-            @enderror
+            @if ($passwordErrors->has('password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('password') }}
+                </p>
+            @endif
         </div>
 
         <button type="submit" class="btn btn-primary">
             Save Changes
         </button>
 
-        @if (session('status') === 'profile-updated')
+        @if (session('status') === 'password-updated')
             <p class="success-message">
-                Profile updated successfully.
+                Password updated successfully.
             </p>
         @endif
 

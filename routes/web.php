@@ -42,8 +42,7 @@ Route::post('/payment/midtrans/notification', [MidtransPaymentController::class,
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
-|----------------------------------------------------------
-| Cart Routes
+|-----------------------------------------------------------| Authenticated User Routes
 |-----------------------------------------------------------*/
 
 Route::middleware('auth')->group(function () {
@@ -96,13 +95,6 @@ Route::middleware('auth')->group(function () {
         return view('dashboard');
     })->name('dashboard');
 });
-
-/*
-|-----------------------------------------------------------| Authenticated User Routes
-|-----------------------------------------------------------Route::middleware('auth')->group(function () {
-
-});
-*/
 
 /*
 |-----------------------------------------------------------| Admin Routes
