@@ -1,0 +1,220 @@
+:root {
+    --store-primary: #fcb800;
+    --store-primary-dark: #e5a800;
+    --store-dark: #1d232c;
+    --store-dark-soft: #343a40;
+    --store-text: #212529;
+    --store-muted: #6c757d;
+    --store-border: #e5e7eb;
+    --store-light: #f7f7f7;
+    --store-white: #ffffff;
+    --store-danger: #dc3545;
+    --store-radius: 8px;
+    --store-shadow: 0 4px 20px rgba(0, 0, 0, .06);
+}
+
+/* 
+.store-topbar
+.store-main-header
+.store-header-inner
+.store-brand
+.store-brand-mark
+
+.store-search
+.store-header-actions
+.store-action
+.store-action-icon
+.store-action-label
+.store-badge
+
+.store-navigation
+.store-navigation-inner
+.store-department
+.store-nav-link
+
+.store-breadcrumb
+
+.store-page
+
+.store-section
+.store-section-header
+.store-section-title
+.store-section-subtitle
+.store-section-link
+
+.store-hero
+.store-hero-content
+.store-hero-label
+.store-hero-title
+.store-hero-text
+.store-btn-primary
+
+.store-category-card
+.store-category-placeholder
+.store-category-overlay
+.store-category-name
+.store-category-count
+
+.store-product-card
+.store-product-image-wrap
+.store-product-image-link
+.store-product-image
+.store-product-placeholder
+.store-product-actions
+.store-product-action
+.store-product-body
+.store-product-category
+.store-product-name
+.store-product-rating
+.store-rating-stars
+.store-review-count
+.store-product-price
+.store-product-description
+.store-product-stock
+.store-stock-available
+.store-stock-empty
+.store-product-cart-form
+.store-add-cart
+
+.store-service-strip
+.store-service
+.store-service-icon
+
+.store-footer
+.store-footer-main
+.store-footer-brand
+.store-footer-title
+.store-footer-bottom
+.store-payment-icons
+.store-payment-icon
+
+.store-mobile-bottom
+
+.store-product-toolbar
+.store-filter-card
+.store-filter-form
+.store-filter-context
+.store-active-filters
+.store-active-filters-label
+.store-filter-badge
+.store-filter-reset
+
+.store-category-heading
+
+.store-empty-state
+.store-empty-icon
+.store-empty-title
+.store-empty-text
+
+.store-pagination 
+*/
+
+/* =========================================================
+   STORE PAGINATION
+========================================================= */
+
+.store-pagination {
+    margin-top: 2rem;
+}
+
+.store-pagination > nav {
+    display: block !important;
+}
+
+.store-pagination > nav > .d-none.d-sm-flex {
+    display: flex !important;
+
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.store-pagination > nav > .d-none.d-sm-flex > .small.text-muted {
+    display: none;
+}
+
+.store-pagination .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    gap: .35rem;
+
+    margin: 0;
+}
+
+.store-pagination .page-item {
+    margin: 0;
+}
+
+.store-pagination .page-link {
+    min-width: 38px;
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: .45rem .7rem;
+
+    border: 1px solid var(--store-border);
+    border-radius: 5px !important;
+
+    background: #fff;
+    color: var(--store-dark);
+
+    font-size: .78rem;
+    font-weight: 700;
+
+    box-shadow: none;
+}
+
+.store-pagination .page-link:hover {
+    border-color: var(--store-primary);
+
+    background: #fff7d6;
+    color: var(--store-dark);
+}
+
+.store-pagination .page-item.active .page-link {
+    border-color: var(--store-primary);
+
+    background: var(--store-primary);
+    color: var(--store-dark);
+}
+
+.store-pagination .page-item.disabled .page-link {
+    border-color: var(--store-border);
+
+    background: #f8f9fa;
+    color: #adb5bd;
+}
+
+@media (max-width: 575.98px) {
+
+    .store-pagination {
+        margin-top: 1.5rem;
+    }
+
+    .store-pagination > nav > .d-sm-none {
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    .store-pagination > nav > .d-sm-none .pagination {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .store-pagination .pagination {
+        gap: .25rem;
+    }
+
+    .store-pagination .page-link {
+        min-width: 34px;
+        min-height: 34px;
+
+        padding: .35rem .55rem;
+
+        font-size: .72rem;
+    }
+}

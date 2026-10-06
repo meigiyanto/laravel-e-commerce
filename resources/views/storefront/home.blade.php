@@ -3,25 +3,18 @@
 @section('title', 'MeiStore - Toko Online')
 
 @section('content')
-
     {{-- =========================================================
          HERO
     ========================================================== --}}
     <section class="store-hero">
-
         <div class="container">
             <div class="store-hero-content">
-
                 <span class="store-hero-label">
                     <i class="bi bi-stars me-2"></i>
                     Selamat datang di MeiStore
                 </span>
 
-                <h1 class="store-hero-title">
-                    Temukan Produk
-                    Favoritmu di Satu Tempat
-                </h1>
-
+                <h1 class="store-hero-title">Temukan Produk Favoritmu di Satu Tempat</h1>                
                 <p class="store-hero-text">
                     Jelajahi berbagai produk pilihan mulai dari
                     elektronik, fashion, kebutuhan rumah tangga,
@@ -29,7 +22,6 @@
                 </p>
 
                 <div class="d-flex flex-wrap gap-2 mt-4">
-
                     <a
                         href="{{ route('storefront.shop') }}"
                         class="store-btn-primary"
@@ -46,36 +38,25 @@
                             Lihat Kategori
                         </a>
                     @endif
-
                 </div>
-
             </div>
         </div>
-
     </section>
-
 
     {{-- =========================================================
          CATEGORY SECTION
     ========================================================== --}}
-    <section
-        id="categories"
-        class="store-section"
-    >
+    <section id="categories" class="store-section">
         <div class="container">
-
             <div class="store-section-header">
-
                 <div>
                     <h2 class="store-section-title">
                         Belanja Berdasarkan Kategori
                     </h2>
-
                     <p class="store-section-subtitle">
                         Temukan produk sesuai kebutuhan Anda.
                     </p>
                 </div>
-
                 <a
                     href="{{ route('storefront.shop') }}"
                     class="store-section-link"
@@ -83,25 +64,18 @@
                     Lihat Semua
                     <i class="bi bi-arrow-right ms-1"></i>
                 </a>
-
             </div>
 
-
             @if ($categories->isNotEmpty())
-
                 <div class="row g-3">
-
                     @foreach ($categories as $category)
-
                         <div class="col-6 col-md-4 col-lg-3">
-
                             <a
                                 href="{{ route('storefront.category', $category->slug) }}"
                                 class="d-block h-100"
                             >
 
                                 <div class="store-category-card">
-
                                     @if ($category->image)
 
                                         <img
@@ -109,47 +83,30 @@
                                             alt="{{ $category->name }}"
                                             loading="lazy"
                                         >
-
                                     @else
-
                                         <div class="store-category-placeholder">
                                             <i class="bi bi-grid-3x3-gap fs-1"></i>
                                         </div>
-
                                     @endif
 
-
                                     <div class="store-category-overlay">
-
                                         <div>
-
                                             <h3 class="store-category-name">
                                                 {{ $category->name }}
                                             </h3>
-
                                             <div class="store-category-count">
                                                 {{ $category->products_count }}
                                                 produk
                                             </div>
-
                                         </div>
-
                                     </div>
-
                                 </div>
-
                             </a>
-
                         </div>
-
                     @endforeach
-
                 </div>
-
             @else
-
                 <div class="text-center py-5">
-
                     <div class="mb-3">
                         <i class="bi bi-grid fs-1 text-muted"></i>
                     </div>
@@ -161,11 +118,8 @@
                     <p class="text-muted mb-0">
                         Kategori produk akan ditampilkan di sini.
                     </p>
-
                 </div>
-
             @endif
-
         </div>
     </section>
 
@@ -174,19 +128,11 @@
          LATEST PRODUCTS
     ========================================================== --}}
     <section class="store-section bg-light">
-
         <div class="container">
-
             <div class="store-section-header">
-
                 <div>
-                    <h2 class="store-section-title">
-                        Produk Terbaru
-                    </h2>
-
-                    <p class="store-section-subtitle">
-                        Produk terbaru yang tersedia di MeiStore.
-                    </p>
+                    <h2 class="store-section-title">Produk Terbaru</h2>
+                    <p class="store-section-subtitle">Produk terbaru yang tersedia di MeiStore.</p>
                 </div>
 
                 <a
@@ -196,84 +142,38 @@
                     Lihat Semua
                     <i class="bi bi-arrow-right ms-1"></i>
                 </a>
-
             </div>
 
-
             @if ($latestProducts->isNotEmpty())
-
                 <div class="row g-3 g-md-4">
-
                     @foreach ($latestProducts as $product)
-
                         <div class="col-6 col-md-4 col-lg-3">
                             <x-store-product-card :product="$product" />
-
                         </div>
-
                     @endforeach
-
                 </div>
-
             @else
-
                 <div class="text-center py-5">
-
                     <div class="mb-3">
                         <i class="bi bi-box-seam fs-1 text-muted"></i>
                     </div>
-
-                    <h4 class="fw-bold">
-                        Belum Ada Produk
-                    </h4>
-
-                    <p class="text-muted mb-0">
-                        Produk akan muncul di sini setelah
-                        ditambahkan melalui dashboard admin.
-                    </p>
-
+                    <h4 class="fw-bold">Belum Ada Produk</h4>
+                    <p class="text-muted mb-0">Produk akan muncul di sini setelah ditambahkan melalui dashboard admin.</p>
                 </div>
-
             @endif
-
         </div>
-
     </section>
-
 
     {{-- =========================================================
          SHOPPING PROMOTION
     ========================================================== --}}
     <section class="store-section">
-
         <div class="container">
-
-            <div
-                class="rounded-3 overflow-hidden"
-                style="
-                    background:
-                        linear-gradient(
-                            110deg,
-                            #fff7d6,
-                            #ffffff
-                        );
-                    border: 1px solid #f1e2a8;
-                "
-            >
-
+            <div class="rounded-3 overflow-hidden" style=" background: linear-gradient(110deg, #fff7d6, #ffffff); border: 1px solid #f1e2a8;">           
                 <div class="row align-items-center g-0">
-
                     <div class="col-lg-8">
-
                         <div class="p-4 p-md-5">
-
-                            <span
-                                class="badge mb-3"
-                                style="
-                                    background: var(--store-primary);
-                                    color: var(--store-dark);
-                                "
-                            >
+                            <span class="badge mb-3" style="background: var(--store-primary); color: var(--store-dark);">
                                 <i class="bi bi-lightning-charge-fill me-1"></i>
                                 MeiStore
                             </span>
@@ -296,14 +196,9 @@
                                 Jelajahi Semua Produk
                                 <i class="bi bi-arrow-right"></i>
                             </a>
-
                         </div>
-
                     </div>
-
-
                     <div class="col-lg-4 d-none d-lg-block text-center">
-
                         <i
                             class="bi bi-bag-check-fill"
                             style="
@@ -311,15 +206,10 @@
                                 color: var(--store-primary);
                             "
                         ></i>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </section>
 
 
@@ -327,13 +217,9 @@
          TRUST / SHOPPING BENEFITS
     ========================================================== --}}
     <section class="pb-5">
-
         <div class="container">
-
             <div class="row g-3">
-
                 <div class="col-6 col-lg-3">
-
                     <div
                         class="h-100 p-4 border rounded-3 bg-white"
                     >
@@ -351,12 +237,9 @@
                             MeiStore.
                         </p>
                     </div>
-
                 </div>
 
-
                 <div class="col-6 col-lg-3">
-
                     <div
                         class="h-100 p-4 border rounded-3 bg-white"
                     >
@@ -374,12 +257,9 @@
                             lalu checkout.
                         </p>
                     </div>
-
                 </div>
 
-
                 <div class="col-6 col-lg-3">
-
                     <div
                         class="h-100 p-4 border rounded-3 bg-white"
                     >
@@ -397,12 +277,9 @@
                             sistem yang tersedia.
                         </p>
                     </div>
-
                 </div>
 
-
                 <div class="col-6 col-lg-3">
-
                     <div
                         class="h-100 p-4 border rounded-3 bg-white"
                     >
@@ -420,13 +297,9 @@
                             melalui aplikasi Laravel.
                         </p>
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </section>
 
     {{-- =========================================================
@@ -488,10 +361,7 @@
                         </div>
                     </div>
                 </div>
-
             </div>
-
         </div>
     </section>
-
 @endsection

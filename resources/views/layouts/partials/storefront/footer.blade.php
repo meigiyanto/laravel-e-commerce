@@ -3,15 +3,11 @@
          FOOTER
     ========================================================== --}}
     <footer class="store-footer">
-
         <div class="store-footer-main">
             <div class="container">
-
                 <div class="row g-4">
-
                     {{-- Brand --}}
                     <div class="col-lg-4">
-
                         <a
                             href="{{ route('storefront.home') }}"
                             class="store-footer-brand"
@@ -94,9 +90,7 @@
                                 </li>
                             @endauth
                         </ul>
-
                     </div>
-
 
                     {{-- Customer --}}
                     <div class="col-6 col-lg-2">

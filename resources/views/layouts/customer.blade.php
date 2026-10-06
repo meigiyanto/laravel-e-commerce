@@ -3,7 +3,6 @@
 
 <head>
     <meta charset="utf-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1"
@@ -22,12 +21,7 @@
         rel="shortcut icon"
         href="{{ asset('images/favicon.png') }}"
     >
-
-    @vite([
-        'resources/css/admin.css',
-        'resources/js/admin.js'
-    ])
-
+    @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])
     @stack('styles')
 </head>
 

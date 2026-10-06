@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard') - {{ config('app.name', 'Laravel E-Commerce Store') }}</title>
     <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
-    @vite(['resources/css/admin.css', 'resources/js/admin.js'])
+    @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])        
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>eruda.init();</script>
 </head>

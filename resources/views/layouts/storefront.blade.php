@@ -4,7 +4,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'MeiStore')</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/css/storefront.css', 'resources/js/app.js', 'resources/js/storefront.js'])
     @stack('styles')
     {{-- Development helper --}}
     @if (app()->environment('local'))
@@ -21,21 +21,18 @@
 
 <body>
     @include('layouts.partials.storefront.topbar')
-
     @include('layouts.partials.storefront.header')
-
     @include('layouts.partials.storefront.navbar')
-
     @include('layouts.partials.storefront.navbar-mobile')
 
-    {{-- ====================================================         CONTENT
+    {{-- ====================================================         
+    CONTENT
     ==================================================== --}}
     <main class="store-page">
         @yield('content')
     </main>
 
     @include('layouts.partials.storefront.footer')
-
     @include('layouts.partials.storefront.navbar-bottom')
     @stack('scripts')
 </body>

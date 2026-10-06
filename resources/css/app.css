@@ -2,18 +2,13 @@
 @import "bootstrap-icons/font/bootstrap-icons.min.css";
 
 :root {
-    --store-primary: #fcb800;
-    --store-primary-dark: #e5a800;
-    --store-dark: #1d232c;
-    --store-dark-soft: #343a40;
-    --store-text: #212529;
-    --store-muted: #6c757d;
-    --store-border: #e5e7eb;
-    --store-light: #f7f7f7;
-    --store-white: #ffffff;
-    --store-danger: #dc3545;
-    --store-radius: 8px;
-    --store-shadow: 0 4px 20px rgba(0, 0, 0, .06);
+    --bs-body-font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
 }
 
 * {
@@ -26,16 +21,6 @@ html {
 
 body {
     margin: 0;
-    background: #fff;
-    color: var(--store-text);
-
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
 }
 
 body,
@@ -55,7 +40,9 @@ img {
     max-width: 100%;
 }
 
-/* ========================================================   TOP BAR
+
+/* ========================================================   
+TOP BAR
 ======================================================== */
 
 .store-topbar {
@@ -324,6 +311,7 @@ img {
     color: var(--store-primary-dark);
 }
 
+
 /* =========================================================
    PAGE
 ========================================================= */
@@ -500,6 +488,7 @@ img {
     color: var(--store-dark);
 }
 
+
 /* =========================================================
    CATEGORY CARD
 ========================================================= */
@@ -631,6 +620,7 @@ img {
 
     font-size: .75rem;
 }
+
 
 /* =========================================================
    FOOTER
@@ -1531,68 +1521,6 @@ RESPONSIVE
     border-color: var(--store-primary);
     color: var(--store-dark);
 }
-
-/*
-.store-pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 2rem;
-}
-
-.store-pagination .pagination {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .35rem;
-    margin: 0;
-}
-
-.store-pagination .page-item {
-    margin: 0;
-}
-
-.store-pagination .page-link {
-    min-width: 38px;
-    min-height: 38px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: .45rem .7rem;
-    border: 1px solid var(--store-border);
-    border-radius: 5px !important;
-    background: #fff;
-    color: var(--store-dark);
-    font-size: .78rem;
-    font-weight: 700;
-    box-shadow: none;
-    transition:
-        background .2s ease,
-        border-color .2s ease,
-        color .2s ease;
-}
-
-.store-pagination .page-link:hover {
-    border-color: var(--store-primary);
-    background: #fff7d6;
-    color: var(--store-dark);
-}
-
-.store-pagination .page-item.active .page-link {
-    border-color: var(--store-primary);
-    background: var(--store-primary);
-    color: var(--store-dark);
-}
-
-.store-pagination .page-item.disabled .page-link {
-    border-color: var(--store-border);
-    background: #f8f9fa;
-    color: #adb5bd;
-    cursor: not-allowed;
-}
-
-.store-pagination .page-link:focus {
-    box-shadow: 0 0 0 .2rem rgba(252, 184, 0, .15);
-}
-*/
 
 /* =========================================================
    PAGINATION RESPONSIVE

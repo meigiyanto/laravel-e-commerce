@@ -49,12 +49,7 @@
 ========================================================= --}}
 <section class="pb-4">
     <div class="container">
-
-        <x-store-product-toolbar
-            :categories="$categories"
-            :action="route('storefront.shop')"
-        />
-
+        <x-store-product-toolbar :categories="$categories" :action="route('storefront.shop')"/>
     </div>
 </section>
 
