@@ -3,26 +3,34 @@
 @section('title', $category->name . ' - MeiStore')
 
 @section('content')
-    {{-- =========================================================
-         BREADCRUMB
-    ========================================================== --}}
+
+    {{-- BREADCRUMB --}}
     <div class="store-breadcrumb">
+
         <div class="container">
+
             <nav aria-label="breadcrumb">
 
-                <ol class="breadcrumb">
+                <ol class="breadcrumb mb-0">
 
                     <li class="breadcrumb-item">
+
                         <a href="{{ route('storefront.home') }}">
+
                             <i class="bi bi-house me-1"></i>
+
                             Home
+
                         </a>
+
                     </li>
 
                     <li class="breadcrumb-item">
+
                         <a href="{{ route('storefront.shop') }}">
                             Shop
                         </a>
+
                     </li>
 
                     <li
@@ -35,13 +43,13 @@
                 </ol>
 
             </nav>
+
         </div>
+
     </div>
 
 
-    {{-- =========================================================
-         CATEGORY HEADER
-    ========================================================== --}}
+    {{-- CATEGORY HEADER --}}
     <section class="store-section pb-3">
 
         <div class="container">
@@ -50,35 +58,25 @@
 
                 <div class="col-lg-8">
 
-                    <span
-                        class="d-inline-flex align-items-center gap-2 mb-2"
-                        style="
-                            color: var(--store-primary-dark);
-                            font-size: .78rem;
-                            font-weight: 800;
-                            text-transform: uppercase;
-                            letter-spacing: .06em;
-                        "
-                    >
+                    <div class="store-category-heading">
+
                         <i class="bi bi-grid"></i>
+
                         Kategori Produk
-                    </span>
+
+                    </div>
 
                     <h1
-                        class="mb-2"
-                        style="
-                            color: var(--store-dark);
-                            font-size: clamp(1.8rem, 4vw, 2.6rem);
-                            font-weight: 900;
-                            letter-spacing: -.035em;
-                        "
+                        class="store-section-title mb-2"
                     >
                         {{ $category->name }}
                     </h1>
 
-                    <p class="text-muted mb-0">
+                    <p class="store-section-subtitle mb-0">
+
                         Temukan berbagai produk dalam kategori
                         {{ $category->name }}.
+
                     </p>
 
                 </div>
@@ -86,189 +84,132 @@
                 <div class="col-lg-4 text-lg-end">
 
                     <span class="text-muted small">
+
                         <strong class="text-dark">
                             {{ $products->total() }}
                         </strong>
 
                         produk tersedia
+
                     </span>
 
                 </div>
 
             </div>
 
+
+            {{-- SUBCATEGORY NAVIGATION --}}
+            @if ($category->subCategories->isNotEmpty())
+
+                <div class="store-subcategory-nav">
+
+                    <span class="store-subcategory-label">
+                        Subkategori:
+                    </span>
+
+                    @foreach ($category->subCategories as $subCategory)
+
+                        <a
+                            href="{{ route('storefront.category', $category->slug) }}?subcategory={{ $subCategory->slug }}"
+                            class="store-subcategory-link
+                                {{ request('subcategory') === $subCategory->slug
+                                    ? 'active'
+                                    : ''
+                                }}"
+                        >
+                            {{ $subCategory->name }}
+                        </a>
+
+                    @endforeach
+
+                </div>
+
+            @endif
+
         </div>
 
     </section>
 
 
-    {{-- =========================================================
-         PRODUCT LIST
-    ========================================================== --}}
-    <section class="store-section pt-3">
+    {{-- REUSABLE FILTER TOOLBAR --}}
+    <section class="pb-4">
+
         <div class="container">
-            {{-- Toolbar --}}
-            <div class="d-flex align-items-center gap-2">
 
-                <span class="small text-muted d-none d-sm-inline">
-                    Urutkan:
-                </span>
+            <x-store-product-toolbar
+                :category-context="$category"
+                :action="route('storefront.category', $category->slug)"
+            />
 
-                <form
-                    action="{{ url()->current() }}"
-                    method="GET"
-                    class="m-0"
-                >
+        </div>
 
-                    @foreach (request()->except('sort', 'page') as $key => $value)
-
-                        @if (is_array($value))
-
-                            @foreach ($value as $item)
-                                <input
-                                    type="hidden"
-                                    name="{{ $key }}[]"
-                                    value="{{ $item }}"
-                                >
-                            @endforeach
-
-                        @else
-
-                            <input
-                                type="hidden"
-                                name="{{ $key }}"
-                                value="{{ $value }}"
-                            >
-
-                        @endif
-
-                    @endforeach
+    </section>
 
 
-                    <select
-                        name="sort"
-                        class="form-select form-select-sm"
-                        onchange="this.form.submit()"
-                    >
+    {{-- PRODUCTS --}}
+    <section class="store-section pt-0">
 
-                        <option
-                            value=""
-                            @selected(! request('sort'))
-                        >
-                            Terbaru
-                        </option>
+        <div class="container">
 
-                        <option
-                            value="oldest"
-                            @selected(request('sort') === 'oldest')
-                        >
-                            Terlama
-                        </option>
-
-                        <option
-                            value="price_low"
-                            @selected(request('sort') === 'price_low')
-                        >
-                            Harga Terendah
-                        </option>
-
-                        <option
-                            value="price_high"
-                            @selected(request('sort') === 'price_high')
-                        >
-                            Harga Tertinggi
-                        </option>
-
-                        <option
-                            value="name_asc"
-                            @selected(request('sort') === 'name_asc')
-                        >
-                            Nama A - Z
-                        </option>
-
-                        <option
-                            value="name_desc"
-                            @selected(request('sort') === 'name_desc')
-                        >
-                            Nama Z - A
-                        </option>
-
-                    </select>
-
-                </form>
-
-            </div>
-
-            {{-- =================================================
-                 PRODUCTS
-            ================================================== --}}
             @if ($products->count())
+
                 <div class="row g-3 g-lg-4">
+
                     @foreach ($products as $product)
+
                         <div class="col-6 col-md-4 col-lg-3">
-                            <x-store-product-card :product="$product" />
+
+                            <x-store-product-card
+                                :product="$product"
+                            />
+
                         </div>
+
                     @endforeach
+
                 </div>
 
-                {{-- =================================================
-                     PAGINATION
-                ================================================== --}}
+
                 @if ($products->hasPages())
+
                     <div class="d-flex justify-content-center mt-5">
-                        {{ $products->onEachSide(1)->links('pagination::bootstrap-5') }}
+
+                        {{ $products
+                            ->onEachSide(1)
+                            ->links('pagination::bootstrap-5')
+                        }}
 
                     </div>
+
                 @endif
+
             @else
 
-                {{-- =================================================
-                     EMPTY STATE
-                ================================================== --}}
-                <div
-                    class="text-center py-5 px-3"
-                    style="
-                        border: 1px solid var(--store-border);
-                        border-radius: var(--store-radius);
-                        background: var(--store-light);
-                    "
-                >
+                <div class="store-empty-state">
 
-                    <div
-                        class="mx-auto mb-3"
-                        style="
-                            width: 72px;
-                            height: 72px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            border-radius: 50%;
-                            background: #fff;
-                            color: #adb5bd;
-                            font-size: 2rem;
-                        "
-                    >
+                    <div class="store-empty-icon">
+
                         <i class="bi bi-box-seam"></i>
+
                     </div>
 
-                    <h2
-                        class="h5 fw-bold mb-2"
-                        style="color: var(--store-dark);"
-                    >
+                    <h2 class="store-empty-title">
                         Belum Ada Produk
                     </h2>
 
-                    <p class="text-muted mb-4">
-                        Belum ada produk yang tersedia
-                        dalam kategori ini.
+                    <p class="store-empty-text">
+
+                        Belum ada produk yang sesuai
+                        dengan filter dalam kategori ini.
+
                     </p>
 
                     <a
-                        href="{{ route('storefront.shop') }}"
+                        href="{{ route('storefront.category', $category->slug) }}"
                         class="store-btn-primary"
                     >
-                        <i class="bi bi-shop"></i>
-                        Lihat Semua Produk
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        Reset Filter
                     </a>
 
                 </div>
@@ -280,28 +221,3 @@
     </section>
 
 @endsection
-
-
-@push('scripts')
-
-<script>
-    /**
-     * Change category sorting without
-     * losing the current category.
-     */
-    function changeCategorySort(value) {
-        const url = new URL(window.location.href);
-
-        if (value) {
-            url.searchParams.set('sort', value);
-        } else {
-            url.searchParams.delete('sort');
-        }
-
-        url.searchParams.delete('page');
-
-        window.location.href = url.toString();
-    }
-</script>
-
-@endpush

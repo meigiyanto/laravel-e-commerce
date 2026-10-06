@@ -109,10 +109,13 @@ class StorefrontController extends Controller
         Request $request,
         string $slug
     ) {
-        $category = Category::where(
-            'slug',
-            $slug
-        )->firstOrFail();
+        $category = Category::with([
+            'subCategories' => function ($query) {
+                $query->orderBy('name');
+            },
+        ])
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         $query = Product::with([
             'category',
@@ -120,10 +123,7 @@ class StorefrontController extends Controller
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
-            ->where(
-                'category_id',
-                $category->id
-            );
+            ->where('category_id', $category->id);
 
         $this->productFilter->apply(
             $query,
