@@ -339,7 +339,7 @@
     
                                     <form
                                         method="POST"
-                                        action="{{-- route('admin.inventory.adjust-stock', $product) --}}"
+                                        action="{{ route('admin.inventory.adjust-stock', $product) }}"
                                     >
     
                                         @csrf
