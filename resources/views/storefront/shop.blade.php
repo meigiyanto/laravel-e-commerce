@@ -26,10 +26,8 @@
 </div>
 
 @php
-    $selectedCategory = $categories->firstWhere('name', request('category'));
-    $selectedCategorySlug = $categories->firstWhere('slug', request('category'));
-    $selectedSubCategory = $categories->firstWhere('name', request('sub-category'));
-    $selectedSubCategorySlug = $categories->firstWhere('slug', request('sub-category'));
+    $selectedCategorySlug = request('category');
+    $selectedSubCategorySlug = $categories->firstWhere('slug', request('subcategory'));
 @endphp
 
 {{-- =========================================================
@@ -60,6 +58,7 @@
 
             <form
                 id="shop-filter-form"
+                class="store-filter-form"
                 action="{{ route('storefront.shop') }}"
                 method="GET"
             >
@@ -175,9 +174,7 @@ Lower Price</option>
 <section class="pb-3">
     <div class="container">
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="small text-muted fw-semibold">
-                Filter aktif:
-            </span>
+            <span class="small text-muted fw-semibold">Filter aktif:</span>
 
 
             {{-- Search --}}
