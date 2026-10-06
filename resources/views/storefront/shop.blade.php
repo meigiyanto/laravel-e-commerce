@@ -103,8 +103,8 @@
                  PAGINATION
             ================================================== --}}
             @if ($products->hasPages())
-                <div class="d-flex justify-content-center mt-5">
-                    {{ $products ->onEachSide(1)->links('pagination::bootstrap-5') }}
+                <div class="mt-3">
+                    {{ $products->onEachSide(1)->links('pagination::bootstrap-5') }}
                 </div>
             @endif
         @else

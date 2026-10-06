@@ -578,185 +578,6 @@ img {
 }
 
 /* =========================================================
-   PRODUCT CARD
-========================================================= */
-
-.store-product-card {
-    position: relative;
-
-    height: 100%;
-
-    overflow: hidden;
-
-    border: 1px solid var(--store-border);
-    border-radius: var(--store-radius);
-
-    background: #fff;
-
-    transition:
-        transform .2s ease,
-        box-shadow .2s ease,
-        border-color .2s ease;
-}
-
-.store-product-card:hover {
-    transform: translateY(-4px);
-
-    border-color: #d5d8dc;
-
-    box-shadow: var(--store-shadow);
-}
-
-.store-product-image-wrap {
-    position: relative;
-
-    overflow: hidden;
-
-    background: var(--store-light);
-}
-
-.store-product-image {
-    width: 100%;
-    height: 235px;
-
-    display: block;
-
-    object-fit: cover;
-
-    transition: transform .35s ease;
-}
-
-.store-product-card:hover .store-product-image {
-    transform: scale(1.035);
-}
-
-.store-product-placeholder {
-    width: 100%;
-    height: 235px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: var(--store-light);
-
-    color: #adb5bd;
-
-    font-size: 2.5rem;
-}
-
-.store-product-actions {
-    position: absolute;
-
-    top: .75rem;
-    right: .75rem;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: .45rem;
-}
-
-.store-product-action {
-    width: 36px;
-    height: 36px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    border: 1px solid var(--store-border);
-    border-radius: 50%;
-
-    background: #fff;
-    color: var(--store-dark);
-
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
-}
-
-.store-product-action:hover {
-    background: var(--store-primary);
-    border-color: var(--store-primary);
-    color: var(--store-dark);
-}
-
-.store-product-body {
-    padding: 1rem;
-}
-
-.store-product-category {
-    margin-bottom: .35rem;
-
-    color: var(--store-muted);
-
-    font-size: .76rem;
-    font-weight: 600;
-
-    text-transform: uppercase;
-    letter-spacing: .02em;
-}
-
-.store-product-name {
-    min-height: 44px;
-
-    margin: 0 0 .6rem;
-
-    color: var(--store-dark);
-
-    font-size: .96rem;
-    font-weight: 700;
-    line-height: 1.45;
-}
-
-.store-product-name:hover {
-    color: var(--store-primary-dark);
-}
-
-.store-product-price {
-    color: var(--store-dark);
-
-    font-size: 1.08rem;
-    font-weight: 900;
-}
-
-.store-product-stock {
-    margin-top: .3rem;
-
-    color: var(--store-muted);
-
-    font-size: .78rem;
-}
-
-.store-product-footer {
-    margin-top: .9rem;
-}
-
-.store-add-cart {
-    width: 100%;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .45rem;
-
-    padding: .6rem .8rem;
-
-    border: 1px solid var(--store-primary);
-    border-radius: 4px;
-
-    background: var(--store-primary);
-    color: var(--store-dark);
-
-    font-size: .85rem;
-    font-weight: 800;
-}
-
-.store-add-cart:hover {
-    background: var(--store-primary-dark);
-    border-color: var(--store-primary-dark);
-}
-
-/* =========================================================
    SERVICE STRIP
 ========================================================= */
 
@@ -1590,132 +1411,42 @@ RESPONSIVE
     letter-spacing: .06em;
 }
 
-
-/* =========================================================
-   SUBCATEGORY NAVIGATION
-========================================================= */
-
-.store-subcategory-nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-
-    gap: .45rem;
-
-    margin-top: 1.25rem;
-    padding-top: 1rem;
-
-    border-top: 1px solid var(--store-border);
-}
-
-.store-subcategory-label {
-    margin-right: .25rem;
-
-    color: var(--store-muted);
-
-    font-size: .75rem;
-    font-weight: 700;
-}
-
-.store-subcategory-link {
-    display: inline-flex;
-    align-items: center;
-
-    padding: .45rem .75rem;
-
-    border: 1px solid var(--store-border);
-    border-radius: 999px;
-
-    background: #fff;
-
-    color: var(--store-dark);
-
-    font-size: .75rem;
-    font-weight: 700;
-
-    text-decoration: none;
-
-    transition:
-        background .2s ease,
-        border-color .2s ease,
-        color .2s ease;
-}
-
-.store-subcategory-link:hover,
-.store-subcategory-link.active {
-    border-color: var(--store-primary);
-
-    background: var(--store-primary);
-
-    color: var(--store-dark);
-}
-
-
-/* =========================================================
-   RESULT SUMMARY
-========================================================= */
-
-.store-results-summary {
-    color: var(--store-muted);
-
-    font-size: .76rem;
-}
-
-.store-results-summary strong {
-    color: var(--store-dark);
-}
-
-
 /* =========================================================
    EMPTY STATE
 ========================================================= */
 
 .store-empty-state {
     padding: 4rem 1.5rem;
-
     border: 1px solid var(--store-border);
     border-radius: var(--store-radius);
-
     background: var(--store-light);
-
     text-align: center;
 }
 
 .store-empty-icon {
     width: 72px;
     height: 72px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     margin: 0 auto 1rem;
-
     border-radius: 50%;
-
     background: #fff;
-
     color: #adb5bd;
-
     font-size: 2rem;
 }
 
 .store-empty-title {
     margin-bottom: .5rem;
-
     color: var(--store-dark);
-
     font-size: 1.1rem;
     font-weight: 800;
 }
 
 .store-empty-text {
     max-width: 520px;
-
     margin: 0 auto 1.5rem;
-
     color: var(--store-muted);
-
     font-size: .85rem;
     line-height: 1.7;
 }
@@ -1724,9 +1455,7 @@ RESPONSIVE
 /* =========================================================
    MOBILE
 ========================================================= */
-
 @media (max-width: 575.98px) {
-
     .store-filter-card {
         padding: 1rem;
     }
@@ -1748,4 +1477,67 @@ RESPONSIVE
     .store-empty-state {
         padding: 3rem 1rem;
     }
+}
+
+/* =========================================================
+   STORE PAGINATION
+========================================================= */
+.store-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.store-pagination .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin: 0;
+}
+
+.store-pagination .page-item {
+    margin: 0;
+}
+
+.store-pagination .page-link {
+    min-width: 38px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .45rem .7rem;
+    border: 1px solid var(--store-border);
+    border-radius: 5px !important;
+    background: #fff;
+    color: var(--store-dark);
+    font-size: .78rem;
+    font-weight: 700;
+    box-shadow: none;
+    transition:
+        background .2s ease,
+        border-color .2s ease,
+        color .2s ease;
+}
+
+.store-pagination .page-link:hover {
+    border-color: var(--store-primary);
+    background: #fff7d6;
+    color: var(--store-dark);
+}
+
+.store-pagination .page-item.active .page-link {
+    border-color: var(--store-primary);
+    background: var(--store-primary);
+    color: var(--store-dark);
+}
+
+.store-pagination .page-item.disabled .page-link {
+    border-color: var(--store-border);
+    background: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.store-pagination .page-link:focus {
+    box-shadow: 0 0 0 .2rem rgba(252, 184, 0, .15);
 }
