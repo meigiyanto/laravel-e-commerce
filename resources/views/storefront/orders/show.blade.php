@@ -33,7 +33,7 @@
 
         <div class="store-section-header">
             <div>
-                <h1 class="store-section-title">Order #{{ $order->order_number }}<h1>
+                <h1 class="store-section-title">Order #{{ $order->order_number }}</h1>
                 <p class="store-section-subtitle">Created at {{ $order->created_at->format('d M Y H:i') }}</p>
             </div>
         </div>

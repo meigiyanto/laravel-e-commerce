@@ -31,7 +31,7 @@
                         <a class="nav-link {{ request()->routeIs('wishlist.index ') ? 'active' : '' }}" @if(request()->routeIs('wishlist.index')) ? 'aria-current="page"' : '' @endif href="{{ route('wishlist.index') }}">Wishlist</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}" @if(request()->routeIs('compare.index')) ? 'aria-current="page"' : '' @endif href="{{ route('wishlist.index') }}">Compare</a>
+                        <a class="nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}" @if(request()->routeIs('compare.index')) ? 'aria-current="page"' : '' @endif href="{{ route('compare.index') }}">Compare</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}" @if(request()->routeIs('orders.index')) ? 'aria-current="page"' : '' @endif href="{{ route('orders.index') }}">Order</a>

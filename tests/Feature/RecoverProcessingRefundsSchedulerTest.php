@@ -14,8 +14,8 @@ class RecoverProcessingRefundsSchedulerTest extends TestCase
         $event = collect($schedule->events())
             ->first(function ($event) {
                 return str_contains(
-                    $event->command,
-                    'artisan" recover:processing-refunds'
+                    $event->command ?? '',
+                    'recover:processing-refunds'
                 );
             });
 
