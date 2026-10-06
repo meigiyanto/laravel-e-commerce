@@ -59,7 +59,7 @@
                                 @endif
                                 <div class="fw-bold">{{ $product->name }}</div>
 
-                                <form action="{{ route('compare.destroy', $product) }}" method="POST" class="mt-2">                                    
+                                <form action="{{ route('compare.destroy', $product) }}" method="POST" class="mt-2">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger">

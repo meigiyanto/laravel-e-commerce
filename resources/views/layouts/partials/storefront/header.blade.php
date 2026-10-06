@@ -107,11 +107,7 @@
                             $cartCount = auth()->user()->cart?->items()->sum('quantity') ?? 0;
                         @endphp
 
-                        <a
-                            href="{{ route('cart.index') }}"
-                            class="store-action d-sm-none d-md-inline-flex"
-                            title="Keranjang"
-                        >
+                        <a href="{{ route('cart.index') }}" class="store-action d-sm-none d-md-inline-flex" title="Keranjang">
                             <span class="store-action-icon">
                                 <i class="bi bi-cart3"></i>
 

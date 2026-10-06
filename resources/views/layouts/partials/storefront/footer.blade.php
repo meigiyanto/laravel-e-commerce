@@ -24,7 +24,7 @@
                         <div class="d-flex gap-3 fs-5">
 
                             <a
-                                href="#"
+                                href="{{ route('dashboard') }}"
                                 aria-label="Instagram"
                             >
                                 <i class="bi bi-instagram"></i>
@@ -98,7 +98,7 @@
                         <ul>
                             @auth
                                 <li>
-                                    <a href="{{ route('dashboard') }}">
+                                    <a href="#">
                                         Dashboard
                                     </a>
                                 </li>

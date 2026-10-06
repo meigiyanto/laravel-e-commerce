@@ -14,7 +14,7 @@
                     Selamat datang di MeiStore
                 </span>
 
-                <h1 class="store-hero-title">Temukan Produk Favoritmu di Satu Tempat</h1>                
+                <h1 class="store-hero-title">Temukan Produk Favoritmu di Satu Tempat</h1>
                 <p class="store-hero-text">
                     Jelajahi berbagai produk pilihan mulai dari
                     elektronik, fashion, kebutuhan rumah tangga,
@@ -169,7 +169,7 @@
     ========================================================== --}}
     <section class="store-section">
         <div class="container">
-            <div class="rounded-3 overflow-hidden" style=" background: linear-gradient(110deg, #fff7d6, #ffffff); border: 1px solid #f1e2a8;">           
+            <div class="rounded-3 overflow-hidden" style=" background: linear-gradient(110deg, #fff7d6, #ffffff); border: 1px solid #f1e2a8;">
                 <div class="row align-items-center g-0">
                     <div class="col-lg-8">
                         <div class="p-4 p-md-5">
@@ -240,13 +240,8 @@
                 </div>
 
                 <div class="col-6 col-lg-3">
-                    <div
-                        class="h-100 p-4 border rounded-3 bg-white"
-                    >
-                        <i
-                            class="bi bi-cart-check fs-2"
-                            style="color: var(--store-primary-dark);"
-                        ></i>
+                    <div class="h-100 p-4 border rounded-3 bg-white">
+                        <i class="bi bi-cart-check fs-2" style="color: var(--store-primary-dark);"></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
                             Belanja Mudah
@@ -260,13 +255,8 @@
                 </div>
 
                 <div class="col-6 col-lg-3">
-                    <div
-                        class="h-100 p-4 border rounded-3 bg-white"
-                    >
-                        <i
-                            class="bi bi-credit-card fs-2"
-                            style="color: var(--store-primary-dark);"
-                        ></i>
+                    <div class="h-100 p-4 border rounded-3 bg-white">
+                        <i class="bi bi-credit-card fs-2" style="color: var(--store-primary-dark);"></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
                             Pembayaran
@@ -283,10 +273,7 @@
                     <div
                         class="h-100 p-4 border rounded-3 bg-white"
                     >
-                        <i
-                            class="bi bi-shield-check fs-2"
-                            style="color: var(--store-primary-dark);"
-                        ></i>
+                        <i class="bi bi-shield-check fs-2" style="color: var(--store-primary-dark);"></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
                             Aman & Terpercaya
@@ -307,7 +294,6 @@
     ========================================================== --}}
     <section class="store-service-strip">
         <div class="container">
-
             <div class="row g-0">
 
                 <div class="col-12 col-md-6 col-lg-3">
@@ -361,6 +347,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </section>

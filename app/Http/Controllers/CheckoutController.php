@@ -22,14 +22,10 @@ class CheckoutController extends Controller
             ->first();
 
         if (! $cart || $cart->items->isEmpty()) {
-            return redirect()
-                ->route('cart.index')
-                ->with('error', 'Keranjang kamu masih kosong.');
+            return redirect()->route('cart.index')->with('error', 'Your cart still empty.');
         }
 
-        $subtotal = $cart->items->sum(
-            fn ($item) => $item->product->price * $item->quantity
-        );
+        $subtotal = $cart->items->sum(fn ($item) => $item->product->price * $item->quantity);
 
         $shippingCost = 0;
 
@@ -83,13 +79,13 @@ class CheckoutController extends Controller
                 ->first();
 
             if (! $cart) {
-                abort(404, 'Keranjang tidak ditemukan.');
+                abort(404, 'Cart not founs.');
             }
 
             $cart->load('items.product');
 
             if ($cart->items->isEmpty()) {
-                abort(422, 'Keranjang kamu masih kosong.');
+                abort(422, 'Your cart still empty.');
             }
 
             $productIds = $cart->items
@@ -115,13 +111,13 @@ class CheckoutController extends Controller
 
                 if (! $product) {
                     throw new \RuntimeException(
-                        "Produk {$cartItem->product_id} tidak ditemukan."
+                        "Product {$cartItem->product_id} not found."
                     );
                 }
 
                 if ($cartItem->quantity > $product->stock) {
                     throw new \RuntimeException(
-                        "Stok produk {$product->name} tidak mencukupi."
+                        "Product stock {$product->name} not enough."
                     );
                 }
 
@@ -129,9 +125,7 @@ class CheckoutController extends Controller
                  * Harga diambil dari database.
                  * Bukan dari request browser.
                  */
-                $subtotal +=
-                    $product->price *
-                    $cartItem->quantity;
+                $subtotal += $product->price * $cartItem->quantity;
             }
 
             $shippingCost = 0;
@@ -206,40 +200,27 @@ class CheckoutController extends Controller
         });
 
         if ($validated['payment_method'] === 'cod') {
-            return redirect()->route('orders.show', $order)->with('success', 'Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.');
+            return redirect()->route('orders.show', $order)->with('success', 'COD order successfully created. Payment is made when the order is received by the recipient.');
         }
 
         if ($validated['payment_method'] === 'midtrans') {
-            return redirect()->route('payment.midtrans.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran melalui Midtrans.');
+            return redirect()->route('payment.midtrans.show', $order)->with('success', 'Your order has been successfully placed. Please proceed with payment via Midtrans. ');
         }
 
-        return redirect()->route('payment.show', $order)->with('success', 'Pesanan berhasil dibuat. Silakan lanjutkan pembayaran melalui Stripe.');
+        return redirect()->route('payment.show', $order)->with('success', 'Your order has been successfully placed. Please proceed with payment via Stripe.');
     }
 
     public function success(Order $order)
     {
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
-
-        $order->load([
-            'items.product',
-            'payment',
-        ]);
-
+        abort_unless($order->user_id === auth()->id(), 403);
+        $order->load(['items.product', 'payment']);
         $payment = $order->payment;
 
         /*
          * Order tanpa payment tidak boleh dianggap berhasil.
          */
         if (! $payment) {
-            return redirect()
-                ->route('orders.show', $order)
-                ->with(
-                    'error',
-                    'Data pembayaran untuk pesanan ini tidak ditemukan.'
-                );
+            return redirect()->route('orders.show', $order)->with('error', 'Payment data for this order was not found.');
         }
 
         /*
@@ -247,9 +228,7 @@ class CheckoutController extends Controller
          * Tidak membutuhkan payment gateway.
          */
         if ($payment->provider === 'cod') {
-            return view(
-                'storefront.checkout-success',
-                compact('order')
+            return view('storefront.checkout-success', compact('order')
             );
         }
 
@@ -264,10 +243,7 @@ class CheckoutController extends Controller
             $payment->stripe_payment_intent_id
         ) {
             app(PaymentController::class)
-                ->syncPaymentFromStripe(
-                    $order,
-                    $payment->stripe_payment_intent_id
-                );
+                ->syncPaymentFromStripe($order, $payment->stripe_payment_intent_id);
 
             $order->refresh();
 
@@ -294,19 +270,14 @@ class CheckoutController extends Controller
         ) {
             return redirect()
                 ->route('payment.midtrans.show', $order)
-                ->with(
-                    'error',
-                    'Pembayaran Midtrans belum berhasil diverifikasi.'
-                );
+                ->with('error', 'Midtrans payment has not been successfully verified.');
         }
 
         /*
          * Pembayaran sudah berhasil diverifikasi.
          */
         if ($payment->status === 'succeeded') {
-            return view(
-                'storefront.checkout-success',
-                compact('order')
+            return view('storefront.checkout-success', compact('order')
             );
         }
 
@@ -317,10 +288,8 @@ class CheckoutController extends Controller
          * Jangan tampilkan halaman success.
          */
         return redirect()
-            ->route('orders.show', $order)
-            ->with(
-                'error',
-                'Pembayaran belum berhasil. Silakan periksa status pesanan Anda.'
+            ->route('storefront.orders.show', $order)
+            ->with('error', 'Payment was unsuccessful. Please check your order status. '
             );
     }
 }

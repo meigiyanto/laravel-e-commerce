@@ -41,7 +41,7 @@
                 <div class="col-md-6 col-xl-3 mb-3">
                     <div class="card">
                         <div class="card-body">
-                            <div class="card-title">                                
+                            <div class="card-title">
                                 <h6 class="title fw-bold"><em class="bi bi-person"></em> Account</h6>
                                 <p>{{ Auth::user()->name }}</p>
                                 <p>{{ Auth::user()->email }}</p>
@@ -53,7 +53,7 @@
                 <div class="col-md-6 col-xl-3 mb-3">
                     <div class="card">
                         <div class="card-body">
-                            <div class="card-title">                                
+                            <div class="card-title">
                                 <h6 class="title fw-bold"><em class="icon bi bi-bag"></em> My Orders</h6>
                                 <p>My Orders</p>
                                 <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary mt-2">View Orders</a>
@@ -77,10 +77,10 @@
                 <div class="col-md-6 col-xl-3">
                     <div class="card">
                         <div class="card-body">
-                            <div class="card-title">                                
-                                <h6 class="title fw-bold"><em class="icon bi bi-shop"></em> Store</h6>    
+                            <div class="card-title">
+                                <h6 class="title fw-bold"><em class="icon bi bi-shop"></em> Store</h6>
                                 <p>MeiStore</p>
-                                <a href="{{ route('storefront.home') }}" class="btn btn-sm btn-outline-primary mt-2">Visit Store</a>                          
+                                <a href="{{ route('storefront.home') }}" class="btn btn-sm btn-outline-primary mt-2">Visit Store</a>
                             </div>
                         </div>
                     </div>

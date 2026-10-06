@@ -12,10 +12,8 @@
         @csrf
         @method('DELETE')
 
-        <div class="form-group">
-            <label for="password" class="form-label">
-                Password
-            </label>
+        <div class="form-group mb-3">
+            <label for="password" class="form-label">Password</label>
 
             <input
                 id="password"
@@ -39,5 +37,4 @@
         </button>
 
     </form>
-
 </section>

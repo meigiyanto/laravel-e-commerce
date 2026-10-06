@@ -938,7 +938,6 @@ img {
 .store-service-strip {
     border-top: 1px solid var(--store-border);
     border-bottom: 1px solid var(--store-border);
-
     background: #fff;
 }
 
@@ -952,38 +951,34 @@ img {
 }
 
 .store-service-icon {
-    width: 44px;
-    height: 44px;
-
+    width: 66px;
+    height: 66px;
     flex: 0 0 auto;
-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
     border-radius: 50%;
-
     background: #fff7d6;
     color: var(--store-primary-dark);
+}
 
+.store-service-icon .bi {
     font-size: 1.3rem;
+    position: relative;
+    top: 22px;
+    left: 22px;
 }
 
 .store-service strong {
     display: block;
-
     color: var(--store-dark);
-
     font-size: .88rem;
 }
 
 .store-service span {
     display: block;
-
     margin-top: .15rem;
-
     color: var(--store-muted);
-
     font-size: .75rem;
 }
 

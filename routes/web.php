@@ -1,23 +1,26 @@
 <?php
 
-use App\Http\Controllers\Admin\CategoryController;
+use Illuminate\Support\Facades\Route;
+
 /**
- * Store Front
+ * Dashboard
  */
 use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\UserController;
+
+/**
+ * Store Front
+ */
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\MidtransPaymentController;
 use App\Http\Controllers\OrderController;
-/**
- * Dashboard
- */
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RefundController;
@@ -25,13 +28,17 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
-use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
+
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
+
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
+
 Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name('storefront.category');
+
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
+
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
@@ -75,26 +82,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
-});
 
-/*
-|-----------------------------------------------------------| Authenticated User Routes
-|-----------------------------------------------------------*/
+    // Order
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
-    // My Profile
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // My Orders
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
 });
+
+/*
+|-----------------------------------------------------------| Authenticated User Routes
+|-----------------------------------------------------------Route::middleware('auth')->group(function () {
+
+});
+*/
 
 /*
 |-----------------------------------------------------------| Admin Routes

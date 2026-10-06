@@ -13,7 +13,7 @@
         @csrf
         @method('PATCH')
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="name" class="form-label">Name</label>
             <input
                 id="name"
@@ -30,7 +30,7 @@
             @enderror
         </div>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="email" class="form-label">Email</label>
 
             <input
@@ -59,5 +59,4 @@
         @endif
 
     </form>
-
 </section>

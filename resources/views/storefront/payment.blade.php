@@ -3,6 +3,29 @@
 @section('title', 'Pembayaran - MeiStore')
 
 @section('content')
+{{-- =========================================================
+     BREADCRUMB
+========================================================= --}}
+<div class="store-breadcrumb">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{{ route('storefront.home') }}">
+                        <i class="bi bi-house me-1"></i>
+                        Home
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    Shop
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Payment
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
 
 <div class="container py-5">
     <div class="row justify-content-center">

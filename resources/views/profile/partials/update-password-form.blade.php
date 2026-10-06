@@ -1,8 +1,8 @@
 <section>
 
     <header class="section-header">
-        <h2>Profile Information</h2>
-        <p>Update information profile and your email address</p>
+        <h2>Update Password</h2>
+        <p>Update your password</p>
     </header>
 
     <form
@@ -13,36 +13,51 @@
         @csrf
         @method('PATCH')
 
-        <div class="form-group">
-            <label for="name" class="form-label">Name</label>            <input
-                id="name"
-                name="name"
-                type="text"
+        <div class="form-group mb-3">
+            <label for="current_password" class="form-label">Current Password</label>
+            <input
+                id="current_password"
+                name="current_password"
+                type="password"
                 class="form-control"
-                value="{{ old('name', $user->name) }}"
+                value=""
                 required
-                autocomplete="name"
             >
 
-            @error('name')
+            @error('current_password')
                 <p class="form-error">{{ $message }}</p>
             @enderror
         </div>
 
-        <div class="form-group">
-            <label for="email" class="form-label">Email</label>
-
+        <div class="form-group mb-3">
+            <label for="new_password" class="form-label">New Password</label>
             <input
-                id="email"
-                name="email"
-                type="email"
+                id="new_password"
+                name="new_password"
+                type="password"
                 class="form-control"
-                value="{{ old('email', $user->email) }}"
+                value=""
                 required
-                autocomplete="username"
             >
 
-            @error('email')
+            @error('new_password')
+                <p class="form-error">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="confirm_password" class="form-label">Password Confirm</label>
+
+            <input
+                id="confirm_password"
+                name="confirm_password"
+                type="password"
+                class="form-control"
+                value=""
+                required
+            >
+
+            @error('confirm_password')
                 <p class="form-error">{{ $message }}</p>
             @enderror
         </div>

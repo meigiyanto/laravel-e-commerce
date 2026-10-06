@@ -3,18 +3,38 @@
 @section('title', 'Keranjang - MeiStore')
 
 @section('content')
+{{-- =========================================================
+     BREADCRUMB
+========================================================= --}}
+<div class="store-breadcrumb">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{{ route('storefront.home') }}">
+                        <i class="bi bi-house me-1"></i>
+                        Home
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    Shop
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Cart
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
 
 <div class="container py-4 py-lg-5">
-
     {{-- Page Header --}}
     <div class="store-section-header mb-4">
         <div>
-            <h1 class="store-section-title">Keranjang Belanja</h1>
-            <p class="store-section-subtitle">
-                Periksa kembali produk sebelum melanjutkan ke checkout.</p>
+            <h1 class="store-section-title">Shopping Cart</h1>
+            <p class="store-section-subtitle">Please double check the product before proceeding to checkout.Periksa kembali produk sebelum melanjutkan ke checkout.</p>
         </div>
     </div>
-
 
     {{-- Flash Messages --}}
     @if (session('success'))
@@ -51,7 +71,7 @@
         <div class="alert alert-danger shadow-sm mb-4">
             <div class="fw-bold mb-2">
                 <i class="bi bi-exclamation-triangle me-2"></i>
-                Terjadi kesalahan
+                Terjadi kesalahan. Something went wrong!
             </div>
 
             <ul class="mb-0 ps-4">
@@ -80,10 +100,10 @@
             </div>
 
             <h2 class="h4 fw-bold mb-2">
-                Keranjang Anda masih kosong
+                Keranjang Anda masih kosong. Your cart is still empty
             </h2>
 
-            <p class="text-muted mb-4">
+            <p class="text-muted mb-4"> No products have been added to your cart yet. Find the product you're looking for.
                 Belum ada produk yang ditambahkan ke keranjang.
                 Yuk, temukan produk yang Anda inginkan.
             </p>
@@ -93,7 +113,7 @@
                 class="store-btn-primary"
             >
                 <i class="bi bi-shop"></i>
-                Mulai Belanja
+                Start Shopping
             </a>
 
         </div>
@@ -110,9 +130,9 @@
                 {{-- Desktop table header --}}
                 <div class="d-none d-md-grid mb-2 px-3 text-muted small fw-semibold"
                      style="grid-template-columns: 1fr 150px 130px; gap: 1rem;">
-                    <span>Produk</span>
-                    <span class="text-center">Jumlah</span>
-                    <span class="text-end">Subtotal</span>
+                    <span>Product</span>
+                    <span class="text-center">Amount</span>
+                    <span class="text-end">Sub Total</span>
                 </div>
 
 
@@ -178,7 +198,7 @@
                                     </div>
 
                                     <div class="store-product-stock mt-1">
-                                        Stok tersedia:
+                                        Stock available:
                                         {{ $item->product->stock }}
                                     </div>
 
@@ -197,7 +217,7 @@
                                             onclick="return confirm('Hapus produk dari keranjang?')"
                                         >
                                             <i class="bi bi-trash me-1"></i>
-                                            Hapus
+                                            Remove
                                         </button>
                                     </form>
 
@@ -206,12 +226,7 @@
 
                                 {{-- Quantity --}}
                                 <div class="col-7 col-md-3">
-
-                                    <label
-                                        class="small fw-semibold text-muted d-block mb-2"
-                                    >
-                                        Jumlah
-                                    </label>
+                                    <label class="small fw-semibold text-muted d-block mb-2">Total</label>
 
                                     <form
                                         action="{{ route('cart.update', $item) }}"
@@ -246,7 +261,7 @@
                                             <button
                                                 type="button"
                                                 class="store-quantity-button quantity-plus"
-                                                aria-label="Tambah jumlah"
+                                                aria-label="Add Total"
                                             >
                                                 <i class="bi bi-plus"></i>
                                             </button>
@@ -259,7 +274,6 @@
 
                                 {{-- Subtotal / Delete --}}
                                 <div class="col-5 col-md-2 text-end">
-
                                     <div class="small text-muted mb-1">
                                         Subtotal
                                     </div>
@@ -291,18 +305,14 @@
                                             onclick="return confirm('Hapus produk dari keranjang?')"
                                         >
                                             <i class="bi bi-trash me-1"></i>
-                                            Hapus
+                                            Delete
                                         </button>
                                     </form>
 
                                 </div>
-
                             </div>
-
                         </div>
-
                     </article>
-
                 @endforeach
 
 
@@ -314,7 +324,7 @@
                         class="btn btn-outline-secondary"
                     >
                         <i class="bi bi-arrow-left me-1"></i>
-                        Lanjut Belanja
+                        Continue Shopping
                     </a>
 
                 </div>
@@ -330,16 +340,14 @@
                 <div class="store-cart-summary">
 
                     <div class="store-cart-summary-header">
-                        <h2>
-                            Ringkasan Belanja
-                        </h2>
+                        <h2>Shopping Summary</h2>
                     </div>
 
                     <div class="p-4">
 
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-muted">
-                                Jumlah item
+                                Total item
                             </span>
 
                             <strong id="cart-item-count">
@@ -349,7 +357,7 @@
 
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-muted">
-                                Subtotal
+                                Sub Total
                             </span>
 
                             <strong id="cart-total">
@@ -359,11 +367,11 @@
 
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-muted">
-                                Pengiriman
+                                Shipping
                             </span>
 
                             <span class="text-success fw-semibold">
-                                Gratis
+                                Free
                             </span>
                         </div>
 
@@ -386,7 +394,7 @@
                         >
                             <span>
                                 <i class="bi bi-lock me-1"></i>
-                                Lanjut Checkout
+                                Continue Checkout
                             </span>
 
                             <i class="bi bi-arrow-right"></i>
@@ -397,50 +405,37 @@
 
                             <small class="text-muted">
                                 <i class="bi bi-shield-check me-1"></i>
-                                Pembayaran aman dan tercatat dalam sistem.
+                                Secure and recorded payment system
                             </small>
 
                         </div>
-
                     </div>
-
                 </div>
 
 
                 {{-- Trust Card --}}
                 <div class="border rounded-3 mt-3 p-3 bg-light">
-
                     <div class="d-flex gap-3">
-
                         <div class="text-warning fs-4">
                             <i class="bi bi-shield-check"></i>
                         </div>
-
                         <div>
                             <div class="fw-bold small">
-                                Belanja dengan tenang
+                                Shop with peace of mind
                             </div>
-
                             <div class="text-muted small mt-1">
-                                Data pesanan dan pembayaran Anda
-                                diproses melalui sistem MeiStore.
+                                Your order and payment data are processed through the MeiStore system.
                             </div>
                         </div>
 
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     @endif
-
 </div>
 
 @endsection
-
 
 @push('styles')
 <style>
@@ -460,13 +455,9 @@
     .store-cart-image {
         width: 100%;
         height: 135px;
-
         display: block;
-
         object-fit: cover;
-
         border-radius: 6px;
-
         background: var(--store-light);
     }
 
@@ -474,17 +465,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-
         color: #adb5bd;
-
         font-size: 2rem;
     }
 
     .store-cart-product-name {
         margin: 0 0 .5rem;
-
         color: var(--store-dark);
-
         font-size: .98rem;
         font-weight: 700;
         line-height: 1.45;
@@ -721,7 +708,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     async function updateCartItem(form, quantity) {
-
         const input = form.querySelector('.quantity-input');
         const minusButton = form.querySelector('.quantity-minus');
         const plusButton = form.querySelector('.quantity-plus');
@@ -765,7 +751,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await response.json();
 
-
             if (!response.ok || !data.success) {
                 throw new Error(
                     data.message ||
@@ -775,7 +760,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
             input.value = data.quantity;
-
 
             const subtotal = document.querySelector(
                 `.cart-item-subtotal[data-item-id="${form.dataset.itemId}"]`
@@ -821,14 +805,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
-
             if (typeof window.showStoreNotification === 'function') {
                 window.showStoreNotification(
                     data.message,
                     'success'
                 );
             }
-
         } catch (error) {
 
             if (typeof window.showStoreNotification === 'function') {
@@ -840,18 +822,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         } finally {
-
             input.disabled = false;
-
             form.classList.remove('opacity-75');
-
             updateButtons(form);
         }
     }
 
 
     function updateButtons(form) {
-
         const input = form.querySelector('.quantity-input');
         const minusButton = form.querySelector('.quantity-minus');
         const plusButton = form.querySelector('.quantity-plus');
