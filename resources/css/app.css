@@ -1482,6 +1482,57 @@ RESPONSIVE
 /* =========================================================
    STORE PAGINATION
 ========================================================= */
+.store-pagination > nav {
+    display: block !important;
+}
+
+.store-pagination > nav > .d-none.d-sm-flex {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.store-pagination > nav > .d-none.d-sm-flex > .small.text-muted {
+    display: none;
+}
+
+.store-pagination .pagination {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .35rem;
+}
+
+.store-pagination .page-link {
+    min-width: 38px;
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: .45rem .7rem;
+
+    border: 1px solid var(--store-border);
+    border-radius: 5px !important;
+
+    background: #fff;
+    color: var(--store-dark);
+
+    font-size: .78rem;
+    font-weight: 700;
+
+    box-shadow: none;
+}
+
+.store-pagination .page-item.active .page-link {
+    background: var(--store-primary);
+    border-color: var(--store-primary);
+    color: var(--store-dark);
+}
+
+/*
 .store-pagination {
     display: flex;
     justify-content: center;
@@ -1540,4 +1591,37 @@ RESPONSIVE
 
 .store-pagination .page-link:focus {
     box-shadow: 0 0 0 .2rem rgba(252, 184, 0, .15);
+}
+*/
+
+/* =========================================================
+   PAGINATION RESPONSIVE
+========================================================= */
+
+@media (max-width: 575.98px) {
+    /*
+    .store-pagination {
+        margin-top: 1.5rem;
+    }
+
+    .store-pagination .pagination {
+        gap: .25rem;
+    }
+
+    .store-pagination .page-link {
+        min-width: 34px;
+        min-height: 34px;
+        padding: .35rem .55rem;
+        font-size: .72rem;
+    }
+    */
+    .store-pagination > nav > .d-sm-none {
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    .store-pagination > nav > .d-sm-none .pagination {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
