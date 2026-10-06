@@ -9,13 +9,11 @@
     $selectedSubCategorySlug = request('subcategory');
     $selectedSearch = request('q');
     $selectedSort = request('sort');
-
+    $hasActiveFilters = filled($selectedSearch) || filled($selectedCategorySlug) || filled($selectedSubCategorySlug) || filled($selectedSort);
     $isCategoryContext = $categoryContext !== null;
 
-    $availableSubCategories = $isCategoryContext
-        ? $categoryContext->subCategories
-        : $categories
-            ->flatMap(function ($category) {
+    $availableSubCategories = $isCategoryContext ? $categoryContext->subCategories
+        : $categories->flatMap(function ($category) {
                 return $category->subCategories->map(
                     fn ($subCategory) => [
                         'slug' => $subCategory->slug,
@@ -27,9 +25,7 @@
 @endphp
 
 <div class="store-product-toolbar">
-
     <div class="store-filter-card">
-
         <form
             class="store-filter-form"
             action="{{ $action ?? url()->current() }}"
@@ -87,7 +83,6 @@
                     </label>
 
                     @if ($isCategoryContext)
-
                         <div class="store-filter-context">
                             <i class="bi bi-grid"></i>
 
@@ -95,9 +90,7 @@
                                 {{ $categoryContext->name }}
                             </span>
                         </div>
-
                     @else
-
                         <select
                             id="store-filter-category"
                             name="category"
@@ -110,7 +103,6 @@
                             </option>
 
                             @foreach ($categories as $category)
-
                                 <option
                                     value="{{ $category->slug }}"
                                     @selected(
@@ -119,13 +111,9 @@
                                 >
                                     {{ $category->name }}
                                 </option>
-
                             @endforeach
-
                         </select>
-
                     @endif
-
                 </div>
 
 
@@ -155,9 +143,7 @@
                         </option>
 
                         @if ($isCategoryContext)
-
                             @foreach ($availableSubCategories as $subCategory)
-
                                 <option
                                     value="{{ $subCategory->slug }}"
                                     @selected(
@@ -166,11 +152,8 @@
                                 >
                                     {{ $subCategory->name }}
                                 </option>
-
                             @endforeach
-
                         @else
-
                             @foreach ($availableSubCategories as $subCategory)
 
                                 <option
@@ -185,11 +168,8 @@
                                 </option>
 
                             @endforeach
-
                         @endif
-
                     </select>
-
                 </div>
 
 
@@ -200,7 +180,7 @@
                         for="store-filter-sort"
                         class="form-label"
                     >
-                        Urutkan
+                        Sorting
                     </label>
 
                     <select
@@ -213,113 +193,73 @@
                             value=""
                             @selected(! $selectedSort)
                         >
-                            Terbaru
+                            Newest
                         </option>
 
                         <option
                             value="oldest"
                             @selected($selectedSort === 'oldest')
                         >
-                            Terlama
+                            Oldest
                         </option>
 
                         <option
                             value="price_low"
                             @selected($selectedSort === 'price_low')
                         >
-                            Harga Terendah
+                            Lower Price
                         </option>
 
                         <option
                             value="price_high"
                             @selected($selectedSort === 'price_high')
                         >
-                            Harga Tertinggi
+                            Higher Price
                         </option>
 
                         <option
                             value="name_asc"
                             @selected($selectedSort === 'name_asc')
                         >
-                            Nama A - Z
+                            Name A - Z
                         </option>
 
                         <option
                             value="name_desc"
                             @selected($selectedSort === 'name_desc')
                         >
-                            Nama Z - A
+                            Name Z - A
                         </option>
-
                     </select>
-
                 </div>
 
 
                 {{-- Actions --}}
                 <div class="col-12 col-md-6 col-lg-2">
-
-                    <label class="form-label d-block">
-                        &nbsp;
-                    </label>
-
+                    <label class="form-label d-block">&nbsp;</label>
                     <div class="d-flex gap-2">
-
-                        <button
-                            type="submit"
-                            class="store-add-cart flex-grow-1"
-                        >
+                        <button type="submit" class="store-add-cart flex-grow-1">
                             <i class="bi bi-funnel"></i>
-                            Terapkan
+                            Apply
                         </button>
-
-                        @if (request()->hasAny([
-                            'q',
-                            'category',
-                            'subcategory',
-                            'sort',
-                        ]))
-
-                            <a
-                                href="{{ $isCategoryContext
-                                    ? route('storefront.category', $categoryContext->slug)
-                                    : route('storefront.shop')
-                                }}"
-                                class="btn btn-outline-secondary"
-                                title="Reset filter"
-                            >
+                        @if($hasActiveFilters)
+                            <a href="{{ $isCategoryContext ? route('storefront.category', $categoryContext->slug) : route('storefront.shop') }}"  class="btn btn-outline-secondary" title="Reset filter" >
                                 <i class="bi bi-arrow-counterclockwise"></i>
                             </a>
-
                         @endif
-
                     </div>
-
                 </div>
-
             </div>
-
         </form>
 
 
         {{-- Active filters --}}
-        @if (request()->hasAny([
-            'q',
-            'category',
-            'subcategory',
-            'sort',
-        ]))
-
+        @if($hasActiveFilters)
             <div class="store-active-filters">
-
-                <span class="store-active-filters-label">
-                    Filter aktif:
-                </span>
-
+                <span class="store-active-filters-label">Active Filter:</span>
 
                 {{-- Search --}}
                 @if ($selectedSearch)
-
                     <span class="store-filter-badge">
                         <i class="bi bi-search"></i>
                         {{ $selectedSearch }}
@@ -330,29 +270,20 @@
 
                 {{-- Category --}}
                 @if ($selectedCategorySlug)
-
                     @php
                         $activeCategory = $categoryContext;
-
                         if (! $activeCategory) {
-                            $activeCategory = $categories->firstWhere(
-                                'slug',
-                                $selectedCategorySlug
-                            );
+                            $activeCategory = $categories->firstWhere('slug', $selectedCategorySlug);
                         }
                     @endphp
 
                     @if ($activeCategory)
-
                         <span class="store-filter-badge">
                             <i class="bi bi-grid"></i>
                             {{ $activeCategory->name }}
                         </span>
-
                     @endif
-
                 @endif
-
 
                 {{-- Subcategory --}}
                 @if ($selectedSubCategorySlug)
@@ -395,7 +326,6 @@
 
                 @endif
 
-
                 {{-- Sorting --}}
                 @php
                     $sortLabels = [
@@ -408,14 +338,12 @@
                 @endphp
 
                 @if ($selectedSort)
-
                     <span class="store-filter-badge">
                         <i class="bi bi-sort-down"></i>
                         {{ $sortLabels[$selectedSort] ?? 'Terbaru' }}
                     </span>
 
                 @endif
-
 
                 <a
                     href="{{ $isCategoryContext
@@ -427,20 +355,14 @@
                     <i class="bi bi-x-lg"></i>
                     Reset
                 </a>
-
             </div>
-
         @endif
-
     </div>
-
 </div>
 
 
 @once
-
     @push('scripts')
-
         <script>
             document.addEventListener('DOMContentLoaded', function () {
 
