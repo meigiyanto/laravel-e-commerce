@@ -68,7 +68,7 @@
                     @endforeach
                 </div>
                 @if ($products->hasPages())
-                    <div class="mt-3">
+                    <div class="store-pagination">
                         {{ $products->onEachSide(1)->links('pagination::bootstrap-5') }}
                     </div>
                 @endif

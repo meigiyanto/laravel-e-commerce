@@ -7,11 +7,10 @@
             <a href="{{ route('storefront.shop') }}" class="store-department">
                 <i class="bi bi-grid-3x3-gap-fill"></i>
                 Shop by Department
-                <i class="bi bi-chevron-down ms-2"></i>                
+                <i class="bi bi-chevron-down ms-2"></i>
             </a>
-
             <a href="{{ route('storefront.home') }}" class="store-nav-link {{ request()->routeIs('storefront.home') ? 'active' : '' }}">Home</a>
-            <a href="{{ route('storefront.shop') }}" class="store-nav-link {{ request()->routeIs('storefront.shop', 'storefront.category', 'storefront.product') ? 'active' : '' }}">Shop</a>                
+            <a href="{{ route('storefront.shop') }}" class="store-nav-link {{ request()->routeIs('storefront.shop', 'storefront.category', 'storefront.product') ? 'active' : '' }}">Shop</a>
             @auth
                 <a href="{{ route('wishlist.index') }}" class="store-nav-link {{ request()->routeIs('wishlist') ? 'active' : '' }}">Wishlist</a>
                 <a href="{{ route('compare.index') }}" class="store-nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}">Compare</a>

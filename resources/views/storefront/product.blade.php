@@ -179,16 +179,9 @@
                              PURCHASE
                         ================================================== --}}
                         @if ($product->stock > 0)
-
                             @auth
-
-                                <form
-                                    action="{{ route('cart.store') }}"
-                                    method="POST"
-                                    class="product-purchase-form add-to-cart-form"
-                                >
+                                <form action="{{ route('cart.store') }}" method="POST" class="product-purchase-form add-to-cart-form">
                                     @csrf
-
                                     <input
                                         type="hidden"
                                         name="product_id"
@@ -226,19 +219,13 @@
                                                 Tambah ke Keranjang
                                             </button>
                                         </div>
-
                                     </div>
-
                                 </form>
-
                             @else
-
                                 <div class="product-login-box">
-
                                     <div class="product-login-icon">
                                         <i class="bi bi-person-lock"></i>
                                     </div>
-
                                     <div>
                                         <strong>
                                             Login untuk membeli produk
@@ -265,14 +252,10 @@
                                             >
                                                 Daftar
                                             </a>
-
                                         </div>
                                     </div>
-
                                 </div>
-
                             @endauth
-
                         @else
 
                             <div class="product-out-of-stock">
@@ -287,79 +270,47 @@
                              WISHLIST / COMPARE
                         ================================================== --}}
                         @auth
-
                             <div class="product-secondary-actions">
-
-                                <form
-                                    action="{{ route('wishlist.store', $product) }}"
-                                    method="POST"
-                                >
+                                <form action="{{ route('wishlist.store', $product) }}" method="POST" class="wishlist-form">
                                     @csrf
-
-                                    <button
-                                        type="submit"
-                                        class="product-secondary-action"
-                                    >
+                                    <button type="submit" class="product-secondary-action">
                                         <i class="bi bi-heart"></i>
                                         Wishlist
                                     </button>
                                 </form>
 
-                                <form
-                                    action="{{ route('compare.store', $product) }}"
-                                    method="POST"
-                                >
-                                    @csrf
+                                <form action="{{ route('compare.store', $product) }}" method="POST" class="compare-form">
 
-                                    <button
-                                        type="submit"
-                                        class="product-secondary-action"
-                                    >
+                                    @csrf
+                                    <button type="submit" class="product-secondary-action">
                                         <i class="bi bi-bar-chart"></i>
                                         Bandingkan
                                     </button>
                                 </form>
 
                             </div>
-
                         @endauth
 
 
                         {{-- Product trust information --}}
                         <div class="product-trust-list">
-
                             <div>
                                 <i class="bi bi-shield-check"></i>
-
-                                <span>
-                                    Produk terpercaya
-                                </span>
+                                <span>Trusted Product</span>
                             </div>
-
                             <div>
                                 <i class="bi bi-box-seam"></i>
-
-                                <span>
-                                    Stok diperbarui secara berkala
-                                </span>
+                                <span>Stok diperbarui secara berkala</span>
                             </div>
-
                             <div>
                                 <i class="bi bi-headset"></i>
-
-                                <span>
-                                    Dukungan pelanggan
-                                </span>
+                                <span>Dukungan pelanggan</span>
                             </div>
-
                         </div>
 
                     </div>
-
                 </div>
-
             </div>
-
         </div>
     </section>
 
@@ -369,7 +320,6 @@
     ========================================================== --}}
     <section class="product-information-section">
         <div class="container">
-
             <div class="product-tabs-card">
 
                 {{-- Tabs --}}
@@ -2054,104 +2004,4 @@
     }
 
 </style>
-@endpush
-
-
-{{-- =========================================================
-     PAGE SCRIPTS
-========================================================= --}}
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    const forms = document.querySelectorAll('.add-to-cart-form');
-
-    forms.forEach(function (form) {
-
-        form.addEventListener('submit', async function (event) {
-
-            event.preventDefault();
-
-            const button = form.querySelector('.add-to-cart-button');
-
-            if (!button) {
-                return;
-            }
-
-            const originalHtml = button.innerHTML;
-
-            button.disabled = true;
-
-            button.innerHTML = `
-                <span
-                    class="spinner-border spinner-border-sm me-1"
-                    role="status"
-                    aria-hidden="true"
-                ></span>
-                Menambahkan...
-            `;
-
-            try {
-
-                const response = await fetch(
-                    form.action,
-                    {
-                        method: 'POST',
-
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document
-                                .querySelector('meta[name="csrf-token"]')
-                                .getAttribute('content')
-                        },
-
-                        body: new FormData(form)
-                    }
-                );
-
-                const data = await response.json();
-
-                if (!response.ok || !data.success) {
-                    throw new Error(
-                        data.message ||
-                        'Gagal menambahkan produk ke keranjang.'
-                    );
-                }
-
-                if (typeof window.updateCartBadge === 'function') {
-                    window.updateCartBadge(data.cart_count);
-                }
-
-                if (typeof window.showStoreNotification === 'function') {
-                    window.showStoreNotification(
-                        data.message ||
-                        'Produk berhasil ditambahkan ke keranjang.',
-                        'success'
-                    );
-                }
-
-            } catch (error) {
-
-                if (typeof window.showStoreNotification === 'function') {
-                    window.showStoreNotification(
-                        error.message ||
-                        'Terjadi kesalahan.',
-                        'danger'
-                    );
-                }
-
-            } finally {
-
-                button.disabled = false;
-                button.innerHTML = originalHtml;
-
-            }
-
-        });
-
-    });
-
-});
-</script>
 @endpush

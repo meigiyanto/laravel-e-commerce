@@ -32,7 +32,7 @@
     <div class="container">
         <div class="store-section-header">
             <div>
-                <h1 class="store-section-title">All Products<h1>
+                <h1 class="store-section-title">All Products</h1>
                 <p class="store-section-subtitle">Find the best products here</p>
             </div>
 
@@ -98,7 +98,7 @@
                  PAGINATION
             ================================================== --}}
             @if ($products->hasPages())
-                <div class="mt-3">
+                <div class="store-pagination">
                     {{ $products->onEachSide(1)->links('pagination::bootstrap-5') }}
                 </div>
             @endif

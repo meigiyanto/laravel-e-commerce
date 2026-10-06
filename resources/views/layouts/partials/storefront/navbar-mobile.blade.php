@@ -15,6 +15,17 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('storefront.shop') ? 'active' : '' }}" @if(request()->routeIs('storefront.shop')) ? 'aria-current="page"' : '' @endif href="{{ route('storefront.shop') }}">Shop</a>
                 </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Shop By Department
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Action</a></li>
+                        <li><a class="dropdown-item" href="#">Another action</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#">Something else here</a></li>
+                    </ul>
+                </li>
                 @auth
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('wishlist.index ') ? 'active' : '' }}" @if(request()->routeIs('wishlist.index')) ? 'aria-current="page"' : '' @endif href="{{ route('wishlist.index') }}">Wishlist</a>
