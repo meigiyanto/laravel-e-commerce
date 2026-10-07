@@ -19,6 +19,124 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    /*
+     * Mobile sticky navbar muncul
+     * setelah user scroll lebih dari 120px.
+     */
+    const mobileScrollThreshold = 120;
+
+    /*
+     * Back to top muncul
+     * setelah user scroll lebih dari 300px.
+     */
+    const backToTopThreshold = 300;
+
+    let ticking = false;
+
+    function updateScrollUI() {
+        const scrollY =
+            window.scrollY ||
+            window.pageYOffset ||
+            0;
+
+        const isMobile =
+            window.innerWidth <= 767.98;
+
+        /*
+         * Mobile sticky top navbar
+         */
+        if (mobileTopbar) {
+            mobileTopbar.classList.toggle(
+                'is-visible',
+                isMobile &&
+                scrollY > mobileScrollThreshold
+            );
+        }
+
+        /*
+         * Back to top
+         */
+        if (backToTop) {
+            backToTop.classList.toggle(
+                'is-visible',
+                scrollY > backToTopThreshold
+            );
+        }
+
+        ticking = false;
+    }
+
+    function requestScrollUpdate() {
+        if (ticking) {
+            return;
+        }
+
+        window.requestAnimationFrame(
+            updateScrollUI
+        );
+
+        ticking = true;
+    }
+
+    /*
+     * Scroll
+     */
+    window.addEventListener(
+        'scroll',
+        requestScrollUpdate,
+        {
+            passive: true,
+        }
+    );
+
+    /*
+     * Resize
+     */
+    window.addEventListener(
+        'resize',
+        requestScrollUpdate
+    );
+
+    /*
+     * Back to top click
+     */
+    if (backToTop) {
+        backToTop.addEventListener(
+            'click',
+            function () {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
+            }
+        );
+    }
+
+    /*
+     * Initial state
+     */
+    updateScrollUI();
+});
+
+/**
+ * =========================================================
+ * BACK TO TOP
+ * =========================================================
+ */
+
+document.addEventListener('DOMContentLoaded', function () {
+    const mobileTopbar = document.querySelector(
+        '.store-mobile-topbar'
+    );
+
+    const backToTop = document.querySelector(
+        '.store-back-to-top'
+    );
+
+    if (!mobileTopbar && !backToTop) {
+        return;
+    }
+
 
     /*
      * Navbar mobile mulai muncul

@@ -1567,7 +1567,117 @@ img {
 
 
 /* =========================================================
-   MOBILE STICKY NAVBAR
+   MOBILE STICKY TOP NAVBAR
+========================================================= */
+
+.store-mobile-topbar {
+    display: none;
+}
+
+@media (max-width: 767.98px) {
+    .store-mobile-topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+
+        display: block;
+
+        background: #fff;
+        border-bottom: 1px solid var(--store-border);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+
+        transform: translateY(-100%);
+        visibility: hidden;
+
+        transition:
+            transform .25s ease,
+            visibility .25s ease;
+    }
+
+    .store-mobile-topbar.is-visible {
+        transform: translateY(0);
+        visibility: visible;
+    }
+}
+
+/* =========================================================
+   MOBILE STICKY TOP NAVBAR
+========================================================= */
+
+.store-mobile-topbar {
+    display: none;
+}
+
+/* =========================================================
+   BACK TO TOP
+========================================================= */
+
+.store-back-to-top {
+    position: fixed;
+
+    right: 1.25rem;
+    bottom: 1.25rem;
+
+    z-index: 1035;
+
+    width: 44px;
+    height: 44px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid var(--store-border);
+    border-radius: 50%;
+
+    background: #fff;
+    color: var(--store-dark);
+
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+
+    opacity: 0;
+    visibility: hidden;
+
+    transform: translateY(12px);
+
+    pointer-events: none;
+
+    transition:
+        opacity .2s ease,
+        visibility .2s ease,
+        transform .2s ease,
+        background .2s ease,
+        color .2s ease;
+}
+
+.store-back-to-top.is-visible {
+    opacity: 1;
+    visibility: visible;
+
+    transform: translateY(0);
+
+    pointer-events: auto;
+}
+
+.store-back-to-top:hover {
+    border-color: var(--store-primary);
+
+    background: var(--store-primary);
+    color: var(--store-dark);
+}
+
+.store-back-to-top:focus-visible {
+    outline: 2px solid var(--store-primary-dark);
+    outline-offset: 3px;
+}
+
+
+/* =========================================================
+   MOBILE STICKY TOP NAVBAR
 ========================================================= */
 
 @media (max-width: 767.98px) {
@@ -1576,10 +1686,10 @@ img {
         position: fixed;
 
         top: 0;
-        left: 0;
         right: 0;
+        left: 0;
 
-        z-index: 1035;
+        z-index: 1050;
 
         display: block;
 
@@ -1599,41 +1709,20 @@ img {
             visibility .25s ease;
     }
 
-
     .store-mobile-topbar.is-visible {
         transform: translateY(0);
 
         visibility: visible;
     }
 
-
-    /* Back to top pada mobile */
-
     .store-back-to-top {
         right: 1rem;
-
-        /*
-         * Bottom navigation memiliki tinggi
-         * sekitar 64px.
-         *
-         * Berikan jarak agar tombol tidak
-         * bertabrakan dengan bottom navigation.
-         */
         bottom: 5.25rem;
 
         width: 42px;
         height: 42px;
     }
 }
-
-/* =========================================================
-   MOBILE BOTTOM NAV
-========================================================= */
-
-.store-mobile-bottom {
-    display: none;
-}
-
 
 /* =========================================================
    RESPONSIVE — TABLET
@@ -1660,7 +1749,6 @@ img {
         min-height: 350px;
     }
 }
-
 
 /* =========================================================
    RESPONSIVE — MOBILE
@@ -1801,7 +1889,6 @@ img {
         padding: 3rem 0 2rem;
     }
 }
-
 
 /* =========================================================
    RESPONSIVE — SMALL MOBILE
