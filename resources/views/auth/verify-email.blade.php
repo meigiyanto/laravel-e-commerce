@@ -1,12 +1,13 @@
 @extends('layouts.guest')
 
-@section('title', 'Reset Password')
+@section('title', 'Email Verification')
 
 @section('content')
     <div class="auth-header">
-        <h1>Verifikasi Email</h1>
+        <span class="auth-eyebrow text-center">E-Commerce Store</span>
+        <h1 class="text-center">Verifikasi Email</h1>
 
-        <p>
+        <p class="text-center">
             Terima kasih sudah mendaftar.
             Sebelum melanjutkan, silakan verifikasi alamat email Anda
             melalui link yang telah kami kirimkan.

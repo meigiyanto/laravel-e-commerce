@@ -3,13 +3,10 @@
 @section('title', 'Reset Password')
 
 @section('content')
-
     <div class="auth-header">
-        <h1>Reset Password</h1>
-
-        <p>
-            Buat password baru untuk akun Anda.
-        </p>
+        <span class="auth-eyebrow text-center">E-Commerce Store</span>
+        <h1 class="text-center">Reset Password</h1>
+        <p class="textx-center">Buat password baru untuk akun Anda.</p>
     </div>
 
     <form method="POST" action="{{ route('password.store') }}" class="auth-form">
