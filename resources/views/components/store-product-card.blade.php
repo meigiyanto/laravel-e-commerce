@@ -50,7 +50,7 @@
                     <button
                         type="submit"
                         class="store-product-action"
-                        title="Tambah ke wishlist"
+                        title="Add to wishlist"
                         aria-label="Tambah {{ $product->name }} ke wishlist"
                     >
                         <i class="bi bi-heart"></i>
@@ -188,7 +188,7 @@
                     class="store-add-cart add-to-cart-button"
                 >
                     <i class="bi bi-cart-plus"></i>
-                    Tambah ke Keranjang
+                    Add to cart
                 </button>
 
             </form>

@@ -16,9 +16,7 @@
                         </a>
 
                         <p class="mt-3 mb-4">
-                            MeiStore adalah proyek e-commerce berbasis
-                            Laravel yang menyediakan pengalaman belanja
-                            online modern, sederhana, dan responsif.
+                            MeiStore is a Laravel-based e-commerce project that provides a modern, simple, and responsive online shopping experience.
                         </p>
 
                         <div class="d-flex gap-3 fs-5">
@@ -60,7 +58,7 @@
                     <div class="col-6 col-lg-2">
 
                         <h6 class="store-footer-title">
-                            Toko
+                            Store
                         </h6>
 
                         <ul>
@@ -72,7 +70,7 @@
 
                             <li>
                                 <a href="{{ route('storefront.shop') }}">
-                                    Semua Produk
+                                    All Product
                                 </a>
                             </li>
 
@@ -105,13 +103,13 @@
 
                                 <li>
                                     <a href="{{ route('orders.index') }}">
-                                        Pesanan Saya
+                                        My Order
                                     </a>
                                 </li>
 
                                 <li>
                                     <a href="{{ route('profile.edit') }}">
-                                        Profil
+                                        Profile
                                     </a>
                                 </li>
                             @else
