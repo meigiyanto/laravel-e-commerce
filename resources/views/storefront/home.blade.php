@@ -49,6 +49,92 @@
         </div>
     </section>
 
+        {{-- =========================================================
+         TRUST / SHOPPING BENEFITS
+    ========================================================== --}}
+    <section class="pb-5">
+        <div class="container">
+
+            <div class="row g-3">
+
+                <div class="col-6 col-lg-3">
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-box-seam store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Featured Products
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                           Products are managed via the {{ config('app.name') }} catalog.
+                        </p>
+                    </div>
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-cart-check store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Easy Shopping
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Select a product, add it to your cart,
+                            then proceed to checkout.
+                        </p>
+                    </div>
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-credit-card store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Payment
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Support for payment processing via
+                            available systems.
+                        </p>
+                    </div>
+                </div>
+
+
+                <div class="col-6 col-lg-3">
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-shield-check store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
+
+                        <h5 class="fw-bold mt-3 mb-2">
+                            Safe & Trusted
+                        </h5>
+
+                        <p class="text-muted small mb-0">
+                            Shopping data and processes are managed
+                            via a Laravel application.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </section>
 
     {{-- =========================================================
          CATEGORY SECTION
@@ -143,6 +229,53 @@
         </div>
     </section>
 
+    {{-- =========================================================
+    SHOPPING PROMOTION
+    ========================================================== --}}
+    <section class="store-section">
+        <div class="container">
+
+            <div class="store-home-promotion">
+                <div class="row align-items-center g-0">
+
+                    <div class="col-lg-8">
+                        <div class="p-4 p-md-5">
+
+                            <span class="store-home-promotion-badge">
+                                <i class="bi bi-lightning-charge-fill me-1"></i>
+                                {{ config('app.name') }}
+                            </span>
+
+                            <h2 class="fw-bold mb-3">
+                                Discover more products
+                                for your needs.
+                            </h2>
+
+                            <p class="text-muted mb-4">
+                                Explore the entire {{ config('app.name') }} catalog and
+                                find products that meet your needs.
+                            </p>
+
+                            <a
+                                href="{{ route('storefront.shop') }}"
+                                class="store-btn-primary"
+                            >
+                                Explore All Products
+                                <i class="bi bi-arrow-right"></i>
+                            </a>
+
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4 d-none d-lg-block text-center">
+                        <i class="bi bi-bag-check-fill store-home-promotion-icon" aria-hidden="true"></i>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </section>
 
     {{-- =========================================================
          LATEST PRODUCTS
@@ -198,144 +331,6 @@
 
         </div>
     </section>
-
-
-    {{-- =========================================================
-         SHOPPING PROMOTION
-    ========================================================== --}}
-    <section class="store-section">
-        <div class="container">
-
-            <div class="store-home-promotion">
-                <div class="row align-items-center g-0">
-
-                    <div class="col-lg-8">
-                        <div class="p-4 p-md-5">
-
-                            <span class="store-home-promotion-badge">
-                                <i class="bi bi-lightning-charge-fill me-1"></i>
-                                {{ config('app.name') }}
-                            </span>
-
-                            <h2 class="fw-bold mb-3">
-                                Discover more products
-                                for your needs.
-                            </h2>
-
-                            <p class="text-muted mb-4">
-                                Explore the entire {{ config('app.name') }} catalog and
-                                find products that meet your needs.
-                            </p>
-
-                            <a
-                                href="{{ route('storefront.shop') }}"
-                                class="store-btn-primary"
-                            >
-                                Explore All Products
-                                <i class="bi bi-arrow-right"></i>
-                            </a>
-
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4 d-none d-lg-block text-center">
-                        <i class="bi bi-bag-check-fill store-home-promotion-icon" aria-hidden="true"></i>
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-
-    {{-- =========================================================
-         TRUST / SHOPPING BENEFITS
-    ========================================================== --}}
-    <section class="pb-5">
-        <div class="container">
-
-            <div class="row g-3">
-
-                <div class="col-6 col-lg-3">
-                    <div class="store-home-benefit">
-                        <i
-                            class="bi bi-box-seam store-home-benefit-icon"
-                            aria-hidden="true"
-                        ></i>
-
-                        <h5 class="fw-bold mt-3 mb-2">
-                            Featured Products
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                           Products are managed via the {{ config('app.name') }} catalog.
-                        </p>
-                    </div>
-                </div>
-
-
-                <div class="col-6 col-lg-3">
-                    <div class="store-home-benefit">
-                        <i
-                            class="bi bi-cart-check store-home-benefit-icon"
-                            aria-hidden="true"
-                        ></i>
-
-                        <h5 class="fw-bold mt-3 mb-2">
-                            Easy Shopping
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Select a product, add it to your cart,
-                            then proceed to checkout.
-                        </p>
-                    </div>
-                </div>
-
-
-                <div class="col-6 col-lg-3">
-                    <div class="store-home-benefit">
-                        <i
-                            class="bi bi-credit-card store-home-benefit-icon"
-                            aria-hidden="true"
-                        ></i>
-
-                        <h5 class="fw-bold mt-3 mb-2">
-                            Payment
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Support for payment processing via
-                            available systems.
-                        </p>
-                    </div>
-                </div>
-
-
-                <div class="col-6 col-lg-3">
-                    <div class="store-home-benefit">
-                        <i
-                            class="bi bi-shield-check store-home-benefit-icon"
-                            aria-hidden="true"
-                        ></i>
-
-                        <h5 class="fw-bold mt-3 mb-2">
-                            Safe & Trusted
-                        </h5>
-
-                        <p class="text-muted small mb-0">
-                            Shopping data and processes are managed
-                            via a Laravel application.
-                        </p>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-    </section>
-
 
     {{-- =========================================================
          SERVICE FEATURES
