@@ -23,7 +23,7 @@
     @include('layouts.partials.storefront.topbar')
     @include('layouts.partials.storefront.header')
     @include('layouts.partials.storefront.navbar')
-    @include('layouts.partials.storefront.navbar-mobile')
+    @include('layouts.partials.storefront.navbar-mobile-top')
 
     {{-- ====================================================         
     CONTENT
@@ -33,7 +33,7 @@
     </main>
 
     @include('layouts.partials.storefront.footer')
-    @include('layouts.partials.storefront.navbar-bottom')
+    @include('layouts.partials.storefront.navbar-mobile-bottom')
     @stack('scripts')
 </body>
 </html>
