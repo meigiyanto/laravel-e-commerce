@@ -1,5 +1,8 @@
-<x-guest-layout>
+@extends('layouts.guest')
 
+@section('title', 'Forgot Password')
+
+@section('content')
     <div class="auth-header">
         <h1>Forgot Password?</h1>
 
@@ -48,4 +51,4 @@
         </a>
     </div>
 
-</x-guest-layout>
+@endsection

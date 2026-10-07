@@ -32,7 +32,7 @@
     <div class="container">
         <div class="store-section-header">
             <div>
-                <h1 class="store-section-title">Profile<h1>
+                <h1 class="store-section-title">Profile</h1>
                 <p class="store-section-subtitle">Manage your information.</p>
             </div>
         </div>

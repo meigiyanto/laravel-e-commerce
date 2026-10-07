@@ -158,7 +158,7 @@
 
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-soft">Total Produk</span>
-                            <span class="text-sort">Rp {{ number_format($order->items->sum('subtotal'), 0, ',', '.') }}</span>
+                            <span class="text-soft">Rp {{ number_format($order->items->sum('subtotal'), 0, ',', '.') }}</span>
                         </div>
 
                         <hr>

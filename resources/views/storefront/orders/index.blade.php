@@ -110,7 +110,7 @@
                                                     @csrf
                                                     <input type="hidden" name="amount" value="{{ $order->total }}">
                                                     <input type="hidden" name="reason" value="Refund order completed">
-                                                    <button type="button" class="btn btn-outline-danger mr-2" onclick="return confirm('Ajukan refund untuk order #{{ $order->order_number }} sebesar Rp {{ number_format($order->total, 0, ',', '.') }}?')">Refund</button>
+                                                    <button type="submit" class="btn btn-outline-danger mr-2" onclick="return confirm('Ajukan refund untuk order #{{ $order->order_number }} sebesar Rp {{ number_format($order->total, 0, ',', '.') }}?')">Refund</button>
                                                 </form>
                                             @endif
                                             <button type="button" class="btn btn-outline-primary js-order-detail" onclick="window.location.href='{{ route('orders.show', $order) }}'">Detail</button>

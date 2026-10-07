@@ -28,7 +28,7 @@
         <div class="container">
             <div class="store-section-header">
                 <div>
-                    <h1 class="store-section-title">Dashboard<h1>
+                    <h1 class="store-section-title">Dashboard</h1>
                     <p class="store-section-subtitle">Selamat datang kembali, {{ Auth::user()->name }}.</p>
                 </div>
             </div>
