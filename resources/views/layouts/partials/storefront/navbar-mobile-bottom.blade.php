@@ -662,7 +662,7 @@ return $item->product->price * $item->quantity;
 
                 <a href="{{ route('cart.index') }}" class="store-mobile-cart-view-button">
                     <i class="bi bi-cart3"></i>
-                    Lihat Keranjang
+                    View Cart
                 </a>
 
 
