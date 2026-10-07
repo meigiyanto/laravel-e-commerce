@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Pesanan Berhasil - MeiStore')
+@section('title', config('app.name') . ' - Checkout Success')
 
 @section('content')
 

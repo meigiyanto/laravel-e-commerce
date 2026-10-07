@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Pembayaran Midtrans - MeiStore')
+@section('title', config('app.name') . ' - Pembayaran Midtrans')
 
 @section('content')
 
@@ -35,32 +35,19 @@
 
                     </div>
 
-                    <div
-                        id="payment-error"
-                        class="alert alert-danger d-none"
-                    ></div>
+                    <div id="payment-error" class="alert alert-danger d-none"></div>
 
-                    <button
-                        id="pay-button"
-                        type="button"
-                        class="btn btn-primary btn-lg w-100"
-                    >
+                    <button id="pay-button" type="button" class="btn btn-primary btn-lg w-100">
                         <span id="button-text">
                             Bayar Sekarang
                         </span>
 
-                        <span
-                            id="button-spinner"
-                            class="spinner-border spinner-border-sm d-none"
-                        ></span>
+                        <span id="button-spinner" class="spinner-border spinner-border-sm d-none"></span>
                     </button>
 
                     <div class="text-center mt-3">
 
-                        <a
-                            href="{{ route('orders.show', $order) }}"
-                            class="text-muted"
-                        >
+                        <a href="{{ route('orders.show', $order) }}" class="text-muted">
                             Kembali ke detail pesanan
                         </a>
 
@@ -89,18 +76,14 @@
 
 @push('scripts')
 
-<script
-    src="{{ config('midtrans.is_production')
+<script src="{{ config('midtrans.is_production')
         ? 'https://app.midtrans.com/snap/snap.js'
-        : 'https://app.sandbox.midtrans.com/snap/snap.js' }}"
-    data-client-key="{{ $clientKey }}"
-></script>
+        : 'https://app.sandbox.midtrans.com/snap/snap.js' }}" data-client-key="{{ $clientKey }}"></script>
 
 <script>
-
 document.addEventListener(
     'DOMContentLoaded',
-    function () {
+    function() {
 
         const payButton =
             document.getElementById(
@@ -124,7 +107,7 @@ document.addEventListener(
 
         payButton.addEventListener(
             'click',
-            function () {
+            function() {
 
                 setLoading(true);
 
@@ -133,10 +116,9 @@ document.addEventListener(
                 );
 
                 window.snap.pay(
-                    @json($snapToken),
-                    {
+                    @json($snapToken), {
 
-                        onSuccess: async function (
+                        onSuccess: async function(
                             result
                         ) {
 
@@ -146,7 +128,7 @@ document.addEventListener(
 
                         },
 
-                        onPending: async function (
+                        onPending: async function(
                             result
                         ) {
 
@@ -156,7 +138,7 @@ document.addEventListener(
 
                         },
 
-                        onError: function (
+                        onError: function(
                             result
                         ) {
 
@@ -171,7 +153,7 @@ document.addEventListener(
 
                         },
 
-                        onClose: function () {
+                        onClose: function() {
 
                             setLoading(false);
 
@@ -196,29 +178,23 @@ document.addEventListener(
                                 'payment.midtrans.confirm',
                                 $order
                             )
-                        ),
-                        {
+                        ), {
                             method: 'POST',
 
                             headers: {
-                                'Content-Type':
-                                    'application/json',
+                                'Content-Type': 'application/json',
 
-                                'Accept':
-                                    'application/json',
+                                'Accept': 'application/json',
 
-                                'X-CSRF-TOKEN':
-                                    @json(
-                                        csrf_token()
-                                    ),
+                                'X-CSRF-TOKEN': @json(
+                                    csrf_token()
+                                ),
                             },
 
-                            body:
-                                JSON.stringify({
-                                    transaction_id:
-                                        result?.transaction_id
-                                        ?? null,
-                                }),
+                            body: JSON.stringify({
+                                transaction_id: result?.transaction_id ??
+                                    null,
+                            }),
                         }
                     );
 
@@ -284,9 +260,9 @@ document.addEventListener(
             );
 
             buttonText.textContent =
-                loading
-                    ? 'Memproses...'
-                    : 'Bayar Sekarang';
+                loading ?
+                'Memproses...' :
+                'Bayar Sekarang';
         }
 
         function showError(
@@ -305,7 +281,6 @@ document.addEventListener(
 
     }
 );
-
 </script>
 
 @endpush

@@ -1,5 +1,785 @@
+import * as bootstrap from 'bootstrap';
+
 /**
- * ========================================================= * CART
+ * =========================================================
+ * MOBILE STICKY NAVBAR & BACK TO TOP
+ * =========================================================
+ */
+
+document.addEventListener('DOMContentLoaded', function () {
+    const mobileTopbar = document.querySelector(
+        '.store-mobile-topbar'
+    );
+
+    const backToTop = document.querySelector(
+        '.store-back-to-top'
+    );
+
+    if (!mobileTopbar && !backToTop) {
+        return;
+    }
+
+    /*
+     * Mobile sticky navbar muncul
+     * setelah user scroll lebih dari 120px.
+     */
+    const mobileScrollThreshold = 120;
+
+    /*
+     * Back to top muncul
+     * setelah user scroll lebih dari 300px.
+     */
+    const backToTopThreshold = 300;
+
+    let ticking = false;
+
+    function updateScrollUI() {
+        const scrollY =
+            window.scrollY ||
+            window.pageYOffset ||
+            0;
+
+        const isMobile =
+            window.innerWidth <= 767.98;
+
+        /*
+         * Mobile sticky top navbar
+         */
+        if (mobileTopbar) {
+            mobileTopbar.classList.toggle(
+                'is-visible',
+                isMobile &&
+                scrollY > mobileScrollThreshold
+            );
+        }
+
+        /*
+         * Back to top
+         */
+        if (backToTop) {
+            backToTop.classList.toggle(
+                'is-visible',
+                scrollY > backToTopThreshold
+            );
+        }
+
+        ticking = false;
+    }
+
+    function requestScrollUpdate() {
+        if (ticking) {
+            return;
+        }
+
+        window.requestAnimationFrame(
+            updateScrollUI
+        );
+
+        ticking = true;
+    }
+
+    /*
+     * Scroll
+     */
+    window.addEventListener(
+        'scroll',
+        requestScrollUpdate,
+        {
+            passive: true,
+        }
+    );
+
+    /*
+     * Resize
+     */
+    window.addEventListener(
+        'resize',
+        requestScrollUpdate
+    );
+
+    /*
+     * Back to top click
+     */
+    if (backToTop) {
+        backToTop.addEventListener(
+            'click',
+            function () {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
+            }
+        );
+    }
+
+    /*
+     * Initial state
+     */
+    updateScrollUI();
+});
+
+/**
+ * =========================================================
+ * BACK TO TOP
+ * =========================================================
+ */
+
+document.addEventListener('DOMContentLoaded', function () {
+    const mobileTopbar = document.querySelector(
+        '.store-mobile-topbar'
+    );
+
+    const backToTop = document.querySelector(
+        '.store-back-to-top'
+    );
+
+    if (!mobileTopbar && !backToTop) {
+        return;
+    }
+
+
+    /*
+     * Navbar mobile mulai muncul
+     * setelah scroll 120px.
+     */
+    const mobileScrollThreshold = 120;
+
+
+    /*
+     * Back to top mulai muncul
+     * setelah scroll 300px.
+     */
+    const backToTopThreshold = 300;
+
+
+    let ticking = false;
+
+
+    /**
+     * Update tampilan berdasarkan
+     * posisi scroll.
+     */
+    function updateScrollUI() {
+        const scrollY =
+            window.scrollY ||
+            window.pageYOffset;
+
+
+        /*
+         * MOBILE STICKY NAVBAR
+         */
+        if (mobileTopbar) {
+            mobileTopbar.classList.toggle(
+                'is-visible',
+                window.innerWidth <= 767.98 &&
+                scrollY > mobileScrollThreshold
+            );
+        }
+
+
+        /*
+         * BACK TO TOP
+         */
+        if (backToTop) {
+            backToTop.classList.toggle(
+                'is-visible',
+                scrollY > backToTopThreshold
+            );
+        }
+
+
+        ticking = false;
+    }
+
+
+    /**
+     * Gunakan requestAnimationFrame
+     * agar event scroll tetap ringan.
+     */
+    function requestScrollUpdate() {
+        if (!ticking) {
+            window.requestAnimationFrame(
+                updateScrollUI
+            );
+
+            ticking = true;
+        }
+    }
+
+
+    /*
+     * Scroll listener.
+     */
+    window.addEventListener(
+        'scroll',
+        requestScrollUpdate,
+        {
+            passive: true,
+        }
+    );
+
+
+    /*
+     * Resize listener.
+     *
+     * Penting ketika user berpindah
+     * dari mobile ke desktop.
+     */
+    window.addEventListener(
+        'resize',
+        requestScrollUpdate
+    );
+
+
+    /**
+     * BACK TO TOP ACTION
+     */
+    if (backToTop) {
+        backToTop.addEventListener(
+            'click',
+            function () {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
+            }
+        );
+    }
+
+
+    /*
+     * Jalankan sekali saat halaman
+     * pertama kali dibuka.
+     */
+    updateScrollUI();
+});
+
+/**
+ * =========================================================
+ * MOBILE CART DRAWER
+ * ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+    const cartDrawer = document.getElementById(
+        'storeMobileCartDrawer'
+    );
+
+    if (!cartDrawer) {
+        return;
+    }
+
+    cartDrawer
+        .querySelectorAll('.store-mobile-cart-quantity-form')
+        .forEach(function (form) {
+
+            const input = form.querySelector(
+                '.store-mobile-cart-quantity-input'
+            );
+
+            const decreaseButton = form.querySelector(
+                '[data-mobile-cart-decrease]'
+            );
+
+            const increaseButton = form.querySelector(
+                '[data-mobile-cart-increase]'
+            );
+
+            if (!input) {
+                return;
+            }
+
+            function getQuantity() {
+                const value = parseInt(
+                    input.value,
+                    10
+                );
+
+                return Number.isNaN(value)
+                    ? 1
+                    : value;
+            }
+
+            function getMax() {
+                const value = parseInt(
+                    input.getAttribute('max'),
+                    10
+                );
+
+                return Number.isNaN(value)
+                    ? Infinity
+                    : value;
+            }
+
+            function submitQuantity() {
+                const quantity = Math.min(
+                    Math.max(getQuantity(), 1),
+                    getMax()
+                );
+
+                input.value = quantity;
+
+                form.submit();
+            }
+
+            if (decreaseButton) {
+                decreaseButton.addEventListener(
+                    'click',
+                    function () {
+                        const quantity =
+                            getQuantity();
+
+                        if (quantity <= 1) {
+                            return;
+                        }
+
+                        input.value =
+                            quantity - 1;
+
+                        submitQuantity();
+                    }
+                );
+            }
+
+            if (increaseButton) {
+                increaseButton.addEventListener(
+                    'click',
+                    function () {
+                        const quantity =
+                            getQuantity();
+
+                        const max =
+                            getMax();
+
+                        if (quantity >= max) {
+                            return;
+                        }
+
+                        input.value =
+                            quantity + 1;
+
+                        submitQuantity();
+                    }
+                );
+            }
+
+            input.addEventListener(
+                'change',
+                function () {
+                    submitQuantity();
+                }
+            );
+        });
+});
+
+/**
+ * =========================================================
+ * MOBILE SEARCH DRAWER
+ * =========================================================
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const searchDrawer = document.getElementById(
+        'storeMobileSearchDrawer'
+    );
+
+    const searchInput = document.getElementById(
+        'storeMobileSearchInput'
+    );
+
+    if (!searchDrawer || !searchInput) {
+        return;
+    }
+
+    const clearButton = searchDrawer.querySelector(
+        '[data-mobile-search-clear]'
+    );
+
+    function updateClearButton() {
+        if (!clearButton) {
+            return;
+        }
+
+        clearButton.hidden = searchInput.value.trim() === '';
+    }
+
+    searchInput.addEventListener(
+        'input',
+        updateClearButton
+    );
+
+    updateClearButton();
+
+    if (clearButton) {
+        clearButton.addEventListener('click', function () {
+            searchInput.value = '';
+            updateClearButton();
+            searchInput.focus();
+        });
+    }
+
+    const searchForm = searchDrawer.querySelector(
+        '.store-mobile-search-form'
+    );
+
+    if (searchForm) {
+        searchForm.addEventListener(
+            'submit',
+            function (event) {
+                const value = searchInput.value.trim();
+
+                if (value === '') {
+                    event.preventDefault();
+                    searchInput.focus();
+                    return;
+                }
+
+                searchInput.value = value;
+            }
+        );
+    }
+
+    const observer = new MutationObserver(
+        function () {
+            const isOpen =
+                searchDrawer.getAttribute('aria-hidden') === 'false';
+
+            if (!isOpen) {
+                return;
+            }
+
+            window.setTimeout(function () {
+                searchInput.focus();
+
+                const value = searchInput.value;
+
+                if (value) {
+                    searchInput.setSelectionRange(
+                        value.length,
+                        value.length
+                    );
+                }
+            }, 80);
+        }
+    );
+
+    observer.observe(searchDrawer, {
+        attributes: true,
+        attributeFilter: ['aria-hidden'],
+    });
+});
+
+/**
+ * =========================================================
+ * MOBILE CATEGORY ACCORDION
+ * ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+    const categoryToggles = document.querySelectorAll(
+        '.store-mobile-category-toggle'
+    );
+
+    if (!categoryToggles.length) {
+        return;
+    }
+
+    categoryToggles.forEach(function (toggle) {
+        toggle.addEventListener('click', function () {
+            const targetId = toggle.getAttribute(
+                'aria-controls'
+            );
+
+            if (!targetId) {
+                return;
+            }
+
+            const target =
+                document.getElementById(targetId);
+
+            if (!target) {
+                return;
+            }
+
+            const isExpanded =
+                toggle.getAttribute('aria-expanded') === 'true';
+
+            /*
+             * Tutup category lain.
+             */
+            categoryToggles.forEach(function (otherToggle) {
+                if (otherToggle === toggle) {
+                    return;
+                }
+
+                const otherTargetId =
+                    otherToggle.getAttribute('aria-controls');
+
+                const otherTarget =
+                    document.getElementById(otherTargetId);
+
+                otherToggle.setAttribute(
+                    'aria-expanded',
+                    'false'
+                );
+
+                if (otherTarget) {
+                    otherTarget.setAttribute(
+                        'aria-hidden',
+                        'true'
+                    );
+                }
+            });
+
+            /*
+             * Toggle category aktif.
+             */
+            toggle.setAttribute(
+                'aria-expanded',
+                String(!isExpanded)
+            );
+
+            target.setAttribute(
+                'aria-hidden',
+                String(isExpanded)
+            );
+        });
+    });
+});
+
+/**
+ * =========================================================
+ * MOBILE DRAWER SYSTEM
+ * ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+    const drawerTriggers = document.querySelectorAll(
+        '[data-mobile-drawer]'
+    );
+
+    const drawers = document.querySelectorAll(
+        '.store-mobile-drawer'
+    );
+
+    if (!drawerTriggers.length || !drawers.length) {
+        return;
+    }
+
+    let activeDrawer = null;
+    let activeTrigger = null;
+
+    function openDrawer(drawer, trigger) {
+        if (!drawer) {
+            return;
+        }
+
+        if (activeDrawer && activeDrawer !== drawer) {
+            closeDrawer(activeDrawer, activeTrigger);
+        }
+
+        drawer.setAttribute('aria-hidden', 'false');
+
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        document.body.classList.add(
+            'store-mobile-drawer-open'
+        );
+
+        activeDrawer = drawer;
+        activeTrigger = trigger;
+
+        const closeButton = drawer.querySelector(
+            '[data-mobile-drawer-close]'
+        );
+
+        if (closeButton) {
+            window.setTimeout(function () {
+                closeButton.focus();
+            }, 50);
+        }
+    }
+
+    function closeDrawer(drawer, trigger) {
+        if (!drawer) {
+            return;
+        }
+
+        drawer.setAttribute('aria-hidden', 'true');
+
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        if (activeDrawer === drawer) {
+            activeDrawer = null;
+            activeTrigger = null;
+        }
+
+        if (!document.querySelector(
+            '.store-mobile-drawer[aria-hidden="false"]'
+        )) {
+            document.body.classList.remove(
+                'store-mobile-drawer-open'
+            );
+        }
+    }
+
+    function closeActiveDrawer() {
+        if (!activeDrawer) {
+            return;
+        }
+
+        const drawer = activeDrawer;
+        const trigger = activeTrigger;
+
+        closeDrawer(drawer, trigger);
+
+        if (trigger) {
+            trigger.focus();
+        }
+    }
+
+    /**
+     * ---------------------------------------------------------
+     * OPEN DRAWER
+     * ---------------------------------------------------------
+     */
+    drawerTriggers.forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            const drawerId =
+                trigger.getAttribute('aria-controls');
+
+            if (!drawerId) {
+                return;
+            }
+
+            const drawer =
+                document.getElementById(drawerId);
+
+            if (!drawer) {
+                return;
+            }
+
+            const isOpen =
+                drawer.getAttribute('aria-hidden') === 'false';
+
+            if (isOpen) {
+                closeDrawer(drawer, trigger);
+                return;
+            }
+
+            openDrawer(drawer, trigger);
+        });
+    });
+
+    /**
+     * ---------------------------------------------------------
+     * CLOSE BUTTON
+     * ---------------------------------------------------------
+     */
+    drawers.forEach(function (drawer) {
+        const closeButton = drawer.querySelector(
+            '[data-mobile-drawer-close]'
+        );
+
+        if (closeButton) {
+            closeButton.addEventListener('click', function () {
+                closeActiveDrawer();
+            });
+        }
+
+        /**
+         * -----------------------------------------------------
+         * CLICK OVERLAY
+         * -----------------------------------------------------
+         */
+        drawer.addEventListener('click', function (event) {
+            if (event.target === drawer) {
+                closeActiveDrawer();
+            }
+        });
+    });
+
+    /**
+     * ---------------------------------------------------------
+     * ESCAPE
+     * ---------------------------------------------------------
+     */
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        closeActiveDrawer();
+    });
+
+    /**
+     * ---------------------------------------------------------
+     * NAVIGATION
+     * ---------------------------------------------------------
+     */
+    drawers.forEach(function (drawer) {
+        drawer.querySelectorAll('a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                closeDrawer(drawer, activeTrigger);
+            });
+        });
+    });
+});
+
+/**
+ * =========================================================
+ * DESKTOP DEPARTMENT MENU
+ * ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+    const department = document.querySelector('.store-department-dropdown');
+
+    if (!department) {
+        return;
+    }
+
+    const toggle = department.querySelector('.store-department-toggle');
+    const menu = department.querySelector('.store-department-menu');
+
+    if (!toggle || !menu) {
+        return;
+    }
+
+    function openMenu() {
+        department.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        menu.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeMenu() {
+        department.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-hidden', 'true');
+    }
+
+    toggle.addEventListener('click', function (event) {
+        event.preventDefault();
+
+        if (department.classList.contains('is-open')) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!department.contains(event.target)) {
+            closeMenu();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeMenu();
+            toggle.focus();
+        }
+    });
+});
+
+/**
+ * ========================================================= 
+ * CART
  * ========================================================= */
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.quantity-form').forEach(function (form) {
@@ -219,7 +999,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(
         '#cart-count-badge, .store-mobile-bottom .store-badge'
@@ -237,7 +1016,6 @@ window.updateCartBadge = function (count) {
         }
     });
 };
-
 
 /**
  * =========================================================

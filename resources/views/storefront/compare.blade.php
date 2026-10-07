@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Compare Produk - MeiStore')
+@section('title', config('app.name') . ' - Compare Product')
 
 @section('content')
 {{-- =========================================================

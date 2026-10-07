@@ -1,9 +1,8 @@
 @extends('layouts.storefront')
 
-@section('title', 'Shop - MeiStore')
+@section('title', config('app.name') . ' - Shop')
 
 @section('content')
-
 {{-- =========================================================
      BREADCRUMB
 ========================================================= --}}

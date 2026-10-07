@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', $product->name . ' - MeiStore')
+@section('title', config('app.name') . ' - ' . $product->name)
 
 @section('content')
 

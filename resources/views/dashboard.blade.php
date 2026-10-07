@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Dashboard')
+@section('title', config('app.name') . ' - Dashboard')
 
 @section('content')
     {{-- =========================================================
@@ -79,7 +79,7 @@
                         <div class="card-body">
                             <div class="card-title">
                                 <h6 class="title fw-bold"><em class="icon bi bi-shop"></em> Store</h6>
-                                <p>MeiStore</p>
+                                <p>{{ config('app.name') }}</p>
                                 <a href="{{ route('storefront.home') }}" class="btn btn-sm btn-outline-primary mt-2">Visit Store</a>
                             </div>
                         </div>

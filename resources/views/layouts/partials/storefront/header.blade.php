@@ -1,12 +1,11 @@
     <header class="store-main-header sticky-top">
         <div class="container">
             <div class="store-header-inner d-flex flex-wrap align-items-center gap-3">
-
                 {{-- Logo --}}
                 <a
                     href="{{ route('storefront.home') }}"
                     class="store-brand"
-                    aria-label="MeiStore"
+                    aria-label="{{ config('app.name') }}"
                 >
                     <span class="store-brand-mark">
                         <i class="bi bi-bag-heart"></i>
@@ -29,14 +28,14 @@
                             name="q"
                             value="{{ request('q') }}"
                             class="form-control"
-                            placeholder="Cari produk yang Anda inginkan..."
-                            aria-label="Cari produk"
+                            placeholder="Search for the product you want..."
+                            aria-label="Search for products"
                         >
 
                         <button
                             type="submit"
                             class="btn"
-                            aria-label="Cari"
+                            aria-label="Search"
                         >
                             <i class="bi bi-search"></i>
                         </button>
@@ -69,7 +68,7 @@
                             </span>
 
                             <span class="store-action-label">
-                                <small>Produk</small>
+                                <small>Product</small>
                                 <strong>Wishlist</strong>
                             </span>
                         </a>
@@ -96,7 +95,7 @@
                             </span>
 
                             <span class="store-action-label">
-                                <small>Produk</small>
+                                <small>Product</small>
                                 <strong>Compare</strong>
                             </span>
                         </a>
@@ -120,7 +119,7 @@
                             </span>
 
                             <span class="store-action-label">
-                                <small>Belanja</small>
+                                <small>Shop</small>
                                 <strong>Cart</strong>
                             </span>
                         </a>
@@ -134,14 +133,14 @@
                                 class="store-action border-0 bg-transparent p-0"
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
-                                title="Akun"
+                                title="Account"
                             >
                                 <span class="store-action-icon">
                                     <i class="bi bi-person-circle"></i>
                                 </span>
 
                                 <span class="store-action-label d-none d-lg-flex">
-                                    <small>Halo,</small>
+                                    <small>Hello,</small>
                                     <strong>
                                         {{ \Illuminate\Support\Str::limit(auth()->user()->name, 14) }}
                                     </strong>

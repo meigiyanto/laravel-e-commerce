@@ -1,24 +1,29 @@
 @extends('layouts.storefront')
 
-@section('title', 'MeiStore - Toko Online')
+@section('title', config('app.name') . ' - Online Store')
 
 @section('content')
+
     {{-- =========================================================
          HERO
     ========================================================== --}}
-    <section class="store-hero">
+    <section class="store-hero py-3">
         <div class="container">
             <div class="store-hero-content">
+
                 <span class="store-hero-label">
                     <i class="bi bi-stars me-2"></i>
-                    Selamat datang di MeiStore
+                    Welcome to {{ config('app.name') }}
                 </span>
 
-                <h1 class="store-hero-title">Temukan Produk Favoritmu di Satu Tempat</h1>
+                <h1 class="store-hero-title">
+                    Find Your Favorite Products in One Place
+                </h1>
+
                 <p class="store-hero-text">
-                    Jelajahi berbagai produk pilihan mulai dari
-                    elektronik, fashion, kebutuhan rumah tangga,
-                    hingga kebutuhan sehari-hari.
+                    Explore a wide range of selected products, from
+                    electronics, fashion, and household goods
+                    to everyday essentials.
                 </p>
 
                 <div class="d-flex flex-wrap gap-2 mt-4">
@@ -26,7 +31,7 @@
                         href="{{ route('storefront.shop') }}"
                         class="store-btn-primary"
                     >
-                        Belanja Sekarang
+                        Shop Now
                         <i class="bi bi-arrow-right"></i>
                     </a>
 
@@ -35,48 +40,57 @@
                             href="#categories"
                             class="btn btn-outline-dark px-4 py-2"
                         >
-                            Lihat Kategori
+                            View Categories
                         </a>
                     @endif
                 </div>
+
             </div>
         </div>
     </section>
+
 
     {{-- =========================================================
          CATEGORY SECTION
     ========================================================== --}}
     <section id="categories" class="store-section">
         <div class="container">
+
             <div class="store-section-header">
                 <div>
                     <h2 class="store-section-title">
-                        Belanja Berdasarkan Kategori
+                        Shop by Category
                     </h2>
+
                     <p class="store-section-subtitle">
-                        Temukan produk sesuai kebutuhan Anda.
+                        Find products that meet your needs.
                     </p>
                 </div>
+
                 <a
                     href="{{ route('storefront.shop') }}"
                     class="store-section-link"
                 >
-                    Lihat Semua
+                    View All
                     <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
 
+
             @if ($categories->isNotEmpty())
                 <div class="row g-3">
                     @foreach ($categories as $category)
+
                         <div class="col-6 col-md-4 col-lg-3">
-                            <a href="{{ route('storefront.category', $category->slug) }}" class="d-block h-100">
-
+                            <a
+                                href="{{ route('storefront.category', $category->slug) }}"
+                                class="d-block h-100"
+                            >
                                 <div class="store-category-card">
-                                    @if ($category->image)
 
+                                    @if ($category->image_url)
                                         <img
-                                            src="{{ $category->image }}"
+                                            src="{{ $category->image_url }}"
                                             alt="{{ $category->name }}"
                                             loading="lazy"
                                         >
@@ -88,35 +102,44 @@
 
                                     <div class="store-category-overlay">
                                         <div>
+
                                             <h3 class="store-category-name">
                                                 {{ $category->name }}
                                             </h3>
+
                                             <div class="store-category-count">
                                                 {{ $category->products_count }}
                                                 produk
                                             </div>
+
                                         </div>
                                     </div>
+
                                 </div>
                             </a>
                         </div>
+
                     @endforeach
                 </div>
+
             @else
+
                 <div class="text-center py-5">
                     <div class="mb-3">
                         <i class="bi bi-grid fs-1 text-muted"></i>
                     </div>
 
                     <h4 class="fw-bold">
-                        Belum Ada Kategori
+                        No Category Yet
                     </h4>
 
                     <p class="text-muted mb-0">
-                        Kategori produk akan ditampilkan di sini.
+                        Product categories will be displayed here.
                     </p>
                 </div>
+
             @endif
+
         </div>
     </section>
 
@@ -126,20 +149,27 @@
     ========================================================== --}}
     <section class="store-section bg-light">
         <div class="container">
+
             <div class="store-section-header">
                 <div>
-                    <h2 class="store-section-title">Produk Terbaru</h2>
-                    <p class="store-section-subtitle">Produk terbaru yang tersedia di MeiStore.</p>
+                    <h2 class="store-section-title">
+                        Newest Products
+                    </h2>
+
+                    <p class="store-section-subtitle">
+                        The latest products available at {{ config('app.name') }}.
+                    </p>
                 </div>
 
                 <a
                     href="{{ route('storefront.shop') }}"
                     class="store-section-link"
                 >
-                    See All
+                    View All
                     <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
+
 
             @if ($latestProducts->isNotEmpty())
                 <div class="row g-3 g-md-4">
@@ -154,58 +184,67 @@
                     <div class="mb-3">
                         <i class="bi bi-box-seam fs-1 text-muted"></i>
                     </div>
-                    <h4 class="fw-bold">Belum Ada Produk</h4>
-                    <p class="text-muted mb-0">Produk akan muncul di sini setelah ditambahkan melalui dashboard admin.</p>
+
+                    <h4 class="fw-bold">
+                        No products yet
+                    </h4>
+
+                    <p class="text-muted mb-0">
+                        Products will appear here after being added
+                        via the admin dashboard.
+                    </p>
                 </div>
             @endif
+
         </div>
     </section>
+
 
     {{-- =========================================================
          SHOPPING PROMOTION
     ========================================================== --}}
     <section class="store-section">
         <div class="container">
-            <div class="rounded-3 overflow-hidden" style=" background: linear-gradient(110deg, #fff7d6, #ffffff); border: 1px solid #f1e2a8;">
+
+            <div class="store-home-promotion">
                 <div class="row align-items-center g-0">
+
                     <div class="col-lg-8">
                         <div class="p-4 p-md-5">
-                            <span class="badge mb-3" style="background: var(--store-primary); color: var(--store-dark);">
+
+                            <span class="store-home-promotion-badge">
                                 <i class="bi bi-lightning-charge-fill me-1"></i>
-                                MeiStore
+                                {{ config('app.name') }}
                             </span>
 
                             <h2 class="fw-bold mb-3">
-                                Temukan lebih banyak produk
-                                untuk kebutuhanmu.
+                                Discover more products
+                                for your needs.
                             </h2>
 
                             <p class="text-muted mb-4">
-                                Jelajahi seluruh katalog MeiStore dan
-                                temukan produk yang sesuai dengan kebutuhan
-                                Anda.
+                                Explore the entire {{ config('app.name') }} catalog and
+                                find products that meet your needs.
                             </p>
 
                             <a
                                 href="{{ route('storefront.shop') }}"
                                 class="store-btn-primary"
                             >
-                                Jelajahi Semua Produk
+                                Explore All Products
                                 <i class="bi bi-arrow-right"></i>
                             </a>
+
                         </div>
                     </div>
+
                     <div class="col-lg-4 d-none d-lg-block text-center">
-                        <i
-                            class="bi bi-bag-check-fill"
-                            style="
-                                font-size: 9rem;
-                                color: var(--store-primary);
-                            "
-                        ></i>
+                        <i class="bi bi-bag-check-fill store-home-promotion-icon" aria-hidden="true"></i>
                     </div>
+
                 </div>
             </div>
+
         </div>
     </section>
 
@@ -215,82 +254,95 @@
     ========================================================== --}}
     <section class="pb-5">
         <div class="container">
+
             <div class="row g-3">
+
                 <div class="col-6 col-lg-3">
-                    <div
-                        class="h-100 p-4 border rounded-3 bg-white"
-                    >
+                    <div class="store-home-benefit">
                         <i
-                            class="bi bi-box-seam fs-2"
-                            style="color: var(--store-primary-dark);"
+                            class="bi bi-box-seam store-home-benefit-icon"
+                            aria-hidden="true"
                         ></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
-                            Produk Pilihan
+                            Featured Products
                         </h5>
 
                         <p class="text-muted small mb-0">
-                            Produk dikelola melalui katalog
-                            MeiStore.
+                           Products are managed via the {{ config('app.name') }} catalog.
                         </p>
                     </div>
                 </div>
+
 
                 <div class="col-6 col-lg-3">
-                    <div class="h-100 p-4 border rounded-3 bg-white">
-                        <i class="bi bi-cart-check fs-2" style="color: var(--store-primary-dark);"></i>
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-cart-check store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
-                            Belanja Mudah
+                            Easy Shopping
                         </h5>
 
                         <p class="text-muted small mb-0">
-                            Pilih produk, masukkan keranjang,
-                            lalu checkout.
+                            Select a product, add it to your cart,
+                            then proceed to checkout.
                         </p>
                     </div>
                 </div>
+
 
                 <div class="col-6 col-lg-3">
-                    <div class="h-100 p-4 border rounded-3 bg-white">
-                        <i class="bi bi-credit-card fs-2" style="color: var(--store-primary-dark);"></i>
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-credit-card store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
-                            Pembayaran
+                            Payment
                         </h5>
 
                         <p class="text-muted small mb-0">
-                            Dukungan proses pembayaran melalui
-                            sistem yang tersedia.
+                            Support for payment processing via
+                            available systems.
                         </p>
                     </div>
                 </div>
+
 
                 <div class="col-6 col-lg-3">
-                    <div
-                        class="h-100 p-4 border rounded-3 bg-white"
-                    >
-                        <i class="bi bi-shield-check fs-2" style="color: var(--store-primary-dark);"></i>
+                    <div class="store-home-benefit">
+                        <i
+                            class="bi bi-shield-check store-home-benefit-icon"
+                            aria-hidden="true"
+                        ></i>
 
                         <h5 class="fw-bold mt-3 mb-2">
-                            Aman & Terpercaya
+                            Safe & Trusted
                         </h5>
 
                         <p class="text-muted small mb-0">
-                            Data dan proses belanja dikelola
-                            melalui aplikasi Laravel.
+                            Shopping data and processes are managed
+                            via a Laravel application.
                         </p>
                     </div>
                 </div>
+
             </div>
+
         </div>
     </section>
+
 
     {{-- =========================================================
          SERVICE FEATURES
     ========================================================== --}}
     <section class="store-service-strip">
         <div class="container">
+
             <div class="row g-0">
 
                 <div class="col-12 col-md-6 col-lg-3">
@@ -300,11 +352,12 @@
                         </span>
 
                         <div>
-                            <strong>Pengiriman Aman</strong>
-                            <span>Pesanan dikirim dengan aman</span>
+                            <strong>Secure Shipping</strong>
+                            <span>The order is shipped securely.</span>
                         </div>
                     </div>
                 </div>
+
 
                 <div class="col-12 col-md-6 col-lg-3">
                     <div class="store-service px-3">
@@ -313,11 +366,12 @@
                         </span>
 
                         <div>
-                            <strong>Pengembalian Mudah</strong>
-                            <span>Proses refund dan retur tersedia</span>
+                            <strong>Easy Returns</strong>
+                            <span>Refund and return processes are available.</span>
                         </div>
                     </div>
                 </div>
+
 
                 <div class="col-12 col-md-6 col-lg-3">
                     <div class="store-service px-3">
@@ -326,11 +380,12 @@
                         </span>
 
                         <div>
-                            <strong>Pembayaran Aman</strong>
-                            <span>Transaksi diproses secara aman</span>
+                            <strong>Secure Payment</strong>
+                            <span>Transactions are processed securely.</span>
                         </div>
                     </div>
                 </div>
+
 
                 <div class="col-12 col-md-6 col-lg-3">
                     <div class="store-service px-3">
@@ -340,12 +395,14 @@
 
                         <div>
                             <strong>Customer Support</strong>
-                            <span>Siap membantu kebutuhan Anda</span>
+                            <span>Ready to assist with your needs.</span>
                         </div>
                     </div>
                 </div>
 
             </div>
+
         </div>
     </section>
+
 @endsection
