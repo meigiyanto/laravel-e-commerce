@@ -5,7 +5,7 @@
                 <a
                     href="{{ route('storefront.home') }}"
                     class="store-brand"
-                    aria-label="MeiStore"
+                    aria-label="{{ config('app.name') }}"
                 >
                     <span class="store-brand-mark">
                         <i class="bi bi-bag-heart"></i>

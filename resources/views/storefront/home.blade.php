@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'MeiStore - Toko Online')
+@section('title', config('app.name') . ' - Online Store')
 
 @section('content')
 
@@ -13,7 +13,7 @@
 
                 <span class="store-hero-label">
                     <i class="bi bi-stars me-2"></i>
-                    Welcome to MeiStore
+                    Welcome to {{ config('app.name') }}
                 </span>
 
                 <h1 class="store-hero-title">
@@ -157,7 +157,7 @@
                     </h2>
 
                     <p class="store-section-subtitle">
-                        The latest products available at MeiStore.
+                        The latest products available at {{ config('app.name') }}.
                     </p>
                 </div>
 
@@ -214,7 +214,7 @@
 
                             <span class="store-home-promotion-badge">
                                 <i class="bi bi-lightning-charge-fill me-1"></i>
-                                MeiStore
+                                {{ config('app.name') }}
                             </span>
 
                             <h2 class="fw-bold mb-3">
@@ -223,7 +223,7 @@
                             </h2>
 
                             <p class="text-muted mb-4">
-                                Explore the entire MeiStore catalog and
+                                Explore the entire {{ config('app.name') }} catalog and
                                 find products that meet your needs.
                             </p>
 
@@ -269,7 +269,7 @@
                         </h5>
 
                         <p class="text-muted small mb-0">
-                           Products are managed via the MeiStore catalog.
+                           Products are managed via the {{ config('app.name') }} catalog.
                         </p>
                     </div>
                 </div>

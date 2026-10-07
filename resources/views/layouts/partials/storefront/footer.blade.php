@@ -16,7 +16,7 @@
                         </a>
 
                         <p class="mt-3 mb-4">
-                            MeiStore is a Laravel-based e-commerce project that provides a modern, simple, and responsive online shopping experience.
+                            {{ config('app.name') }} is a Laravel-based e-commerce project that provides a modern, simple, and responsive online shopping experience.
                         </p>
 
                         <div class="d-flex gap-3 fs-5">
@@ -147,7 +147,7 @@
 
                             <li>
                                 <i class="bi bi-envelope me-2"></i>
-                                support@meistore.test
+                                support@examplestore.test
                             </li>
 
                             <li>
@@ -172,7 +172,7 @@
                 <div class="row align-items-center g-3">
 
                     <div class="col-md-6">
-                        &copy; {{ date('Y') }} MeiStore.
+                        &copy; {{ date('Y') }} {{ config('app.name') }}.
                         All rights reserved.
                     </div>
 

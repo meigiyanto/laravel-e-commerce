@@ -122,7 +122,7 @@ class PaymentController extends Controller
                         'card',
                     ],
 
-                    'description' => "MeiStore order {$order->order_number}",
+                    'description' => config('app.name') . " order {$order->order_number}",
 
                     'metadata' => [
                         'order_id' => (string) $order->id,

@@ -37,35 +37,42 @@
             </div>
         </div>
         @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
         @endif
 
         @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
+        <div class="alert alert-error">
+            {{ session('error') }}
+        </div>
         @endif
     </div>
 </section>
 
 <section>
     <div class="container">
-        <div class="card mb-3">
-            <div class="card-body">
-                @include('profile.partials.update-profile-information-form')
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        @include('profile.partials.update-profile-information-form')
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="card-body">
-                @include('profile.partials.update-password-form')
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        @include('profile.partials.update-password-form')
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="card mb-3">
-            <div class="card-body">
-                @include('profile.partials.delete-user-form')
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        @include('profile.partials.delete-user-form')
+                    </div>
+                </div>
             </div>
         </div>
     </div>

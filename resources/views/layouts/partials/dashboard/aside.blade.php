@@ -6,7 +6,7 @@
                 class="logo-link nk-sidebar-logo"
             >
                 <span class="logo-text">
-                    MeiStore
+                    {{ config('app.name') }}
                 </span>
             </a>
         </div>

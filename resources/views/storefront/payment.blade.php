@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Pembayaran - MeiStore')
+@section('title', config('app.name') . ' - Payment')
 
 @section('content')
 {{-- =========================================================

@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Wishlist - MeiStore')
+@section('title', config('app.name') . ' - Wishlist')
 
 @section('content')
 {{-- =========================================================

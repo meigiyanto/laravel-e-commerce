@@ -12,7 +12,7 @@
 
                 <div class="nk-block-des text-soft">
                     <p>
-                        Selamat datang di Admin Panel MeiStore.
+                        Selamat datang di Admin Panel {{ config('app.name') }}.
                     </p>
                 </div>
             </div>

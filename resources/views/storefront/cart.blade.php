@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Keranjang Belanja')
+@section('title', config('app.name') . ' - Shopping Cart')
 
 @section('content')
 {{-- =========================================================

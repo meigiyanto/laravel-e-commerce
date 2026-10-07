@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', $category->name . ' - MeiStore')
+@section('title', config('app.name') . ' - Kategori: ' . $category->name)
 
 @section('content')
     {{-- BREADCRUMB --}}

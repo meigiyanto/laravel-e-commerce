@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', 'Checkout - MeiStore')
+@section('title', config('app.name') . ' - Checkout')
 
 @section('content')
 {{-- =========================================================
@@ -540,7 +540,7 @@
 
                         <div class="store-checkout-note">
                             <i class="bi bi-shield-check"></i>
-                            <span>By placing an order, you agree to MeiStore's ordering and payment process.</span>
+                            <span>By placing an order, you agree to {{ config('app.name') }}'s ordering and payment process.</span>
 
                         </div>
                     </div>
