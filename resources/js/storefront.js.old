@@ -1,11 +1,14 @@
 /**
- * ========================================================= * CART
- * ========================================================= */
+ * =========================================================
+ * CART
+ * =========================================================
+ */
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.quantity-form').forEach(function (form) {
+
         const input = form.querySelector('.quantity-input');
-        const minusButton = form.querySelector('.quantity-decrease');
-        const plusButton = form.querySelector('.quantity-increase');
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
 
         if (!input || !minusButton || !plusButton) {
             return;
@@ -13,7 +16,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         updateButtons(form);
 
+
         minusButton.addEventListener('click', function () {
+
             const min = Number(input.min) || 1;
             let value = Number(input.value) || min;
 
@@ -26,10 +31,13 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = value;
 
             updateButtons(form);
+
             updateCartItem(form, value);
         });
 
+
         plusButton.addEventListener('click', function () {
+
             const max = Number(input.max) || Infinity;
             let value = Number(input.value) || 1;
 
@@ -42,10 +50,13 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = value;
 
             updateButtons(form);
+
             updateCartItem(form, value);
         });
 
+
         input.addEventListener('change', function () {
+
             const min = Number(input.min) || 1;
             const max = Number(input.max) || Infinity;
 
@@ -56,23 +67,23 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = value;
 
             updateButtons(form);
+
             updateCartItem(form, value);
         });
+
     });
 
 
     async function updateCartItem(form, quantity) {
         const input = form.querySelector('.quantity-input');
-        const minusButton = form.querySelector('.quantity-decrease');
-        const plusButton = form.querySelector('.quantity-increase');
-
-        const productId = form.dataset.productId;
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
 
         const csrfToken = document
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute('content');
 
-        if (!csrfToken || !productId) {
+        if (!csrfToken) {
             return;
         }
 
@@ -83,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.classList.add('opacity-75');
 
         try {
+
             const response = await fetch(
                 form.action,
                 {
@@ -103,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
 
+
             const data = await response.json();
 
             if (!response.ok || !data.success) {
@@ -112,83 +125,72 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
+
             input.value = data.quantity;
 
-            /*
-             * Update subtotal produk.
-             *
-             * Subtotal berada di dalam .store-cart-item
-             * yang mempunyai data-product-id.
-             */
-            const cartItem = document.querySelector(
-                `.store-cart-item[data-product-id="${productId}"]`
+            const subtotal = document.querySelector(
+                `.cart-item-subtotal[data-item-id="${form.dataset.itemId}"]`
             );
 
-            if (cartItem) {
-                const subtotal = cartItem.querySelector(
-                    '.cart-item-subtotal'
-                );
-
-                if (subtotal) {
-                    subtotal.textContent =
-                        formatRupiah(data.subtotal);
-                }
+            if (subtotal) {
+                subtotal.textContent =
+                    formatRupiah(data.subtotal);
             }
 
-            /*
-             * Update semua total keranjang.
-             */
+
+            const total = document.getElementById(
+                'cart-total'
+            );
+
+            if (total) {
+                total.textContent =
+                    formatRupiah(data.total);
+            }
+
+
+            const itemCount = document.getElementById(
+                'cart-item-count'
+            );
+
+            if (itemCount) {
+                itemCount.textContent =
+                    data.item_count;
+            }
+
+
             document
-                .querySelectorAll(
-                    '.cart-total, .cart-grand-total'
-                )
+                .querySelectorAll('.store-summary-total')
                 .forEach(function (element) {
                     element.textContent =
                         formatRupiah(data.total);
                 });
 
-            /*
-             * Update jumlah item.
-             */
-            document
-                .querySelectorAll('.cart-item-count')
-                .forEach(function (element) {
-                    element.textContent =
-                        data.item_count;
-                });
 
-            /*
-             * Update cart badge pada navbar.
-             */
             if (typeof window.updateCartBadge === 'function') {
                 window.updateCartBadge(
                     data.cart_count
                 );
             }
 
-            /*
-             * Tampilkan notifikasi.
-             */
             if (typeof window.showStoreNotification === 'function') {
                 window.showStoreNotification(
                     data.message,
                     'success'
                 );
             }
-
         } catch (error) {
-            /*
-             * Jika AJAX gagal, kembalikan
-             * input ke kondisi server sebelumnya.
-             */
-            window.location.reload();
 
-            return;
+            if (typeof window.showStoreNotification === 'function') {
+                window.showStoreNotification(
+                    error.message ||
+                    'Terjadi kesalahan.',
+                    'danger'
+                );
+            }
 
         } finally {
             input.disabled = false;
             form.classList.remove('opacity-75');
-
             updateButtons(form);
         }
     }
@@ -196,8 +198,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateButtons(form) {
         const input = form.querySelector('.quantity-input');
-        const minusButton = form.querySelector('.quantity-decrease');
-        const plusButton = form.querySelector('.quantity-increase');
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
 
         if (!input || !minusButton || !plusButton) {
             return;
@@ -213,12 +215,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     function formatRupiah(value) {
+
         return 'Rp ' + Number(value).toLocaleString(
             'id-ID'
         );
     }
-});
 
+});
 
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(
