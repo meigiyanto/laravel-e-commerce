@@ -1,9 +1,13 @@
-<x-guest-layout>
+@extends('layouts.guest')
 
+@section('title', 'Forgot Password')
+
+@section('content')
     <div class="auth-header">
-        <h1>Forgot Password?</h1>
+        <span class="auth-eyebrow text-center">E-Commerce Store</span>
+        <h1 class="text-center">Forgot Password?</h1>
 
-        <p>
+        <p class="text-center">
             Masukkan email Anda. Kami akan mengirimkan
             link untuk mengatur ulang password.
         </p>
@@ -48,4 +52,4 @@
         </a>
     </div>
 
-</x-guest-layout>
+@endsection

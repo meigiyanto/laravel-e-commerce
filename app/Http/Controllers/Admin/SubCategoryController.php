@@ -91,15 +91,18 @@ class SubCategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(SubCategory $subCategory)
     {
-        return redirect()->route('admin.sub-categories.edit', $subCategory);
+        return redirect()->route(
+            'admin.sub-categories.edit',
+            $subCategory
+        );
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(SubCategory $subCategory)
     {
         $categories = Category::orderBy('name')->get();
 
@@ -112,8 +115,10 @@ class SubCategoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
+    public function update(
+        Request $request,
+        SubCategory $subCategory
+    ) {
         $validated = $request->validate([
             'category_id' => [
                 'required',
@@ -149,13 +154,12 @@ class SubCategoryController extends Controller
         return redirect()
             ->route('admin.sub-categories.index')
             ->with('success', 'Sub-category berhasil diperbarui.');
-
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(SubCategory $subCategory)
     {
         if ($subCategory->products()->exists()) {
             return redirect()
@@ -170,6 +174,9 @@ class SubCategoryController extends Controller
 
         return redirect()
             ->route('admin.sub-categories.index')
-            ->with('success', 'Sub-category berhasil dihapus.');
+            ->with(
+                'success',
+                'Sub-category berhasil dihapus.'
+            );
     }
 }

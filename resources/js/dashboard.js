@@ -12,13 +12,15 @@ import Chart from 'chart.js/auto';
 window.Chart = Chart;
 
 // Load legacy jQuery/vendor plugins setelah jQuery tersedia.
-await import('./admin-vendors.js');
+await import('./dashboard-vendors.js');
 
 // Load NioApp setelah seluruh vendor tersedia.
 await import('./vendors/nioapp/nioapp.min.js');
 
-// NioApp didefinisikan oleh legacy script sebagai `var NioApp`.
-// Expose ke global scope agar main.js dapat mengaksesnya.
+/**
+ * NioApp didefinisikan oleh legacy script sebagai `var NioApp`.
+ * Expose ke global scope agar main.js dapat mengaksesnya.
+ */
 if (typeof NioApp !== 'undefined') {
     window.NioApp = NioApp;
 }

@@ -3,6 +3,29 @@
 @section('title', 'Pembayaran - MeiStore')
 
 @section('content')
+{{-- =========================================================
+     BREADCRUMB
+========================================================= --}}
+<div class="store-breadcrumb">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{{ route('storefront.home') }}">
+                        <i class="bi bi-house me-1"></i>
+                        Home
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    Shop
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Payment
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -155,142 +178,6 @@ document.addEventListener(
             document.getElementById(
                 'payment-error'
             );
-
-        /*
-        form.addEventListener(
-            'submit',
-            async function (event) {
-
-                event.preventDefault();
-
-                setLoading(true);
-
-                errorBox.classList.add(
-                    'd-none'
-                );
-
-                const {
-                    error: submitError
-                } = await elements.submit();
-
-                if (submitError) {
-
-                    showError(
-                        submitError.message
-                    );
-
-                    return;
-                }
-
-                const {
-                    error,
-                    paymentIntent
-                } = await stripe.confirmPayment({
-
-                    elements,
-
-                    clientSecret,
-
-                    confirmParams: {
-                        return_url:
-                            @json(
-                                route(
-                                    'checkout.success',
-                                    $order
-                                )
-                            ),
-
-                        receipt_email:
-                            @json(
-                                $order->user?->email
-                            ),
-                    },
-
-                    redirect: 'if_required',
-                });
-
-                if (error) {
-
-                    showError(
-                        error.message
-                    );
-
-                    return;
-                }
-
-                if (
-                    !paymentIntent ||
-                    !paymentIntent.id
-                ) {
-
-                    showError(
-                        'PaymentIntent tidak ditemukan.'
-                    );
-
-                    return;
-                }
-
-                try {
-
-                    const response =
-                        await fetch(
-                            @json(
-                                route(
-                                    'payment.confirm',
-                                    $order
-                                )
-                            ),
-                            {
-                                method: 'POST',
-
-                                headers: {
-                                    'Content-Type':
-                                        'application/json',
-
-                                    'Accept':
-                                        'application/json',
-
-                                    'X-CSRF-TOKEN':
-                                        @json(
-                                            csrf_token()
-                                        ),
-                                },
-
-                                body: JSON.stringify({
-                                    payment_intent_id:
-                                        paymentIntent.id,
-                                }),
-                            }
-                        );
-
-                    const data =
-                        await response.json();
-
-                    if (
-                        !response.ok ||
-                        !data.success
-                    ) {
-
-                        showError(
-                            data.message ||
-                            'Pembayaran belum berhasil diverifikasi.'
-                        );
-
-                        return;
-                    }
-
-                    window.location.href =
-                        data.redirect_url;
-
-                } catch (error) {
-
-                    showError(
-                        'Terjadi kesalahan saat memverifikasi pembayaran.'
-                    );
-                }
-
-            });
-        */
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();

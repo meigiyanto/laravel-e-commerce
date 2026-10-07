@@ -82,7 +82,6 @@
                         <div class="card-tools">
                             <em class="icon ni ni-alert text-warning"></em>
                         </div>
-
                     </div>
 
                     <div class="card-amount mt-2">
@@ -119,25 +118,12 @@
     <div class="card car-bordered">
         <div class="card-inner">
             {{-- Search --}}
-            <form
-                method="GET"
-                action="{{ route('admin.inventory.index') }}"
-                class="mb-4"
-            >
-
+            <form method="GET" action="{{ route('admin.inventory.index') }}" class="mb-4">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="form-group">
-                            <label class="form-label">Search Product</label>
-                            <div class="form-control-wrap">
-                                <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search product name...">
-                                </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
                             <label class="form-label">Stock Status</label>
-                   
+
                             <div class="form-control-wrap">
                                 <select
                                     name="stock_status"
@@ -183,7 +169,7 @@
                         <button
                             type="submit"
                             class="btn btn-outline-primary w-50 mx-1"
-                            onclick="window.location.href={{ route('admin.inventory.index') }}"
+                            onclick="window.location.href='{{ route('admin.inventory.index') }}'"
                         >
                             Reset
                         </button>
@@ -353,7 +339,7 @@
     
                                     <form
                                         method="POST"
-                                        action="{{-- route('admin.inventory.adjust-stock', $product) --}}"
+                                        action="{{ route('admin.inventory.adjust-stock', $product) }}"
                                     >
     
                                         @csrf

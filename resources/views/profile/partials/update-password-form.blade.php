@@ -1,59 +1,92 @@
+@php
+    $passwordErrors = $errors->getBag('updatePassword');
+@endphp
+
 <section>
 
     <header class="section-header">
-        <h2>Profile Information</h2>
-        <p>Update information profile and your email address</p>
+        <h2>Update Password</h2>
+        <p>Update your password</p>
     </header>
 
     <form
         method="POST"
-        action="{{ route('profile.update') }}"
+        action="{{ route('password.update') }}"
         class="auth-form"
     >
         @csrf
-        @method('PATCH')
+        @method('PUT')
 
-        <div class="form-group">
-            <label for="name" class="form-label">Name</label>            <input
-                id="name"
-                name="name"
-                type="text"
-                class="form-control"
-                value="{{ old('name', $user->name) }}"
-                required
-                autocomplete="name"
-            >
-
-            @error('name')
-                <p class="form-error">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="email" class="form-label">Email</label>
+        <div class="form-group mb-3">
+            <label for="current_password" class="form-label">
+                Current Password
+            </label>
 
             <input
-                id="email"
-                name="email"
-                type="email"
+                id="current_password"
+                name="current_password"
+                type="password"
                 class="form-control"
-                value="{{ old('email', $user->email) }}"
+                autocomplete="current-password"
                 required
-                autocomplete="username"
             >
 
-            @error('email')
-                <p class="form-error">{{ $message }}</p>
-            @enderror
+            @if ($passwordErrors->has('current_password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('current_password') }}
+                </p>
+            @endif
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="password" class="form-label">
+                New Password
+            </label>
+
+            <input
+                id="password"
+                name="password"
+                type="password"
+                class="form-control"
+                autocomplete="new-password"
+                required
+            >
+
+            @if ($passwordErrors->has('password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('password') }}
+                </p>
+            @endif
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="password_confirmation" class="form-label">
+                Password Confirm
+            </label>
+
+            <input
+                id="password_confirmation"
+                name="password_confirmation"
+                type="password"
+                class="form-control"
+                autocomplete="new-password"
+                required
+            >
+
+            @if ($passwordErrors->has('password'))
+                <p class="form-error">
+                    {{ $passwordErrors->first('password') }}
+                </p>
+            @endif
         </div>
 
         <button type="submit" class="btn btn-primary">
             Save Changes
         </button>
 
-        @if (session('status') === 'profile-updated')
+        @if (session('status') === 'password-updated')
             <p class="success-message">
-                Profile updated successfully.
+                Password updated successfully.
             </p>
         @endif
 

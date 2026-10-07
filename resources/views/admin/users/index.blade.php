@@ -22,41 +22,14 @@
                     @endif
                 </div>
             </div>
-
-            <!--
-            <div class="nk-block-head-content">
-                <a href="#" class="btn btn-outline-primary">
-                    <em class="icon ni ni-plus"></em>
-                    <span>Add User</span>
-                </a>
-            </div>
-            -->
-
         </div>
     </div>
 
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <!-- <form method="GET" action="{{ route('admin.users.index') }}" class="search-form mb-3">
-                <div class="form-control-wrap">
-                    <div class="input-group">
-                        <input type="text" name="search" value="{{ $search }}" class="form-control" placeholder="Search name or email">
-                        <div class="input-group-append">
-                            <button class="btn btn-outline-primary btn-dim" type="submit">Search</button>
-                        </div>
-                    </div>
-                </div>
-
-                @if ($search)
-                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
-                        Reset
-                    </a>
-                @endif
-            </form> -->
-
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped js-datatable">
+            <div>
+                <table class="table table-bordered table-striped datatable-init">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -94,8 +67,7 @@
                         User not found.
                     </div>
                 @endif
-            </div
-
+            </div>
         </div>
     </div>
 @endsection

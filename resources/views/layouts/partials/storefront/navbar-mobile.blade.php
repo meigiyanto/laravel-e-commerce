@@ -1,49 +1,43 @@
-    {{-- =========================================================
-         MOBILE QUICK NAV
-    ========================================================== --}}
-    <div class="d-lg-none border-bottom bg-white">
-        <div class="container py-2">
-
-            <div class="d-flex gap-2 overflow-auto">
-
-                <a
-                    href="{{ route('storefront.home') }}"
-                    class="btn btn-sm {{ request()->routeIs('storefront.home') ? 'btn-dark' : 'btn-light border' }}"
-                >
-                    Home
-                </a>
-
-                <a
-                    href="{{ route('storefront.shop') }}"
-                    class="btn btn-sm {{ request()->routeIs('storefront.shop') || request()->routeIs('storefront.category') ? 'btn-dark' : 'btn-light border' }}"
-                >
-                    Shop
-                </a>
-
+{{-- =========================================================
+        MOBILE QUICK NAV
+========================================================== --}}
+<nav class="d-lg-none navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container">
+        <a class="navbar-brand" href="#">Menu</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('storefront.home') ? 'active' : '' }}" @if(request()->routeIs('storefront.home')) aria-current="page" @endif href="{{ route('storefront.home') }}">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('storefront.shop') ? 'active' : '' }}" @if(request()->routeIs('storefront.shop')) aria-current="page" @endif href="{{ route('storefront.shop') }}">Shop</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Shop By Department
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Action</a></li>
+                        <li><a class="dropdown-item" href="#">Another action</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#">Something else here</a></li>
+                    </ul>
+                </li>
                 @auth
-                    <a
-                        href="{{ route('wishlist.index') }}"
-                        class="btn btn-sm btn-light border"
-                    >
-                        Wishlist
-                    </a>
-
-                    <a
-                        href="{{ route('compare.index') }}"
-                        class="btn btn-sm btn-light border"
-                    >
-                        Compare
-                    </a>
-
-                    <a
-                        href="{{ route('orders.index') }}"
-                        class="btn btn-sm btn-light border"
-                    >
-                        Pesanan
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('wishlist.index') ? 'active' : '' }}" @if(request()->routeIs('wishlist.index')) aria-current="page" @endif href="{{ route('wishlist.index') }}">Wishlist</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}" @if(request()->routeIs('compare.index')) aria-current="page" @endif href="{{ route('compare.index') }}">Compare</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}" @if(request()->routeIs('orders.index')) aria-current="page" @endif href="{{ route('orders.index') }}">Order</a>
+                    </li>
                 @endauth
-
-            </div>
-
+            </ul>
         </div>
     </div>
+</nav>

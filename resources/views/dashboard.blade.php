@@ -3,153 +3,90 @@
 @section('title', 'Dashboard')
 
 @section('content')
-    <div class="nk-block-head nk-block-head-sm">
-        <div class="nk-block-between">
-            <div class="nk-block-head-content">
-                <h3 class="nk-block-title page-title">
-                    Dashboard
-                </h3>
-
-                <div class="nk-block-des text-soft">
-                    <p>
-                        Selamat datang kembali,
-                        {{ Auth::user()->name }}.
-                    </p>
-                </div>
-            </div>
+    {{-- =========================================================
+        BREADCRUMB
+    ========================================================= --}}
+    <div class="store-breadcrumb">
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ route('storefront.home') }}">
+                            <i class="bi bi-house me-1"></i>
+                            Home
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        Account
+                    </li>
+                </ol>
+            </nav>
         </div>
     </div>
 
-    <div class="nk-block">
-        <div class="row g-gs">
-            <div class="col-md-6 col-xl-3">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group">
-                            <div class="card-title">
-                                <h6 class="title">
-                                    Account
-                                </h6>
-                            </div>
+    <section class="store-section pb-3">
+        <div class="container">
+            <div class="store-section-header">
+                <div>
+                    <h1 class="store-section-title">Dashboard</h1>
+                    <p class="store-section-subtitle">Selamat datang kembali, {{ Auth::user()->name }}.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                            <div class="card-tools">
-                                <div class="icon-circle icon-circle-lg bg-primary-dim">
-                                    <em class="icon ni ni-user"></em>
-                                </div>
+    <section class="pb-4">
+        <div class="container">
+            <div class="row g-gs">
+                <div class="col-md-6 col-xl-3 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="card-title">
+                                <h6 class="title fw-bold"><em class="bi bi-person"></em> Account</h6>
+                                <p>{{ Auth::user()->name }}</p>
+                                <p>{{ Auth::user()->email }}</p>
                             </div>
-                        </div>
-                        <div class="data">
-                            <div class="data-group">
-                                <div class="amount">
-                                    {{ Auth::user()->name }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="data">
-                            <span class="sub-text">
-                                {{ Auth::user()->email }}
-                            </span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-md-6 col-xl-3">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group">
+                <div class="col-md-6 col-xl-3 mb-3">
+                    <div class="card">
+                        <div class="card-body">
                             <div class="card-title">
-                                <h6 class="title">
-                                    My Orders
-                                </h6>
+                                <h6 class="title fw-bold"><em class="icon bi bi-bag"></em> My Orders</h6>
+                                <p>My Orders</p>
+                                <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary mt-2">View Orders</a>
                             </div>
-                            <div class="card-tools">
-                                <div class="icon-circle icon-circle-lg bg-info-dim">
-                                    <em class="icon ni ni-bag"></em>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="data">
-                            <div class="amount">
-                                My Orders
-                            </div>
-                        </div>
-                        <div class="data">
-                            <a
-                                href="{{ route('orders.index') }}"
-                                class="btn btn-sm btn-outline-primary mt-2"
-                            >
-                                View Orders
-                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-md-6 col-xl-3">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group">
+                <div class="col-md-6 col-xl-3 mb-3">
+                    <div class="card">
+                        <div class="card-body">
                             <div class="card-title">
-                                <h6 class="title">
-                                    Profile
-                                </h6>
+                                <h6 class="title fw-bold"><em class="bi bi-person-circle"></em> Profile</h6>
+                                <p>Account</p>
+                                <a href="{{ route('profile.edit') }}" class="btn btn-sm btn-outline-primary mt-2">Edit Profile</a>
                             </div>
-                            <div class="card-tools">
-                                <div class="icon-circle icon-circle-lg bg-success-dim">
-                                    <em class="icon ni ni-account-setting"></em>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="data">
-                            <div class="amount">
-                                Account
-                            </div>
-                        </div>
-                        <div class="data">
-                            <a
-                                href="{{ route('profile.edit') }}"
-                                class="btn btn-sm btn-outline-primary mt-2"
-                            >
-                                Edit Profile
-                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-md-6 col-xl-3">
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <div class="card-title-group">
+                <div class="col-md-6 col-xl-3">
+                    <div class="card">
+                        <div class="card-body">
                             <div class="card-title">
-                                <h6 class="title">
-                                    Store
-                                </h6>
+                                <h6 class="title fw-bold"><em class="icon bi bi-shop"></em> Store</h6>
+                                <p>MeiStore</p>
+                                <a href="{{ route('storefront.home') }}" class="btn btn-sm btn-outline-primary mt-2">Visit Store</a>
                             </div>
-                            <div class="card-tools">
-                                <div class="icon-circle icon-circle-lg bg-warning-dim">
-                                    <em class="icon ni ni-shop"></em>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="data">
-                            <div class="amount">
-                                MeiStore
-                            </div>
-                        </div>
-                        <div class="data">
-                            <a
-                                href="{{ route('storefront.home') }}"
-                                class="btn btn-sm btn-outline-primary mt-2"
-                            >
-                                Visit Store
-                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
     </div>
 @endsection

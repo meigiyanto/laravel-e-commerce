@@ -3,11 +3,32 @@
 @section('title', 'Compare Produk - MeiStore')
 
 @section('content')
+{{-- =========================================================
+    BREADCRUMB
+========================================================= --}}
+<div class="store-breadcrumb">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{{ route('storefront.home') }}">
+                        <i class="bi bi-house me-1"></i>
+                        Home
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    Compare
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
 <section class="container py-4 py-lg-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="section-title mb-1">Compare Product Compare</h1>
-            <p class="text-muted mb-0">Compare product until 4 product</p>
+            <h1 class="store-section-title">Compare Product<h1>
+            <p class="store-section-subtitle">Compare product until 4 product</p>
         </div>
 
         @if ($products->isNotEmpty())
@@ -26,25 +47,19 @@
             <a href="{{ url('shop') }}" class="btn btn-primary me-2"><i class="bi bi-cart"></i> Start Shopping</a>
         </div>
     @else
-        <div class="table-respsonsive">
-            <table class="table align-middle border">
+        <div>
+            <table class="table table-bordered table-striped align-middle ">
                 <tbody>
                     <tr>
                         <th>Product</th>
-
                         @foreach ($products as $product)
-                            <td class="text-center" style="min-width:180px">
+                            <td class="text-center" style="min-width:180px;">
                                 @if ($product->image)
-                                    <img src="{{ $product->image }}"
-                                        alt="{{ $product->name }}"
-                                        class="img-fluid rounded mb-2"
-                                        style="height:140px;object-fit:cover">
+                                    <img src="{{ $product->image }}" alt="{{ $product->name }}" class="img-fluid rounded mb-2" style="height:140px;object-fit:cover">
                                 @endif
-
                                 <div class="fw-bold">{{ $product->name }}</div>
 
-                                <form action="{{ route('compare.destroy', $product) }}"
-                                    method="POST" class="mt-2">
+                                <form action="{{ route('compare.destroy', $product) }}" method="POST" class="mt-2">
                                     @csrf
                                     @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger">
@@ -69,6 +84,15 @@
                         @foreach ($products as $product)
                             <td class="text-center">
                                 {{ $product->category?->name ?? '-' }}
+                            </td>
+                        @endforeach
+                    </tr>
+
+                    <tr>
+                        <th>Sub Category</th>
+                        @foreach ($products as $product)
+                            <td class="text-center">
+                                {{ $product->subcategory?->name ?? '-' }}
                             </td>
                         @endforeach
                     </tr>

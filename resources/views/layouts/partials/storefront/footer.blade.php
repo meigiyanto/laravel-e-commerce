@@ -3,15 +3,11 @@
          FOOTER
     ========================================================== --}}
     <footer class="store-footer">
-
         <div class="store-footer-main">
             <div class="container">
-
                 <div class="row g-4">
-
                     {{-- Brand --}}
                     <div class="col-lg-4">
-
                         <a
                             href="{{ route('storefront.home') }}"
                             class="store-footer-brand"
@@ -28,7 +24,7 @@
                         <div class="d-flex gap-3 fs-5">
 
                             <a
-                                href="#"
+                                href="{{ route('dashboard') }}"
                                 aria-label="Instagram"
                             >
                                 <i class="bi bi-instagram"></i>
@@ -94,9 +90,7 @@
                                 </li>
                             @endauth
                         </ul>
-
                     </div>
-
 
                     {{-- Customer --}}
                     <div class="col-6 col-lg-2">
@@ -104,7 +98,7 @@
                         <ul>
                             @auth
                                 <li>
-                                    <a href="{{ route('dashboard') }}">
+                                    <a href="#">
                                         Dashboard
                                     </a>
                                 </li>

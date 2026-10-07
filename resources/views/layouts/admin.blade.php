@@ -6,19 +6,21 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard') - {{ config('app.name', 'Laravel E-Commerce Store') }}</title>
     <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
-    @vite(['resources/css/admin.css', 'resources/js/admin.js'])
-    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-    <script>eruda.init();</script>
+    @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])
+    @if (app()->environment('local'))
+        <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+        <script>eruda.init();</script>
+    @endif
 </head>
 <body class="nk-body bg-lighter npc-general has-sidebar ui-shady">
     <div class="nk-app-root">
         <div class="nk-main">
 
-            @include('layouts.partials.aside')
+            @include('layouts.partials.dashboard.aside')
 
             <div class="nk-wrap">
 
-                @include('layouts.partials.header')
+                @include('layouts.partials.dashboard.header')
 
                 <div class="nk-content">
                     <div class="container-fluid">
@@ -46,7 +48,7 @@
                     </div>
                 </div>
 
-                @include('layouts.partials.footer')
+                @include('layouts.partials.dashboard.footer')
 
             </div>
         </div>

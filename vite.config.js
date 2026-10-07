@@ -7,9 +7,12 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/storefront.css',
+                'resources/css/dashboard.css',
+
                 'resources/js/app.js',
-                'resources/css/admin.css',
-                'resources/js/admin.js'
+                'resources/js/storefront.js',
+                'resources/js/dashboard.js',
             ],
             refresh: true,
         }),

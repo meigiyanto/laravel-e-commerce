@@ -4,10 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\Storefront\ProductFilter;
 use Illuminate\Http\Request;
 
 class StorefrontController extends Controller
 {
+    public function __construct(
+        private readonly ProductFilter $productFilter
+    ) {
+    }
+
     public function home()
     {
         $categories = Category::withCount('products')
@@ -18,6 +24,8 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->latest()
             ->take(8)
             ->get();
@@ -33,48 +41,34 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
-        ]);
+        ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews');
 
-        /*
-        |---------------------------------------------------        | Search
-        |--------------------------------------------------
-        */
-        if ($request->filled('q')) {
-            $search = trim($request->input('q'));
+        $this->productFilter->apply(
+            $query,
+            $request
+        );
 
-            $query->where(function ($query) use ($search) {
-                $query
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        /*
-        |---------------------------------------------------        | Category Filter
-        |---------------------------------------------------        */
-        if ($request->filled('category')) {
-            $query->whereHas('category', function ($query) use ($request) {
-                $query->where('slug', $request->input('category'));
-            });
-        }
-
-        /*
-        |---------------------------------------------------        | Products
-        |---------------------------------------------------        */
         $products = $query
-            ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        /*
-        |---------------------------------------------------        | Categories
-        |---------------------------------------------------        */
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::with([
+            'subCategories' => function ($query) {
+                $query->orderBy('name');
+            },
+        ])
+            ->orderBy('name')
+            ->get();
 
-        return view('storefront.shop', compact(
-            'products',
-            'categories'
-        ));
+        return view(
+            'storefront.shop',
+            compact(
+                'products',
+                'categories'
+            )
+        );
     }
 
     public function product(string $slug)
@@ -82,6 +76,7 @@ class StorefrontController extends Controller
         $product = Product::with([
             'category',
             'subCategory',
+            'specifications',
             'reviews.user',
         ])
             ->withAvg('reviews', 'rating')
@@ -93,35 +88,58 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
         ])
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
             ->where('id', '!=', $product->id)
             ->where('category_id', $product->category_id)
             ->latest()
             ->take(4)
             ->get();
 
-        return view('storefront.product', compact(
-            'product',
-            'relatedProducts'
-        ));
+        return view(
+            'storefront.product',
+            compact(
+                'product',
+                'relatedProducts'
+            )
+        );
     }
 
-    public function category(string $slug)
-    {
-        $category = Category::where('slug', $slug)
+    public function category(
+        Request $request,
+        string $slug
+    ) {
+        $category = Category::with([
+            'subCategories' => function ($query) {
+                $query->orderBy('name');
+            },
+        ])
+            ->where('slug', $slug)
             ->firstOrFail();
 
-        $products = Product::with([
+        $query = Product::with([
             'category',
             'subCategory',
         ])
-            ->where('category_id', $category->id)
-            ->latest()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->where('category_id', $category->id);
+
+        $this->productFilter->apply(
+            $query,
+            $request
+        );
+
+        $products = $query
             ->paginate(12)
             ->withQueryString();
 
-        return view('storefront.category', compact(
-            'category',
-            'products'
-        ));
+        return view(
+            'storefront.category',
+            compact(
+                'category',
+                'products'
+            )
+        );
     }
 }
