@@ -24,7 +24,7 @@
     </div>
 </div>
 
-<section class="store-section pb-3">
+<section class="store-section">
     <div class="container">
         <div class="store-section-header">
             <div>

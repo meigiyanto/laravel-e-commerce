@@ -70,10 +70,7 @@
                 <div class="row g-3">
                     @foreach ($categories as $category)
                         <div class="col-6 col-md-4 col-lg-3">
-                            <a
-                                href="{{ route('storefront.category', $category->slug) }}"
-                                class="d-block h-100"
-                            >
+                            <a href="{{ route('storefront.category', $category->slug) }}" class="d-block h-100">
 
                                 <div class="store-category-card">
                                     @if ($category->image)
@@ -139,7 +136,7 @@
                     href="{{ route('storefront.shop') }}"
                     class="store-section-link"
                 >
-                    Lihat Semua
+                    See All
                     <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -147,7 +144,7 @@
             @if ($latestProducts->isNotEmpty())
                 <div class="row g-3 g-md-4">
                     @foreach ($latestProducts as $product)
-                        <div class="col-6 col-md-4 col-lg-3">
+                        <div class="col-6 col-md-6 col-lg-3">
                             <x-store-product-card :product="$product" />
                         </div>
                     @endforeach

@@ -124,10 +124,12 @@
             </div>
         </div>
     @else
-        <div class="alert alert-light border">
-            <h2 class="title">Belum Ada Pesanan</h2>
-            <p class="text-soft">Kamu belum memiliki riwayat pembelian.</p>
-            <a href="{{ route('storefront.shop') }}" class="btn btn-primary"><i class="bi bi-cart"></i> Start Shopping</a>
+        <div class="container">
+            <div class="alert alert-light border">
+                <h2 class="title">Belum Ada Pesanan</h2>
+                <p class="text-soft">Kamu belum memiliki riwayat pembelian.</p>
+                <a href="{{ route('storefront.shop') }}" class="btn btn-primary"><i class="bi bi-cart"></i> Start Shopping</a>
+            </div>
         </div>
     @endif
 </section>

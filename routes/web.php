@@ -31,6 +31,14 @@ use App\Http\Controllers\WishlistController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+
+Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+
+Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.update');
+
+Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.destroy');
+
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
 
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
@@ -70,12 +78,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
     Route::patch('/reviews/{review}', [ReviewController::class, 'update'])->name('reviews.update');
     Route::delete('/reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
-
-    // Cart
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
 
     // Checkout
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
