@@ -1,8 +1,227 @@
 /**
  * =========================================================
- * CART BADGE
+ * CART
  * =========================================================
  */
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.quantity-form').forEach(function (form) {
+
+        const input = form.querySelector('.quantity-input');
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
+
+        if (!input || !minusButton || !plusButton) {
+            return;
+        }
+
+        updateButtons(form);
+
+
+        minusButton.addEventListener('click', function () {
+
+            const min = Number(input.min) || 1;
+            let value = Number(input.value) || min;
+
+            if (value <= min) {
+                return;
+            }
+
+            value--;
+
+            input.value = value;
+
+            updateButtons(form);
+
+            updateCartItem(form, value);
+        });
+
+
+        plusButton.addEventListener('click', function () {
+
+            const max = Number(input.max) || Infinity;
+            let value = Number(input.value) || 1;
+
+            if (value >= max) {
+                return;
+            }
+
+            value++;
+
+            input.value = value;
+
+            updateButtons(form);
+
+            updateCartItem(form, value);
+        });
+
+
+        input.addEventListener('change', function () {
+
+            const min = Number(input.min) || 1;
+            const max = Number(input.max) || Infinity;
+
+            let value = Number(input.value) || min;
+
+            value = Math.max(min, Math.min(value, max));
+
+            input.value = value;
+
+            updateButtons(form);
+
+            updateCartItem(form, value);
+        });
+
+    });
+
+
+    async function updateCartItem(form, quantity) {
+        const input = form.querySelector('.quantity-input');
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
+
+        const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content');
+
+        if (!csrfToken) {
+            return;
+        }
+
+        input.disabled = true;
+        minusButton.disabled = true;
+        plusButton.disabled = true;
+
+        form.classList.add('opacity-75');
+
+        try {
+
+            const response = await fetch(
+                form.action,
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+
+                    body: new URLSearchParams({
+                        _token: csrfToken,
+                        _method: 'PATCH',
+                        quantity: quantity,
+                    }),
+                }
+            );
+
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message ||
+                    'Gagal memperbarui keranjang.'
+                );
+            }
+
+
+            input.value = data.quantity;
+
+            const subtotal = document.querySelector(
+                `.cart-item-subtotal[data-item-id="${form.dataset.itemId}"]`
+            );
+
+            if (subtotal) {
+                subtotal.textContent =
+                    formatRupiah(data.subtotal);
+            }
+
+
+            const total = document.getElementById(
+                'cart-total'
+            );
+
+            if (total) {
+                total.textContent =
+                    formatRupiah(data.total);
+            }
+
+
+            const itemCount = document.getElementById(
+                'cart-item-count'
+            );
+
+            if (itemCount) {
+                itemCount.textContent =
+                    data.item_count;
+            }
+
+
+            document
+                .querySelectorAll('.store-summary-total')
+                .forEach(function (element) {
+                    element.textContent =
+                        formatRupiah(data.total);
+                });
+
+
+            if (typeof window.updateCartBadge === 'function') {
+                window.updateCartBadge(
+                    data.cart_count
+                );
+            }
+
+            if (typeof window.showStoreNotification === 'function') {
+                window.showStoreNotification(
+                    data.message,
+                    'success'
+                );
+            }
+        } catch (error) {
+
+            if (typeof window.showStoreNotification === 'function') {
+                window.showStoreNotification(
+                    error.message ||
+                    'Terjadi kesalahan.',
+                    'danger'
+                );
+            }
+
+        } finally {
+            input.disabled = false;
+            form.classList.remove('opacity-75');
+            updateButtons(form);
+        }
+    }
+
+
+    function updateButtons(form) {
+        const input = form.querySelector('.quantity-input');
+        const minusButton = form.querySelector('.quantity-minus');
+        const plusButton = form.querySelector('.quantity-plus');
+
+        if (!input || !minusButton || !plusButton) {
+            return;
+        }
+
+        const min = Number(input.min) || 1;
+        const max = Number(input.max) || Infinity;
+        const value = Number(input.value) || min;
+
+        minusButton.disabled = value <= min;
+        plusButton.disabled = value >= max;
+    }
+
+
+    function formatRupiah(value) {
+
+        return 'Rp ' + Number(value).toLocaleString(
+            'id-ID'
+        );
+    }
+
+});
 
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(

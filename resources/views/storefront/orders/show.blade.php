@@ -87,33 +87,19 @@
                             <th>Harga</th>
                             <th>Qty</th>
                             <th class="text-end">Subtotal</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($order->items as $item)
-                            @if ($order->status === 'completed' && $item->product)
-                                <div class="my-2">
-                                    <a href="{{ route('storefront.product', $item->product->slug) }}#review" class="btn btn-sm btn-outline-primary">
-                                        <em class="icon ni ni-star"></em>
-                                        Beri Review
-                                    </a>
-                                </div>
-                            @endif
                             <tr>
                                 {{-- Product --}}
                                 <td>
                                     <div class="d-flex align-items-center gap-5">
                                     @if ($item->product?->image)
-                                        <img
-                                            src="{{ asset('storage/' . $item->product->image) }}"
-                                            alt="{{ $item->product_name }}"
-                                            style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;"
-                                        >
+                                        <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product_name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
                                     @else
-                                        <div
-                                            class="d-flex align-items-center justify-content-center bg-light"
-                                            style="width: 40px; height: 40px; border-radius: 6px;"
-                                        >
+                                        <div class="d-flex align-items-center justify-content-center bg-light" style="width: 40px; height: 40px; border-radius: 6px;">
                                             <i class="bi bi-image text-muted"></i>
                                         </div>
                                     @endif
@@ -130,6 +116,16 @@
                                 {{-- Subtotal --}}
                                 <td class="text-end">
                                     <strong class="text-end">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</strong>
+                                </td>
+                                                                <td>
+                                @if ($order->status === 'completed' && $item->product)
+                                    <div class="my-2">
+                                        <a href="{{ route('storefront.product', $item->product->slug) }}#review" class="btn btn-sm btn-outline-primary">
+                                            <em class="icon ni ni-star"></em>
+                                            Beri Review
+                                        </a>
+                                    </div>
+                                @endif
                                 </td>
                             </tr>
                         @endforeach
