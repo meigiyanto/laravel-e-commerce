@@ -10,10 +10,10 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('storefront.home') ? 'active' : '' }}" @if(request()->routeIs('storefront.home')) ? 'aria-current="page"' : '' @endif href="{{ route('storefront.home') }}">Home</a>
+                    <a class="nav-link {{ request()->routeIs('storefront.home') ? 'active' : '' }}" @if(request()->routeIs('storefront.home')) aria-current="page" @endif href="{{ route('storefront.home') }}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('storefront.shop') ? 'active' : '' }}" @if(request()->routeIs('storefront.shop')) ? 'aria-current="page"' : '' @endif href="{{ route('storefront.shop') }}">Shop</a>
+                    <a class="nav-link {{ request()->routeIs('storefront.shop') ? 'active' : '' }}" @if(request()->routeIs('storefront.shop')) aria-current="page" @endif href="{{ route('storefront.shop') }}">Shop</a>
                 </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -28,13 +28,13 @@
                 </li>
                 @auth
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('wishlist.index ') ? 'active' : '' }}" @if(request()->routeIs('wishlist.index')) ? 'aria-current="page"' : '' @endif href="{{ route('wishlist.index') }}">Wishlist</a>
+                        <a class="nav-link {{ request()->routeIs('wishlist.index') ? 'active' : '' }}" @if(request()->routeIs('wishlist.index')) aria-current="page" @endif href="{{ route('wishlist.index') }}">Wishlist</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}" @if(request()->routeIs('compare.index')) ? 'aria-current="page"' : '' @endif href="{{ route('compare.index') }}">Compare</a>
+                        <a class="nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}" @if(request()->routeIs('compare.index')) aria-current="page" @endif href="{{ route('compare.index') }}">Compare</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}" @if(request()->routeIs('orders.index')) ? 'aria-current="page"' : '' @endif href="{{ route('orders.index') }}">Order</a>
+                        <a class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}" @if(request()->routeIs('orders.index')) aria-current="page" @endif href="{{ route('orders.index') }}">Order</a>
                     </li>
                 @endauth
             </ul>
