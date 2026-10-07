@@ -7167,102 +7167,6 @@ textarea.store-form-control {
 .store-department-all:hover {
     color: var(--store-primary-dark);
 }
-/* =========================================================
-   MOBILE NAVIGATION
-========================================================= */
-
-.store-mobile-nav {
-    position: relative;
-    z-index: 1040;
-    display: block;
-    background: #ffffff;
-    border-bottom: 1px solid var(--store-border);
-}
-
-/* =========================================================
-   MOBILE NAV BAR
-========================================================= */
-
-.store-mobile-nav-bar {
-    position: relative;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    min-height: 58px;
-}
-
-.store-mobile-menu-toggle,
-.store-mobile-cart {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px;
-    height: 42px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--store-dark);
-    text-decoration: none;
-}
-
-.store-mobile-menu-toggle {
-    justify-self: start;
-    gap: .4rem;
-    width: auto;
-    min-width: 42px;
-    padding: 0 .25rem;
-    cursor: pointer;
-}
-
-.store-mobile-menu-toggle:hover,
-.store-mobile-cart:hover {
-    color: var(--store-primary-dark);
-}
-
-.store-mobile-menu-icon {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-}
-
-.store-mobile-menu-icon i {
-    position: absolute;
-    font-size: 1.35rem;
-    line-height: 1;
-    transition:
-        opacity .18s ease,
-        transform .18s ease;
-}
-
-.store-mobile-menu-open-icon {
-    opacity: 1;
-    transform: rotate(0);
-}
-
-.store-mobile-menu-close-icon {
-    opacity: 0;
-    transform: rotate(-90deg);
-}
-
-.store-mobile-menu-toggle[aria-expanded="true"]
-.store-mobile-menu-open-icon {
-    opacity: 0;
-    transform: rotate(90deg);
-}
-
-.store-mobile-menu-toggle[aria-expanded="true"]
-.store-mobile-menu-close-icon {
-    opacity: 1;
-    transform: rotate(0);
-}
-
-.store-mobile-menu-label {
-    font-size: .78rem;
-    font-weight: 600;
-}
 
 /* =========================================================
    MOBILE BRAND
@@ -7679,7 +7583,6 @@ textarea.store-form-control {
 .store-mobile-user:hover {
     color: var(--store-primary-dark);
 }
-
 
 /* =========================================================
    MOBILE BOTTOM NAVIGATION

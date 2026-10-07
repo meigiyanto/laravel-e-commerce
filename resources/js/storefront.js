@@ -118,8 +118,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /**
  * =========================================================
- * MOBILE SEARCH
- * ========================================================= */
+ * MOBILE SEARCH DRAWER
+ * =========================================================
+ */
 document.addEventListener('DOMContentLoaded', function () {
     const searchDrawer = document.getElementById(
         'storeMobileSearchDrawer'
@@ -133,47 +134,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    /*
-     * Fokus otomatis ketika search drawer dibuka.
-     */
-    const observer = new MutationObserver(function () {
-        const isOpen =
-            searchDrawer.getAttribute('aria-hidden') === 'false';
+    const clearButton = searchDrawer.querySelector(
+        '[data-mobile-search-clear]'
+    );
 
-        if (!isOpen) {
+    function updateClearButton() {
+        if (!clearButton) {
             return;
         }
 
-        window.setTimeout(function () {
-            searchInput.focus();
-
-            const value = searchInput.value;
-
-            if (value) {
-                searchInput.setSelectionRange(
-                    value.length,
-                    value.length
-                );
-            }
-        }, 80);
-    });
-
-    observer.observe(searchDrawer, {
-        attributes: true,
-        attributeFilter: ['aria-hidden'],
-    });
-
-
-    /*
-     * Clear search.
-     */
-    function updateClearButton() {
-    if (!clearButton) {
-        return;
-    }
-
-    clearButton.hidden =
-        searchInput.value.trim() === '';
+        clearButton.hidden = searchInput.value.trim() === '';
     }
 
     searchInput.addEventListener(
@@ -191,26 +161,55 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /*
-     * Submit hanya jika ada input.
-     */
     const searchForm = searchDrawer.querySelector(
         '.store-mobile-search-form'
     );
 
     if (searchForm) {
-        searchForm.addEventListener('submit', function (event) {
-            const value = searchInput.value.trim();
+        searchForm.addEventListener(
+            'submit',
+            function (event) {
+                const value = searchInput.value.trim();
 
-            if (value === '') {
-                event.preventDefault();
-                searchInput.focus();
+                if (value === '') {
+                    event.preventDefault();
+                    searchInput.focus();
+                    return;
+                }
+
+                searchInput.value = value;
+            }
+        );
+    }
+
+    const observer = new MutationObserver(
+        function () {
+            const isOpen =
+                searchDrawer.getAttribute('aria-hidden') === 'false';
+
+            if (!isOpen) {
                 return;
             }
 
-            searchInput.value = value;
-        });
-    }
+            window.setTimeout(function () {
+                searchInput.focus();
+
+                const value = searchInput.value;
+
+                if (value) {
+                    searchInput.setSelectionRange(
+                        value.length,
+                        value.length
+                    );
+                }
+            }, 80);
+        }
+    );
+
+    observer.observe(searchDrawer, {
+        attributes: true,
+        attributeFilter: ['aria-hidden'],
+    });
 });
 
 /**
@@ -525,178 +524,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
- * =========================================================
- * MOBILE NAVIGATION
- * ========================================================= */
-document.addEventListener('DOMContentLoaded', function () {
-    const mobileNav = document.querySelector('.store-mobile-nav');
-
-    if (!mobileNav) {
-        return;
-    }
-
-    const menuToggle = mobileNav.querySelector('.store-mobile-menu-toggle');
-    const menu = mobileNav.querySelector('#storeMobileMenu');
-
-    if (!menuToggle || !menu) {
-        return;
-    }
-
-    const departmentToggle = mobileNav.querySelector(
-        '.store-mobile-department-toggle'
-    );
-
-    const departments = mobileNav.querySelector(
-        '#storeMobileDepartments'
-    );
-
-    /**
-     * ---------------------------------------------------------
-     * MENU
-     * ---------------------------------------------------------
-     */
-    function openMenu() {
-        menuToggle.setAttribute('aria-expanded', 'true');
-        menuToggle.setAttribute('aria-label', 'Tutup menu navigasi');
-
-        menu.setAttribute('aria-hidden', 'false');
-
-        document.body.classList.add('store-mobile-menu-open');
-    }
-
-    function closeMenu() {
-        menuToggle.setAttribute('aria-expanded', 'false');
-        menuToggle.setAttribute('aria-label', 'Buka menu navigasi');
-
-        menu.setAttribute('aria-hidden', 'true');
-
-        closeDepartments();
-
-        document.body.classList.remove('store-mobile-menu-open');
-    }
-
-    function toggleMenu() {
-        const isOpen =
-            menuToggle.getAttribute('aria-expanded') === 'true';
-
-        if (isOpen) {
-            closeMenu();
-        } else {
-            openMenu();
-        }
-    }
-
-    /**
-     * ---------------------------------------------------------
-     * DEPARTMENT
-     * ---------------------------------------------------------
-     */
-    function openDepartments() {
-        if (!departmentToggle || !departments) {
-            return;
-        }
-
-        departmentToggle.setAttribute('aria-expanded', 'true');
-        departments.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeDepartments() {
-        if (!departmentToggle || !departments) {
-            return;
-        }
-
-        departmentToggle.setAttribute('aria-expanded', 'false');
-        departments.setAttribute('aria-hidden', 'true');
-    }
-
-    function toggleDepartments() {
-        if (!departmentToggle || !departments) {
-            return;
-        }
-
-        const isOpen =
-            departmentToggle.getAttribute('aria-expanded') === 'true';
-
-        if (isOpen) {
-            closeDepartments();
-        } else {
-            openDepartments();
-        }
-    }
-
-    /**
-     * ---------------------------------------------------------
-     * TOGGLE EVENTS
-     * ---------------------------------------------------------
-     */
-    menuToggle.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        toggleMenu();
-    });
-
-    if (departmentToggle) {
-        departmentToggle.addEventListener('click', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            toggleDepartments();
-        });
-    }
-
-    /**
-     * ---------------------------------------------------------
-     * CLOSE WHEN CLICKING OUTSIDE
-     * ---------------------------------------------------------
-     */
-    document.addEventListener('click', function (event) {
-        if (!mobileNav.contains(event.target)) {
-            closeMenu();
-        }
-    });
-
-    /**
-     * ---------------------------------------------------------
-     * ESCAPE KEY
-     * ---------------------------------------------------------
-     */
-    document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape') {
-            return;
-        }
-
-        const menuIsOpen =
-            menuToggle.getAttribute('aria-expanded') === 'true';
-
-        if (!menuIsOpen) {
-            return;
-        }
-
-        closeMenu();
-        menuToggle.focus();
-    });
-
-    /**
-     * ---------------------------------------------------------
-     * CLOSE AFTER NAVIGATION
-     * ---------------------------------------------------------
-     */
-    menu.querySelectorAll('a').forEach(function (link) {
-        link.addEventListener('click', function () {
-            closeMenu();
-        });
-    });
-
-    /**
-     * ---------------------------------------------------------
-     * INITIAL STATE
-     * ---------------------------------------------------------
-     */
-    closeMenu();
-});
-
-/**
  * ========================================================= 
  * CART
  * ========================================================= */
@@ -918,7 +745,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(
         '#cart-count-badge, .store-mobile-bottom .store-badge'
@@ -936,7 +762,6 @@ window.updateCartBadge = function (count) {
         }
     });
 };
-
 
 /**
  * =========================================================
