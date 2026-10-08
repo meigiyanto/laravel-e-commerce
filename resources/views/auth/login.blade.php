@@ -7,7 +7,7 @@
         <span class="auth-eyebrow text-center">E-Commerce Store</span>
 
         <h1 class="text-center">Welcome back</h1>
-        <p class="text-center">Login untuk melanjutkan ke akun Anda.</p>
+        <p class="text-center">Login to continue to your account </p>
     </div>
 
     @if(session('success'))
@@ -31,7 +31,7 @@
                 required
                 autocomplete="username"
                 class="form-input"
-                placeholder="nama@email.com"
+                placeholder="name@email.com"
             >
 
             @error('email')
@@ -53,7 +53,7 @@
                         href="{{ route('password.request') }}"
                         class="auth-link"
                     >
-                        Lupa password?
+                        forgot password?
                     </a>
                 @endif
             </div>
@@ -66,7 +66,7 @@
                 required
                 autocomplete="current-password"
                 class="form-input"
-                placeholder="Masukkan password"
+                placeholder="Input password"
             >
 
             @error('password')
@@ -83,7 +83,7 @@
                 type="checkbox"
                 name="remember"
             >
-            <span>Ingat saya</span>
+            <span>Remember me</span>
         </label>
 
 
@@ -91,12 +91,12 @@
     </form>
 
     <div class="auth-footer">
-        <span>Belum punya akun?</span>
+        <span>Have not an account?</span>
         <a
             href="{{ route('register') }}"
             class="auth-link"
         >
-            Daftar sekarang
+            Register now
         </a>
     </div>
 @endsection
