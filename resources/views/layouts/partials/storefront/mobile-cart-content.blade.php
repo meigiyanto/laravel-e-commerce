@@ -1,9 +1,6 @@
 @if ($mobileCartItems->isNotEmpty())
-
     <div class="store-mobile-cart-list">
-
         @foreach ($mobileCartItems as $cartItem)
-
             @php
                 $product = $cartItem->product;
                 $quantity = (int) $cartItem->quantity;
@@ -187,9 +184,7 @@
         @endauth
 
     </div>
-
 @else
-
     {{-- EMPTY CART --}}
     <div class="store-mobile-cart-empty">
 

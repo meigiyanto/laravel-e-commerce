@@ -41,126 +41,31 @@
         </span>
     </button>
 
+    @php
+        $mobileCartCount = app(\App\Services\CartService::class)->count();
+    @endphp
 
-    {{-- =========================================================
-            MOBILE CART DRAWER
-    ========================================================== --}}
-    <div
-        id="storeMobileCartDrawer"
-        class="store-mobile-drawer store-mobile-cart-drawer"
-        aria-hidden="true"
+    <button
+        type="button"
+        class="store-mobile-bottom-item"
+        data-mobile-drawer="cart"
+        aria-controls="storeMobileCartDrawer"
+        aria-expanded="false"
     >
-        <div class="store-mobile-drawer-panel">
+        <span class="store-mobile-bottom-icon">
+            <i class="bi bi-cart3"></i>
 
-            {{-- HEADER --}}
-            <div class="store-mobile-drawer-header">
-
-                <div>
-                    <span class="store-mobile-drawer-eyebrow">
-                        Shopping Cart
-                    </span>
-
-                    <h2 class="store-mobile-drawer-title">
-                        Keranjang
-                    </h2>
-                </div>
-
-                <button
-                    type="button"
-                    class="store-mobile-drawer-close"
-                    data-mobile-drawer-close
-                    aria-label="Tutup keranjang"
-                >
-                    <i class="bi bi-x-lg"></i>
-                </button>
-
-            </div>
-
-
-            {{-- BODY --}}
-            <div
-                class="store-mobile-drawer-body"
-                id="storeMobileCartContent"
+            <span
+                class="store-mobile-bottom-badge {{ $mobileCartCount > 0 ? '' : 'd-none' }}"
             >
-                @php
-                    $mobileCartService = app(
-                        \App\Services\CartService::class
-                    );
+                {{ $mobileCartCount > 99 ? '99+' : $mobileCartCount }}
+            </span>
+        </span>
 
-                    $mobileCartCount =
-                        $mobileCartService->count();
-
-                    if (auth()->check()) {
-                        $mobileCart =
-                            $mobileCartService->getUserCartWithItems(
-                                auth()->id()
-                            );
-
-                        $mobileCartItems =
-                            $mobileCart->items;
-                    } else {
-                        $mobileGuestCart =
-                            $mobileCartService->getGuestCart();
-
-                        $mobileCartProducts =
-                            empty($mobileGuestCart)
-                                ? collect()
-                                : \App\Models\Product::with([
-                                    'category',
-                                    'subCategory',
-                                ])
-                                ->whereIn(
-                                    'id',
-                                    array_keys($mobileGuestCart)
-                                )
-                                ->get();
-
-                        $mobileCartItems =
-                            $mobileCartProducts
-                                ->map(function ($product) use (
-                                    $mobileGuestCart
-                                ) {
-                                    $quantity = (int) (
-                                        $mobileGuestCart[
-                                            (string) $product->id
-                                        ]
-                                        ?? $mobileGuestCart[
-                                            $product->id
-                                        ]
-                                        ?? 0
-                                    );
-
-                                    return (object) [
-                                        'id' => null,
-                                        'product_id' => $product->id,
-                                        'quantity' => $quantity,
-                                        'product' => $product,
-                                    ];
-                                })
-                                ->filter(function ($item) {
-                                    return $item->quantity > 0;
-                                });
-                    }
-
-                    $mobileCartTotal =
-                        $mobileCartItems->sum(function ($item) {
-                            return $item->product->price
-                                * $item->quantity;
-                        });
-                @endphp
-
-                @include(
-                    'layouts.partials.storefront.mobile-cart-content',
-                    [
-                        'mobileCartItems' => $mobileCartItems,
-                        'mobileCartCount' => $mobileCartCount,
-                        'mobileCartTotal' => $mobileCartTotal,
-                    ]
-                )
-            </div>
-
-        </div>
-    </div>
+        <span class="store-mobile-bottom-label">
+            Cart
+        </span>
+    </button>
 
 </nav>
 
@@ -566,247 +471,122 @@
 </div>
 
 {{-- =========================================================
-        MOBILE CART DRAWER
+       MOBILE SEARCH DRAWER
 ========================================================== --}}
-@php
-$mobileCartService = app(\App\Services\CartService::class);
-$mobileCartCount = $mobileCartService->count();
-
-if (auth()->check()) {
-$mobileCart = $mobileCartService->getUserCartWithItems(auth()->id());
-$mobileCartItems = $mobileCart->items;
-} else {
-$mobileGuestCart = $mobileCartService->getGuestCart();
-
-$mobileCartProducts = empty($mobileGuestCart)
-? collect()
-: \App\Models\Product::with([
-'category',
-'subCategory',
-])
-->whereIn('id', array_keys($mobileGuestCart))
-->get();
-
-$mobileCartItems = $mobileCartProducts->map(function ($product) use ($mobileGuestCart) {
-$quantity = (int) (
-$mobileGuestCart[(string) $product->id]
-?? $mobileGuestCart[$product->id]
-?? 0
-);
-
-return (object) [
-'id' => null,
-'product' => $product,
-'quantity' => $quantity,
-];
-})->filter(function ($item) {
-return $item->quantity > 0;
-});
-}
-
-$mobileCartTotal = $mobileCartItems->sum(function ($item) {
-return $item->product->price * $item->quantity;
-});
-@endphp
-
-
-<div id="storeMobileCartDrawer" class="store-mobile-drawer store-mobile-cart-drawer" aria-hidden="true">
+<div
+    id="storeMobileCartDrawer"
+    class="store-mobile-drawer store-mobile-cart-drawer"
+    aria-hidden="true"
+>
     <div class="store-mobile-drawer-panel">
 
-        {{-- HEADER --}}
         <div class="store-mobile-drawer-header">
-
             <div>
-                <span class="store-mobile-drawer-eyebrow">
-                    Shopping Cart
-                </span>
-
                 <h2 class="store-mobile-drawer-title">
-                    Keranjang
+                    Shopping Cart
                 </h2>
+
+                <span class="store-mobile-drawer-subtitle">
+                    Your selected products
+                </span>
             </div>
 
-            <button type="button" class="store-mobile-drawer-close" data-mobile-drawer-close
-                aria-label="Tutup keranjang">
+            <button
+                type="button"
+                class="store-mobile-drawer-close"
+                data-mobile-drawer-close
+                aria-label="Close Cart"
+            >
                 <i class="bi bi-x-lg"></i>
             </button>
-
         </div>
 
+        <div
+            class="store-mobile-drawer-body"
+            id="storeMobileCartContent"
+        >
+            @php
+                $mobileCartService =
+                    app(\App\Services\CartService::class);
 
-        {{-- BODY --}}
-        <div class="store-mobile-drawer-body">
+                $mobileCartCount =
+                    $mobileCartService->count();
 
-            @if ($mobileCartItems->isNotEmpty())
+                if (auth()->check()) {
+                    $mobileCart =
+                        $mobileCartService->getUserCartWithItems(
+                            auth()->id()
+                        );
 
-            <div class="store-mobile-cart-list">
+                    $mobileCartItems =
+                        $mobileCart->items;
+                } else {
+                    $mobileGuestCart =
+                        $mobileCartService->getGuestCart();
 
-                @foreach ($mobileCartItems as $cartItem)
+                    $mobileCartProducts =
+                        empty($mobileGuestCart)
+                            ? collect()
+                            : \App\Models\Product::with([
+                                'category',
+                                'subCategory',
+                            ])
+                            ->whereIn(
+                                'id',
+                                array_keys($mobileGuestCart)
+                            )
+                            ->get();
 
-                @php
-                $product = $cartItem->product;
-                $quantity = (int) $cartItem->quantity;
-                $lineTotal = $product->price * $quantity;
-                @endphp
+                    $mobileCartItems =
+                        $mobileCartProducts
+                            ->map(function ($product) use (
+                                $mobileGuestCart
+                            ) {
+                                $quantity = (int) (
+                                    $mobileGuestCart[
+                                        (string) $product->id
+                                    ]
+                                    ?? $mobileGuestCart[
+                                        $product->id
+                                    ]
+                                    ?? 0
+                                );
 
-                <article class="store-mobile-cart-item" data-mobile-cart-item>
+                                return (object) [
+                                    'id' => null,
+                                    'product_id' =>
+                                        $product->id,
+                                    'quantity' =>
+                                        $quantity,
+                                    'product' =>
+                                        $product,
+                                ];
+                            })
+                            ->filter(function ($item) {
+                                return $item->quantity > 0;
+                            });
+                }
 
-                    {{-- IMAGE --}}
-                    <a href="{{ route('storefront.product', $product->slug) }}" class="store-mobile-cart-image"
-                        aria-label="Lihat {{ $product->name }}">
-                        @if ($product->image_url)
+                $mobileCartTotal =
+                    $mobileCartItems->sum(
+                        function ($item) {
+                            return $item->product->price
+                                * $item->quantity;
+                        }
+                    );
+            @endphp
 
-                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy">
-
-                        @else
-
-                        <span>
-                            <i class="bi bi-image"></i>
-                        </span>
-
-                        @endif
-                    </a>
-
-
-                    {{-- CONTENT --}}
-                    <div class="store-mobile-cart-content">
-
-                        <a href="{{ route('storefront.product', $product->slug) }}" class="store-mobile-cart-name">
-                            {{ $product->name }}
-                        </a>
-
-                        <span class="store-mobile-cart-price">
-                            Rp {{ number_format($product->price, 0, ',', '.') }}
-                        </span>
-
-
-                        <div class="store-mobile-cart-meta">
-
-                            {{-- QUANTITY --}}
-                            <div class="store-mobile-cart-quantity">
-
-                                <form action="{{ route('cart.update', $product) }}" method="POST"
-                                    class="store-mobile-cart-quantity-form">
-                                    @csrf
-                                    @method('PATCH')
-
-                                    <button type="button" class="store-mobile-cart-quantity-button"
-                                        data-mobile-cart-decrease aria-label="Kurangi {{ $product->name }}">
-                                        <i class="bi bi-dash"></i>
-                                    </button>
-
-                                    <input type="number" name="quantity" value="{{ $quantity }}" min="1"
-                                        max="{{ max(1, $product->stock) }}" class="store-mobile-cart-quantity-input"
-                                        inputmode="numeric" aria-label="Jumlah {{ $product->name }}">
-
-                                    <button type="button" class="store-mobile-cart-quantity-button"
-                                        data-mobile-cart-increase aria-label="Tambah {{ $product->name }}">
-                                        <i class="bi bi-plus"></i>
-                                    </button>
-
-                                </form>
-
-                            </div>
-
-
-                            {{-- REMOVE --}}
-                            <form action="{{ route('cart.destroy', $product) }}" method="POST"
-                                class="store-mobile-cart-remove-form">
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit" class="store-mobile-cart-remove"
-                                    aria-label="Hapus {{ $product->name }} dari keranjang">
-                                    <i class="bi bi-trash3"></i>
-                                </button>
-                            </form>
-
-                        </div>
-
-
-                        <div class="store-mobile-cart-line-total">
-                            Rp {{ number_format($lineTotal, 0, ',', '.') }}
-                        </div>
-
-                    </div>
-
-                </article>
-
-                @endforeach
-
-            </div>
-
-
-            {{-- SUMMARY --}}
-            <div class="store-mobile-cart-summary">
-
-                <div class="store-mobile-cart-summary-row">
-                    <span>
-                        {{ $mobileCartCount }} item
-                    </span>
-
-                    <strong>
-                        Rp {{ number_format($mobileCartTotal, 0, ',', '.') }}
-                    </strong>
-                </div>
-
-            </div>
-
-
-            {{-- ACTIONS --}}
-            <div class="store-mobile-cart-actions">
-
-                <a href="{{ route('cart.index') }}" class="store-mobile-cart-view-button">
-                    <i class="bi bi-cart3"></i>
-                    View Cart
-                </a>
-
-
-                @auth
-
-                <a href="{{ route('checkout.index') }}" class="store-mobile-cart-checkout-button">
-                    Checkout
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-
-                @else
-
-                <a href="{{ route('login') }}" class="store-mobile-cart-checkout-button">
-                    Login untuk Checkout
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-
-                @endauth
-
-            </div>
-
-            @else
-
-            {{-- EMPTY CART --}}
-            <div class="store-mobile-cart-empty">
-
-                <div class="store-mobile-cart-empty-icon">
-                    <i class="bi bi-cart3"></i>
-                </div>
-
-                <h3>
-                    Keranjang masih kosong
-                </h3>
-
-                <p>
-                    Tambahkan produk yang Anda sukai
-                    ke keranjang untuk melanjutkan.
-                </p>
-
-                <a href="{{ route('storefront.shop') }}" class="store-mobile-cart-empty-button">
-                    <i class="bi bi-shop"></i>
-                    Mulai Belanja
-                </a>
-
-            </div>
-
-            @endif
-
+            @include(
+                'layouts.partials.storefront.mobile-cart-content',
+                [
+                    'mobileCartItems' =>
+                        $mobileCartItems,
+                    'mobileCartCount' =>
+                        $mobileCartCount,
+                    'mobileCartTotal' =>
+                        $mobileCartTotal,
+                ]
+            )
         </div>
 
     </div>

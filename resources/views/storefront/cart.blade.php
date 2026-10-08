@@ -116,96 +116,98 @@
                                     @endphp
 
                                     <article class="store-cart-item" data-product-id="{{ $product->id }}">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th></th>
-                                                    <th></th>
-                                                    <th></th>
-                                                    <th></th>
-                                                    <th></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>
-                                                        {{-- Product image --}}
-                                                        <div class="store-cart-item-image">
-                                                            @if ($image)
-                                                                <a href="{{ route('storefront.product', $product->slug) }}" class="d-block">
-                                                                    <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="store-cart-image" loading="lazy">
-                                                                </a>
-                                                                <!-- <p>{{ $imageUrl }}</p> -->
-                                                            @else
-                                                                <a href="{{ route('storefront.product', $product->slug) }}" class="d-block" aria-label="{{ $product->name }}">
-                                                                    <div class="store-cart-placeholder">
-                                                                        <i class="bi bi-image"></i>
-                                                                    </div>
-                                                                </a>
+                                        <div class="table table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        <th></th>
+                                                        <th></th>
+                                                        <th></th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>
+                                                            {{-- Product image --}}
+                                                            <div class="store-cart-item-image">
+                                                                @if ($image)
+                                                                    <a href="{{ route('storefront.product', $product->slug) }}" class="d-block">
+                                                                        <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="store-cart-image" loading="lazy">
+                                                                    </a>
+                                                                    <!-- <p>{{ $imageUrl }}</p> -->
+                                                                @else
+                                                                    <a href="{{ route('storefront.product', $product->slug) }}" class="d-block" aria-label="{{ $product->name }}">
+                                                                        <div class="store-cart-placeholder">
+                                                                            <i class="bi bi-image"></i>
+                                                                        </div>
+                                                                    </a>
+                                                                @endif
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <a href="{{ route('storefront.product', $product->slug) }}" class="store-cart-product-name">{{ $product->name }}</a>
+                                                            @if ($product->category)
+                                                                <div class="small text-muted mt-1">
+                                                                    {{ $product->category->name }}
+                                                                </div>
                                                             @endif
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <a href="{{ route('storefront.product', $product->slug) }}" class="store-cart-product-name">{{ $product->name }}</a>
-                                                        @if ($product->category)
-                                                            <div class="small text-muted mt-1">
-                                                                {{ $product->category->name }}
+                                                        </td>
+                                                        <td>
+                                                            {{-- Price --}}                                                                                  <div class="small text-muted">Price</div>
+                                                             <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
+                                                        </td>
+                                                        <td>
+                                                            {{-- Subtotal --}}
+                                                            <div class="text-center">
+                                                                <div class="small text-muted">Subtotal</div>
+                                                                <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        {{-- Price --}}                                                                                  <div class="small text-muted">Price</div>
-                                                         <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
-                                                    </td>
-                                                    <td>
-                                                        {{-- Subtotal --}}
-                                                        <div class="text-center">
-                                                            <div class="small text-muted">Subtotal</div>
-                                                            <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
-                                                        </div>
-                                                        {{-- Quantity --}}
-                                                        <form action="{{ route('cart.update', $product) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
-                                                            @csrf
-                                                            @method('PATCH')
+                                                            {{-- Quantity --}}
+                                                            <form action="{{ route('cart.update', $product) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                                @csrf
+                                                                @method('PATCH')
 
-                                                            <label for="quantity-{{ $product->id }}" class="visually-hidden">Total {{ $product->name }}</label>
+                                                                <label for="quantity-{{ $product->id }}" class="visually-hidden">Total {{ $product->name }}</label>
 
-                                                            <div class="store-quantity-control">
-                                                                <button type="button" class="store-quantity-button quantity-decrease" aria-label="Decrease Quantity">
-                                                                    <i class="bi bi-dash"></i>
+                                                                <div class="store-quantity-control">
+                                                                    <button type="button" class="store-quantity-button quantity-decrease" aria-label="Decrease Quantity">
+                                                                        <i class="bi bi-dash"></i>
+                                                                    </button>
+
+                                                                    <input
+                                                                        type="number"
+                                                                        id="quantity-{{ $product->id }}"
+                                                                        name="quantity"
+                                                                        value="{{ $quantity }}"
+                                                                        min="1"
+                                                                        max="{{ $product->stock }}"
+                                                                        class="store-quantity-input quantity-input"
+                                                                    >
+
+                                                                    <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
+                                                                        <i class="bi bi-plus"></i>
+                                                                    </button>
+                                                                </div>
+
+                                                            </form>
+                                                        </td>
+                                                        <td>
+                                                            {{-- Remove --}}
+                                                            <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
+
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
+                                                                    <i class="bi bi-trash3"></i>
                                                                 </button>
-
-                                                                <input
-                                                                    type="number"
-                                                                    id="quantity-{{ $product->id }}"
-                                                                    name="quantity"
-                                                                    value="{{ $quantity }}"
-                                                                    min="1"
-                                                                    max="{{ $product->stock }}"
-                                                                    class="store-quantity-input quantity-input"
-                                                                >
-
-                                                                <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
-                                                                    <i class="bi bi-plus"></i>
-                                                                </button>
-                                                            </div>
-
-                                                        </form>
-                                                    </td>
-                                                    <td>
-                                                        {{-- Remove --}}
-                                                        <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
-
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
-                                                                <i class="bi bi-trash3"></i>
-                                                            </button>
-                                                        </form>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </article>
                                 @endforeach
                             </div>
