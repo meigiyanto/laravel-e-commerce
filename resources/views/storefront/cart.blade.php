@@ -3,6 +3,7 @@
 @section('title', config('app.name') . ' - Shopping Cart')
 
 @section('content')
+
 {{-- =========================================================
     BREADCRUMB
 ========================================================= --}}
@@ -16,6 +17,7 @@
                         Home
                     </a>
                 </li>
+
                 <li class="breadcrumb-item active" aria-current="page">
                     Cart
                 </li>
@@ -24,14 +26,22 @@
     </div>
 </div>
 
+
+{{-- =========================================================
+    CART
+========================================================= --}}
 <section class="store-section">
     <div class="container">
+
+        {{-- Header --}}
         <div class="store-section-header">
             <div>
                 <h1 class="store-section-title">Shopping Cart</h1>
+
                 <p class="store-section-subtitle">Check the products and order quantity before proceeding.</p>
             </div>
         </div>
+
 
         {{-- Flash messages --}}
         @if (session('success'))
@@ -48,207 +58,231 @@
             </div>
         @endif
 
-        {{-- Page heading --}}
-        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
-            <div>
-                <span class="store-section-eyebrow">
-                    
-                </span>
-            </div>
-
-            <a
-                href="{{ route('storefront.shop') }}"
-                class="btn btn-outline-primary"
-            >
-                <i class="bi bi-arrow-left me-2"></i>
-                Lanjut Belanja
-            </a>
-        </div>
 
         @if ($cart->items->isEmpty())
-            {{-- Empty cart --}}
-            <div class="store-empty-state text-center py-5">
-                <div class="store-empty-icon mb-3">
+            {{-- =================================================
+                EMPTY CART
+            ================================================== --}}
+            <div class="store-empty-state text-center">
+                <div class="store-empty-icon">
                     <i class="bi bi-cart3"></i>
                 </div>
 
-                <h2 class="h4 mb-2">
-                    Keranjang Anda masih kosong
-                </h2>
+                <h2 class="h4 mb-2">Your cart still empty</h2>
+                <p class="text-muted mb-4">No products have been added to the cart yet.</p>
 
-                <p class="text-muted mb-4">
-                    Belum ada produk yang ditambahkan ke keranjang.
-                </p>
-
-                <a
-                    href="{{ route('storefront.shop') }}"
-                    class="btn btn-primary"
-                >
+                <a href="{{ route('storefront.shop') }}" class="store-btn-primary">
                     <i class="bi bi-bag me-2"></i>
-                    Mulai Belanja
+                    Start Shopping
                 </a>
             </div>
-
         @else
-            <div class="row g-4">
-                {{-- Cart items --}}
-                <div class="col-lg-8 col-md-6">
-                    <div class="container">
-                        <div class="card">
-                            <div class="card-body">                            
+            {{-- =================================================
+                CART CONTENT
+            ================================================== --}}
+            <div class="row g-4 align-items-start">
+                {{-- =================================================
+                    CART ITEMS
+                ================================================== --}}
+                <div class="col-lg-8">
+                    <div class="card store-cart-card">
+                        <div class="card-body">
+                            {{-- Cart heading --}}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    <h2 class="h5 mb-1">Produk dalam Keranjang</h2>
-                                    <span class="text-muted small">{{ $cart->items->sum('quantity') }} item</span>
+                                    <h2 class="h5 mb-1">Product on cart</h2>
+                                    <span class="text-muted small">
+                                        {{ $cart->items->sum('quantity') }} item
+                                    </span>
                                 </div>
+                            </div>
 
-                                <div class="store-cart-items">
-                                    @foreach ($cart->items as $item)
-                                        @php
-                                            $product = $item->product;
-                                            $quantity = $item->quantity;
-                                            $subtotal = $product->price * $quantity;
-                                            $image = $product->image ?? $product->thumbnail ?? null;                                    
-                                        @endphp
 
-                                        <div class="store-cart-item" data-product-id="{{ $product->id }}">
-                                            {{-- Product image --}}
-                                            <div class="store-cart-item-image">
-                                                @if ($image)
-                                                    <img src="{{ asset('storage/' . $image) }}" alt="{{ $product->name }}" loading="lazy">
-                                                @else
-                                                    <div class="store-product-placeholder">
-                                                        <i class="bi bi-image"></i>
-                                                    </div>
-                                                @endif
-                                            </div>
+                            {{-- Items --}}
+                            <div class="store-cart-items">
+                                @foreach ($cart->items as $item)
+                                    @php
+                                        $product = $item->product;
+                                        $quantity = $item->quantity;
+                                        $subtotal = $product->price * $quantity;
+                                        $image = $product->image ?? 'placeholder.png';
+                                        $imageUrl = null;
+                                        if (filter_var($image, FILTER_VALIDATE_URL)) {
+                                            $imageUrl = $image;
+                                        } elseif ($image && Storage::disk('public')->exists($image)) {
+                                            $imageUrl = asset('storage/' . $image);
+                                        }
 
-                                            {{-- Product information --}}
-                                            <div class="store-cart-item-content">
-                                                <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
-                                                    <div>
+                                    @endphp
+
+                                    <article class="store-cart-item" data-product-id="{{ $product->id }}">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th></th>
+                                                    <th></th>
+                                                    <th></th>
+                                                    <th></th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>
+                                                        {{-- Product image --}}
+                                                        <div class="store-cart-item-image">
+                                                            @if ($image)
+                                                                <a href="{{ route('storefront.product', $product->slug) }}" class="d-block">
+                                                                    <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="store-cart-image" loading="lazy">
+                                                                </a>
+                                                                <!-- <p>{{ $imageUrl }}</p> -->
+                                                            @else
+                                                                <a href="{{ route('storefront.product', $product->slug) }}" class="d-block" aria-label="{{ $product->name }}">
+                                                                    <div class="store-cart-placeholder">
+                                                                        <i class="bi bi-image"></i>
+                                                                    </div>
+                                                                </a>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                    <td>
                                                         <a href="{{ route('storefront.product', $product->slug) }}" class="store-cart-product-name">{{ $product->name }}</a>
                                                         @if ($product->category)
                                                             <div class="small text-muted mt-1">
                                                                 {{ $product->category->name }}
                                                             </div>
                                                         @endif
-                                                    </div>
-
-                                                    <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
-                                                        @csrf
-                                                        @method('DELETE')
-
-                                                        <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
-                                                            <i class="bi bi-trash3"></i>
-                                                            <span class="d-none d-sm-inline">
-                                                                Delete
-                                                            </span>
-                                                        </button>
-                                                    </form>
-
-                                                </div>
-
-                                                <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mt-3">
-                                                    {{-- Price --}}
-                                                    <div>
-                                                        <div class="small text-muted">Harga</div>
-                                                        <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>                                                 
-                                                    </div>
-
-                                                    {{-- Quantity --}}
-                                                    <form
-                                                        action="{{ route('cart.update', $product) }}"
-                                                        method="POST"
-                                                        class="quantity-form"
-                                                        data-product-id="{{ $product->id }}"
-                                                    >
-                                                        @csrf
-                                                        @method('PATCH')
-
-                                                        <label for="quantity-{{ $product->id }}" class="visually-hidden">Total {{ $product->name }}</label>
-                                                            <div class="input-group input-group-sm store-quantity-control">
-                                                            <button type="button" class="btn btn-outline-secondary quantity-decrease" aria-label="Kurangi jumlah"><i class="bi bi-dash"></i></button>
-                                                            <input
-                                                                type="number"
-                                                                id="quantity-{{ $product->id }}"
-                                                                name="quantity"
-                                                                value="{{ $quantity }}"
-                                                                min="1"
-                                                                max="{{ $product->stock }}"
-                                                                class="form-control text-center quantity-input"
-                                                            >
-
-                                                            <button type="button" class="btn btn-outline-secondary quantity-increase" aria-label="Add Total"><i class="bi bi-plus"></i></button>                                                     
+                                                    </td>
+                                                    <td>
+                                                        {{-- Price --}}                                                                                  <div class="small text-muted">Price</div>
+                                                         <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        {{-- Subtotal --}}
+                                                        <div class="text-center">
+                                                            <div class="small text-muted">Subtotal</div>
+                                                            <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                         </div>
-                                                    </form>
+                                                        {{-- Quantity --}}
+                                                        <form action="{{ route('cart.update', $product) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                            @csrf
+                                                            @method('PATCH')
 
-                                                    {{-- Subtotal --}}
-                                                    <div class="text-sm-end">
-                                                        <div class="small text-muted">Subtotal</div>
-                                                        <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                            <label for="quantity-{{ $product->id }}" class="visually-hidden">Total {{ $product->name }}</label>
 
-                                    @endforeach
-                                </div>
+                                                            <div class="store-quantity-control">
+                                                                <button type="button" class="store-quantity-button quantity-decrease" aria-label="Decrease Quantity">
+                                                                    <i class="bi bi-dash"></i>
+                                                                </button>
+
+                                                                <input
+                                                                    type="number"
+                                                                    id="quantity-{{ $product->id }}"
+                                                                    name="quantity"
+                                                                    value="{{ $quantity }}"
+                                                                    min="1"
+                                                                    max="{{ $product->stock }}"
+                                                                    class="store-quantity-input quantity-input"
+                                                                >
+
+                                                                <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
+                                                                    <i class="bi bi-plus"></i>
+                                                                </button>
+                                                            </div>
+
+                                                        </form>
+                                                    </td>
+                                                    <td>
+                                                        {{-- Remove --}}
+                                                        <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
+
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
+                                                                <i class="bi bi-trash3"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </article>
+                                @endforeach
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Summary --}}
-                <div class="col-lg-4 col-md-6">
-                    <div class="container">
-                        <div class="card store-cart-summary">                            
-                            <div class="card-body">
-                                <h2 class="card-title">Ringkasan Pesanan</h2>
 
-                                <div class="d-flex justify-content-between mb-3">
-                                    <span class="text-muted">Jumlah item</span>
-                                    <strong class="cart-item-count">{{ $cart->items->sum('quantity') }}</strong>
-                                </div>
-
-                                <div class="d-flex justify-content-between mb-3">
-                                    <span class="text-muted">Subtotal</span>
-                                    <strong class="cart-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
-                                </div>
-
-                                <div class="d-flex justify-content-between mb-3">
-                                    <span class="text-muted">Shipping</span>
-                                    <span>Calculated at checkout</span>
-                                </div>
-
-                                <hr>
-
-                                <div class="d-flex justify-content-between align-items-center mb-4">
-                                    <span class="fw-semibold">Total</span>
-                                    <strong class="fs-5 cart-grand-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
-                                </div>
-
-                                @auth
-                                    <a href="{{ route('checkout.index') }}" class="btn btn-primary w-100">
-                                        Continue to Checkout
-                                        <i class="bi bi-arrow-right ms-2"></i>
-                                    </a>
-                                @else
-                                    <a href="{{ route('login') }}" class="btn btn-primary w-100">
-                                        Login to Checkout
-                                        <i class="bi bi-box-arrow-in-right ms-2"></i>
-                                    </a>
-                                    <p class="small text-muted text-center mt-3 mb-0">Your cart will be saved when you log in.</p>                               
-                                @endauth
-
-                            </div>
+                {{-- =================================================
+                    SUMMARY
+                ================================================== --}}
+                <div class="col-lg-4">
+                    <aside class="card store-cart-summary">
+                        <div class="store-cart-summary-header">
+                            <h2>Order Summary</h2>
                         </div>
-                    </div>
 
+
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-muted">Total item</span>
+                                <strong class="cart-item-count">{{ $cart->items->sum('quantity') }}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-muted">Subtotal</span>
+                                <strong class="cart-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
+                            </div>
+
+
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="text-muted">Shipping</span>
+                                <span class="small">Calculated at checkout</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+
+                                <span class="fw-semibold">Total</span>
+                                <strong class="fs-5 cart-grand-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
+                            </div>
+
+                            @auth
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <a href="{{ route('storefront.shop') }}" class="store-go-back-button">
+                                            Continue Shopping
+                                        </a>
+                                    </div>
+                                                                                                      <div>
+                                        <a href="{{ route('checkout.index') }}" class="store-checkout-button">
+                                            Continue Checkout
+                                        </a>
+                                    </div>
+                                    <!--
+                                    <div>
+                                        <a href="{{ route('checkout.index') }}" class="store-checkout-button">
+                                                                                                              <span>Continue to Checkout</span>
+                                            <i class="bi bi-arrow-right me-2"></i>
+                                        </a>
+                                    </div>
+                                    -->
+                                </div>
+                            @else
+                                <a href="{{ route('login') }}" class="store-checkout-button">
+                                    <span>Login to Checkout</span>
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                </a>
+
+                                <p class="small text-muted text-center mt-3 mb-0">Your cart will be saved when you log in.</p>
+                            @endauth
+
+                        </div>
+                    </aside>
                 </div>
-
             </div>
         @endif
-
     </div>
-</div>
+</section>
+
 @endsection

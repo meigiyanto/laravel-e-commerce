@@ -36,7 +36,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                <strong>{{ $productsCount ?? 0 }}</strong>
+                                <strong>{{ $productsCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Products
@@ -65,7 +65,7 @@
 
                         <div class="data">
                             <div class="amount">
-                                <strong>{{ $ordersCount ?? 0 }}</strong>
+                                <strong>{{ $ordersCount }}</strong>
                             </div>
 
                             <span class="sub-text">
@@ -92,7 +92,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                <strong>{{ $usersCount ?? 0 }}</strong>
+                                <strong>{{ $usersCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Customers
@@ -120,7 +120,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                <strong>{{ $categoriesCount ?? 0 }}</strong>
+                                <strong>{{ $categoriesCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Categories

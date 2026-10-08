@@ -423,10 +423,19 @@
 
                             @foreach ($cart->items as $item)
                                 <div class="store-checkout-product">
+                                    @php
+                                        $image = $item->product->image ?? 'placeholder.png';
+                                        $imageUrl = null;
+                                        if (filter_var($image, FILTER_VALIDATE_URL)) {
+                                            $imageUrl = $image;
+                                        } elseif ($image && Storage::disk('public')->exists($image)) {
+                                            $imageUrl = asset('storage/' . $image);
+                                        }
+                                    @endphp
                                     <div class="store-checkout-product-image">
-                                        @if ($item->product->image)
+                                        @if ($imageUrl)
                                             <img
-                                                src="{{ asset('storage/' . $item->product->image) }}"
+                                                src="{{ $imageUrl }}"
                                                 alt="{{ $item->product->name }}"
                                             >
                                         @else
@@ -453,13 +462,7 @@
 
                                     <div class="store-checkout-product-total">
 
-                                        Rp
-                                        {{ number_format(
-                                            $item->product->price * $item->quantity,
-                                            0,
-                                            ',',
-                                            '.'
-                                        ) }}
+                                        Rp {{ number_format($item->product->price * $item->quantity, 0, ',', '.') }}
                                     </div>
                                 </div>
                             @endforeach
