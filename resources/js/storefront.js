@@ -182,6 +182,111 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 });
 
+document.addEventListener(
+    'submit',
+    async function (event) {
+        const form =
+            event.target.closest(
+                '.store-mobile-cart-remove-form'
+            );
+
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const button =
+            form.querySelector(
+                'button[type="submit"]'
+            );
+
+        if (!button) {
+            return;
+        }
+
+        const originalHtml =
+            button.innerHTML;
+
+        button.disabled = true;
+
+        button.innerHTML = `
+            <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+            ></span>
+        `;
+
+        try {
+            const csrfToken =
+                document.querySelector(
+                    'meta[name="csrf-token"]'
+                )?.getAttribute('content');
+
+            const response = await fetch(
+                form.action,
+                {
+                    method: 'POST',
+
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+
+                        ...(csrfToken
+                            ? {
+                                'X-CSRF-TOKEN':
+                                    csrfToken,
+                            }
+                            : {}),
+                    },
+
+                    body: new FormData(form),
+
+                    credentials:
+                        'same-origin',
+                }
+            );
+
+            const data =
+                await response.json();
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+                throw new Error(
+                    data.message ||
+                    'Gagal menghapus produk dari keranjang.'
+                );
+            }
+
+            await window.refreshCartDrawer();
+
+            window.showStoreNotification(
+                data.message ||
+                'Produk berhasil dihapus dari keranjang.',
+                'success'
+            );
+
+        } catch (error) {
+            console.error(
+                'Cart Drawer remove failed:',
+                error
+            );
+
+            window.showStoreNotification(
+                error.message ||
+                'Gagal menghapus produk dari keranjang.',
+                'danger'
+            );
+
+            button.disabled = false;
+            button.innerHTML =
+                originalHtml;
+        }
+    }
+);
+
 /**
  * =========================================================
  * MOBILE SEARCH DRAWER
@@ -785,6 +890,60 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    window.refreshCartDrawer = async function () {
+        const content =
+            document.getElementById(
+                'storeMobileCartContent'
+            );
+
+        if (!content) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                '/cart/drawer',
+                {
+                    method: 'GET',
+
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With':
+                            'XMLHttpRequest',
+                    },
+
+                    credentials:
+                        'same-origin',
+                }
+            );
+
+            const data =
+                await response.json();
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+                throw new Error(
+                    data.message ||
+                    'Gagal memperbarui keranjang.'
+                );
+            }
+
+            content.innerHTML =
+                data.html;
+
+            window.updateCartBadge(
+                data.cart_count
+            );
+
+        } catch (error) {
+            console.error(
+                'Cart Drawer refresh failed:',
+                error
+            );
+        }
+    };
 
     function updateButtons(form) {
         const input = form.querySelector('.quantity-input');
@@ -813,13 +972,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(
-        '#cart-count-badge, .store-mobile-bottom .store-badge'
+        '#cart-count-badge, .store-mobile-bottom-badge'
     );
 
     const value = Number(count) || 0;
 
     badges.forEach(function (badge) {
-        badge.textContent = value;
+        badge.textContent =
+            value > 99
+                ? '99+'
+                : value;
 
         if (value > 0) {
             badge.classList.remove('d-none');
@@ -1015,8 +1177,7 @@ document.addEventListener(
 
                 errorMessage:
                     'Gagal menambahkan produk ke keranjang.',
-
-                success: function (data) {
+                success: async function (data) {
                     if (
                         typeof data.cart_count !==
                         'undefined'
@@ -1025,6 +1186,8 @@ document.addEventListener(
                             data.cart_count
                         );
                     }
+
+                    await window.refreshCartDrawer();
 
                     window.showStoreNotification(
                         data.message ||

@@ -42,29 +42,125 @@
     </button>
 
 
-    {{-- CART --}}
-    @php
-    $mobileCartCount = app(\App\Services\CartService::class)->count();
-    @endphp
+    {{-- =========================================================
+            MOBILE CART DRAWER
+    ========================================================== --}}
+    <div
+        id="storeMobileCartDrawer"
+        class="store-mobile-drawer store-mobile-cart-drawer"
+        aria-hidden="true"
+    >
+        <div class="store-mobile-drawer-panel">
 
-    <button type="button" class="store-mobile-bottom-item" data-mobile-drawer="cart"
-        aria-controls="storeMobileCartDrawer" aria-expanded="false">
-        <span class="store-mobile-bottom-icon">
+            {{-- HEADER --}}
+            <div class="store-mobile-drawer-header">
 
-            <i class="bi bi-cart3"></i>
+                <div>
+                    <span class="store-mobile-drawer-eyebrow">
+                        Shopping Cart
+                    </span>
 
-            @if ($mobileCartCount > 0)
-            <span class="store-mobile-bottom-badge">
-                {{ $mobileCartCount > 99 ? '99+' : $mobileCartCount }}
-            </span>
-            @endif
+                    <h2 class="store-mobile-drawer-title">
+                        Keranjang
+                    </h2>
+                </div>
 
-        </span>
+                <button
+                    type="button"
+                    class="store-mobile-drawer-close"
+                    data-mobile-drawer-close
+                    aria-label="Tutup keranjang"
+                >
+                    <i class="bi bi-x-lg"></i>
+                </button>
 
-        <span class="store-mobile-bottom-label">
-            Cart
-        </span>
-    </button>
+            </div>
+
+
+            {{-- BODY --}}
+            <div
+                class="store-mobile-drawer-body"
+                id="storeMobileCartContent"
+            >
+                @php
+                    $mobileCartService = app(
+                        \App\Services\CartService::class
+                    );
+
+                    $mobileCartCount =
+                        $mobileCartService->count();
+
+                    if (auth()->check()) {
+                        $mobileCart =
+                            $mobileCartService->getUserCartWithItems(
+                                auth()->id()
+                            );
+
+                        $mobileCartItems =
+                            $mobileCart->items;
+                    } else {
+                        $mobileGuestCart =
+                            $mobileCartService->getGuestCart();
+
+                        $mobileCartProducts =
+                            empty($mobileGuestCart)
+                                ? collect()
+                                : \App\Models\Product::with([
+                                    'category',
+                                    'subCategory',
+                                ])
+                                ->whereIn(
+                                    'id',
+                                    array_keys($mobileGuestCart)
+                                )
+                                ->get();
+
+                        $mobileCartItems =
+                            $mobileCartProducts
+                                ->map(function ($product) use (
+                                    $mobileGuestCart
+                                ) {
+                                    $quantity = (int) (
+                                        $mobileGuestCart[
+                                            (string) $product->id
+                                        ]
+                                        ?? $mobileGuestCart[
+                                            $product->id
+                                        ]
+                                        ?? 0
+                                    );
+
+                                    return (object) [
+                                        'id' => null,
+                                        'product_id' => $product->id,
+                                        'quantity' => $quantity,
+                                        'product' => $product,
+                                    ];
+                                })
+                                ->filter(function ($item) {
+                                    return $item->quantity > 0;
+                                });
+                    }
+
+                    $mobileCartTotal =
+                        $mobileCartItems->sum(function ($item) {
+                            return $item->product->price
+                                * $item->quantity;
+                        });
+                @endphp
+
+                @include(
+                    'layouts.partials.storefront.mobile-cart-content',
+                    [
+                        'mobileCartItems' => $mobileCartItems,
+                        'mobileCartCount' => $mobileCartCount,
+                        'mobileCartTotal' => $mobileCartTotal,
+                    ]
+                )
+            </div>
+
+        </div>
+    </div>
 
 </nav>
 

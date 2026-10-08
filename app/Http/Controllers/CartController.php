@@ -67,6 +67,71 @@ class CartController extends Controller
     }
 
     /**
+     * Return shopping cart drawer content.
+     */
+    public function drawer()
+    {
+        $mobileCartCount = $this->cartService->count();
+
+        if (auth()->check()) {
+            $cart = $this->cartService->getUserCartWithItems(
+                auth()->id()
+            );
+
+            $mobileCartItems = $cart->items;
+        } else {
+            $guestCart = $this->cartService->getGuestCart();
+
+            $productIds = array_keys($guestCart);
+
+            $products = empty($productIds)
+                ? collect()
+                : Product::with([
+                    'category',
+                    'subCategory',
+                ])
+                    ->whereIn('id', $productIds)
+                    ->get();
+
+            $mobileCartItems = $products
+                ->map(function ($product) use ($guestCart) {
+                    $quantity = (int) (
+                        $guestCart[(string) $product->id]
+                        ?? $guestCart[$product->id]
+                        ?? 0
+                    );
+
+                    return (object) [
+                        'id' => null,
+                        'product_id' => $product->id,
+                        'quantity' => $quantity,
+                        'product' => $product,
+                    ];
+                })
+                ->filter(function ($item) {
+                    return $item->quantity > 0;
+                });
+        }
+
+        $mobileCartTotal = $mobileCartItems->sum(function ($item) {
+            return $item->product->price * $item->quantity;
+        });
+
+        return response()->json([
+            'success' => true,
+            'cart_count' => $mobileCartCount,
+            'html' => view(
+                'layouts.partials.storefront.mobile-cart-content',
+                compact(
+                    'mobileCartItems',
+                    'mobileCartCount',
+                    'mobileCartTotal'
+                )
+            )->render(),
+        ]);
+    }
+
+    /**
      * Add a product to the shopping cart.
      */
     public function store(Request $request)

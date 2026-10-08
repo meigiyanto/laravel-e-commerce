@@ -36,6 +36,8 @@ Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 
 Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
 
+Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
+
 Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.update');
 
 Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.destroy');
