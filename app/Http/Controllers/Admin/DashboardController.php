@@ -14,10 +14,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $products = Product::get();
-        $orders = Order::get();
-        $users = User::get();
-        $categories = Category::get();
-        return view('admin.dashboard', compact('products', 'orders', 'users', 'categories'));
+        $productsCount = Product::count();
+        $ordersCount = Order::count();
+        $usersCount = User::count();
+        $categoriesCount = Category::count();
+        return view('admin.dashboard', compact('productsCount', 'ordersCount', 'usersCount', 'categoriesCount'));
     }
 }
