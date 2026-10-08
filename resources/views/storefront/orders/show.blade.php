@@ -1,177 +1,570 @@
 @extends('layouts.storefront')
 
-@section('title', 'Order #' . $order->order_number)
-@section('header', 'Order Detail')
+@section('title', config('app.name') . ' - Order #' . $order->order_number)
 
 @section('content')
-{{-- =========================================================
-     BREADCRUMB
-========================================================= --}}
+
 <div class="store-breadcrumb">
     <div class="container">
         <nav aria-label="breadcrumb">
+
             <ol class="breadcrumb mb-0">
+
                 <li class="breadcrumb-item">
                     <a href="{{ route('storefront.home') }}">
                         <i class="bi bi-house me-1"></i>
                         Home
                     </a>
                 </li>
+
                 <li class="breadcrumb-item">
-                    Order
+                    <a href="{{ route('orders.index') }}">
+                        Orders
+                    </a>
                 </li>
+
                 <li class="breadcrumb-item active" aria-current="page">
-                    Detail Order
+                    #{{ $order->order_number }}
                 </li>
+
             </ol>
+
         </nav>
     </div>
 </div>
 
-<section class="store-section pb-3">
+
+<section class="store-section store-order-detail-section">
+
     <div class="container">
 
-        <div class="store-section-header">
+        {{-- HEADER --}}
+        <div class="store-order-detail-header">
+
             <div>
-                <h1 class="store-section-title">Order #{{ $order->order_number }}</h1>
-                <p class="store-section-subtitle">Created at {{ $order->created_at->format('d M Y H:i') }}</p>
+
+                <a
+                    href="{{ route('orders.index') }}"
+                    class="store-order-back-link"
+                >
+                    <i class="bi bi-arrow-left"></i>
+                    Back to Orders
+                </a>
+
+                <span class="store-section-eyebrow">
+                    Order Details
+                </span>
+
+                <h1 class="store-section-title">
+                    #{{ $order->order_number }}
+                </h1>
+
+                <p class="store-section-subtitle">
+                    Placed on
+                    {{ $order->created_at->format('d M Y') }}
+                    at
+                    {{ $order->created_at->format('H:i') }}
+                </p>
+
             </div>
+
+
+            @php
+                $statusClass = match ($order->status) {
+                    'pending' => 'store-order-status-pending',
+                    'processing' => 'store-order-status-processing',
+                    'shipped' => 'store-order-status-shipped',
+                    'completed' => 'store-order-status-completed',
+                    'cancelled' => 'store-order-status-cancelled',
+                    default => 'store-order-status-default',
+                };
+
+                $statusLabel = match ($order->status) {
+                    'pending' => 'Pending',
+                    'processing' => 'Processing',
+                    'shipped' => 'Shipped',
+                    'completed' => 'Completed',
+                    'cancelled' => 'Cancelled',
+                    default => ucfirst($order->status),
+                };
+            @endphp
+
+            <div class="store-order-detail-status">
+
+                <span class="store-order-status {{ $statusClass }}">
+                    <span class="store-order-status-dot"></span>
+                    {{ $statusLabel }}
+                </span>
+
+            </div>
+
         </div>
 
-        <a href="{{ route('storefront.shop') }}" class="btn btn-outline-secondary">Continue shopping</a>
 
-    </div>
-</section>
+        {{-- STATUS TIMELINE --}}
+        <div class="store-order-status-card">
 
-{{-- Status --}}
-<section>
-    <div class="container">
-        <div class="card">
-            <div class="card-body">
+            <div class="store-order-status-card-header">
 
-                <div class="row align-items-center mb-3">
-                    <div class="col-md-6">
-                        <h5 class="title mb-1">Status Pesanan</h5>
-                        <p class="text-soft mb-0">Status terbaru pesanan kamu.</p>
-                    </div>
-                    <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                        @php
-                            $statusClass = match ($order->status) {
-                                'pending' => 'bg-warning text-dark p-1',
-                                'processing' => 'bg-info text-dark p-1',
-                                'shipped' => 'bg-primary p-1',
-                                'completed' => 'bg-success p-1',
-                                'cancelled' => 'bg-danger p-1',
-                                default => 'bg-secondary p-1',
-                            };
+                <div>
+                    <h2>
+                        Order Status
+                    </h2>
 
-                            $statusLabel = match ($order->status) {
-                                'pending' => 'Pending',
-                                'processing' => 'Processing',
-                                'shipped' => 'Shipped',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
-                                default => ucfirst($order->status),
-                            };
-                        @endphp
-                        <span class="badge {{ $statusClass }}" style="font-size: 14px;">{{ $statusLabel }}</span>
-                    </div>
+                    <p>
+                        Current status of your order.
+                    </p>
                 </div>
 
-                <h5>Produk Pesanan</h5>
+                <i class="bi bi-truck"></i>
 
-                <table class="table table-middle table-striped my-3">
-                    <thead>
-                        <tr>
-                            <th>Nama Produk</th>
-                            <th>Harga</th>
-                            <th>Qty</th>
-                            <th class="text-end">Subtotal</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($order->items as $item)
-                            <tr>
-                                {{-- Product --}}
-                                <td>
-                                    <div class="d-flex align-items-center gap-5">
-                                    @if ($item->product?->image)
-                                        <img src="{{ asset('storage/' . $item->product->image) }}" alt="{{ $item->product_name }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
-                                    @else
-                                        <div class="d-flex align-items-center justify-content-center bg-light" style="width: 40px; height: 40px; border-radius: 6px;">
-                                            <i class="bi bi-image text-muted"></i>
-                                        </div>
-                                    @endif
-                                        <div>
-                                            <div class="fw-bold">{{ $item->product_name }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                {{-- Price --}}
-                                <td>Rp {{ number_format($item->price, 0, ',', '.') }}
-                                </td>
-                                {{-- Quantity --}}
-                                <td>{{ $item->quantity }}</td>
-                                {{-- Subtotal --}}
-                                <td class="text-end">
-                                    <strong class="text-end">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</strong>
-                                </td>
-                                                                <td>
-                                @if ($order->status === 'completed' && $item->product)
-                                    <div class="my-2">
-                                        <a href="{{ route('storefront.product', $item->product->slug) }}#review" class="btn btn-sm btn-outline-primary">
-                                            <em class="icon ni ni-star"></em>
-                                            Beri Review
-                                        </a>
-                                    </div>
-                                @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            </div>
 
-                <div class="row g-4">
-                    {{-- Shipping --}}
-                    <div class="col-lg-7 col-md-6">
-                        <h5>Informasi Pengiriman</h5>
-                        <div class="mb-3">
-                            <div class="text-soft small mb-1">Nama Penerima</div>
-                            <strong>{{ $order->customer_name }}</strong>
+
+            @php
+                $statusSteps = [
+                    'pending' => [
+                        'label' => 'Order Placed',
+                        'icon' => 'bi-receipt',
+                    ],
+                    'processing' => [
+                        'label' => 'Processing',
+                        'icon' => 'bi-box-seam',
+                    ],
+                    'shipped' => [
+                        'label' => 'Shipped',
+                        'icon' => 'bi-truck',
+                    ],
+                    'completed' => [
+                        'label' => 'Completed',
+                        'icon' => 'bi-check-circle',
+                    ],
+                ];
+
+                $statusOrder = [
+                    'pending' => 1,
+                    'processing' => 2,
+                    'shipped' => 3,
+                    'completed' => 4,
+                ];
+
+                $currentStep =
+                    $statusOrder[$order->status] ?? 0;
+            @endphp
+
+
+            @if ($order->status === 'cancelled')
+
+                <div class="store-order-cancelled-state">
+
+                    <span>
+                        <i class="bi bi-x-circle"></i>
+                    </span>
+
+                    <div>
+                        <strong>
+                            Order Cancelled
+                        </strong>
+
+                        <p>
+                            This order has been cancelled.
+                        </p>
+                    </div>
+
+                </div>
+
+            @else
+
+                <div class="store-order-timeline">
+
+                    @foreach ($statusSteps as $statusKey => $step)
+
+                        @php
+                            $stepNumber =
+                                $statusOrder[$statusKey];
+
+                            $isCompleted =
+                                $currentStep >= $stepNumber;
+
+                            $isCurrent =
+                                $currentStep === $stepNumber;
+                        @endphp
+
+                        <div
+                            class="store-order-timeline-step
+                                {{ $isCompleted ? 'is-completed' : '' }}
+                                {{ $isCurrent ? 'is-current' : '' }}"
+                        >
+
+                            <span class="store-order-timeline-icon">
+                                <i class="bi {{ $step['icon'] }}"></i>
+                            </span>
+
+                            <span class="store-order-timeline-label">
+                                {{ $step['label'] }}
+                            </span>
+
                         </div>
 
-                        <div class="mb-3">
-                            <div class="text-soft small mb-1">Nomor Telepon</div>
-                            <strong>{{ $order->phone }}</strong>
-                        </div>
+                    @endforeach
+
+                </div>
+
+            @endif
+
+        </div>
+
+
+        <div class="row g-4 align-items-start">
+
+            {{-- LEFT --}}
+            <div class="col-lg-8">
+
+
+                {{-- PRODUCTS --}}
+                <div class="store-order-panel">
+
+                    <div class="store-order-panel-header">
 
                         <div>
-                            <div class="text-soft small mb-1">Alamat</div>
-                            <div>{{ $order->shipping_address }}</div>
+                            <h2>
+                                Ordered Products
+                            </h2>
+
+                            <p>
+                                {{ $order->items->sum('quantity') }}
+                                {{ Str::plural('item', $order->items->sum('quantity')) }}
+                            </p>
                         </div>
+
+                        <i class="bi bi-bag"></i>
+
                     </div>
 
-                    {{-- Summary --}}
-                    <div class="col-lg-5 col-md-6">
-                        <h5>Ringkasan Pembayaran</h5>
 
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-soft">Total Produk</span>
-                            <span class="text-soft">Rp {{ number_format($order->items->sum('subtotal'), 0, ',', '.') }}</span>
-                        </div>
+                    <div class="store-order-products">
 
-                        <hr>
+                        @foreach ($order->items as $item)
 
-                        <div class="d-flex justify-content-between">
-                            <strong>Total Pesanan</strong>
-                            <strong class="text-primary">Rp {{ number_format($order->total, 0, ',', '.') }}</strong>
-                        </div>
+                            <article class="store-order-product">
+
+                                <div class="store-order-product-image">
+
+                                    @if ($item->product?->image)
+
+                                        @php
+                                            $image =
+                                                $item->product->image;
+
+                                            $imageUrl =
+                                                filter_var(
+                                                    $image,
+                                                    FILTER_VALIDATE_URL
+                                                )
+                                                    ? $image
+                                                    : (
+                                                        Storage::disk('public')
+                                                            ->exists($image)
+                                                            ? asset(
+                                                                'storage/' . $image
+                                                            )
+                                                            : null
+                                                    );
+                                        @endphp
+
+                                        @if ($imageUrl)
+
+                                            <img
+                                                src="{{ $imageUrl }}"
+                                                alt="{{ $item->product_name }}"
+                                                loading="lazy"
+                                            >
+
+                                        @else
+
+                                            <span>
+                                                <i class="bi bi-image"></i>
+                                            </span>
+
+                                        @endif
+
+                                    @else
+
+                                        <span>
+                                            <i class="bi bi-image"></i>
+                                        </span>
+
+                                    @endif
+
+                                </div>
+
+
+                                <div class="store-order-product-content">
+
+                                    <div class="store-order-product-main">
+
+                                        <h3>
+                                            {{ $item->product_name }}
+                                        </h3>
+
+                                        <span>
+                                            Rp {{ number_format($item->price, 0, ',', '.') }}
+                                            ×
+                                            {{ $item->quantity }}
+                                        </span>
+
+                                    </div>
+
+
+                                    <div class="store-order-product-total">
+
+                                        <strong>
+                                            Rp {{ number_format($item->subtotal, 0, ',', '.') }}
+                                        </strong>
+
+                                        @if (
+                                            $order->status === 'completed'
+                                            && $item->product
+                                        )
+
+                                            <a
+                                                href="{{ route('storefront.product', $item->product->slug) }}#review"
+                                                class="store-order-review-button"
+                                            >
+                                                <i class="bi bi-star"></i>
+                                                Review
+                                            </a>
+
+                                        @endif
+
+                                    </div>
+
+                                </div>
+
+                            </article>
+
+                        @endforeach
+
                     </div>
+
+                </div>
+
+
+                {{-- SHIPPING --}}
+                <div class="store-order-panel">
+
+                    <div class="store-order-panel-header">
+
+                        <div>
+                            <h2>
+                                Shipping Information
+                            </h2>
+
+                            <p>
+                                Delivery details for this order.
+                            </p>
+                        </div>
+
+                        <i class="bi bi-geo-alt"></i>
+
+                    </div>
+
+
+                    <div class="store-order-shipping">
+
+                        <div class="store-order-shipping-item">
+
+                            <span>
+                                <i class="bi bi-person"></i>
+                            </span>
+
+                            <div>
+                                <small>
+                                    Recipient
+                                </small>
+
+                                <strong>
+                                    {{ $order->customer_name }}
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="store-order-shipping-item">
+
+                            <span>
+                                <i class="bi bi-telephone"></i>
+                            </span>
+
+                            <div>
+                                <small>
+                                    Phone
+                                </small>
+
+                                <strong>
+                                    {{ $order->phone }}
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="store-order-shipping-item">
+
+                            <span>
+                                <i class="bi bi-geo-alt"></i>
+                            </span>
+
+                            <div>
+                                <small>
+                                    Shipping Address
+                                </small>
+
+                                <strong>
+                                    {{ $order->shipping_address }}
+                                </strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </div>
 
             </div>
+
+
+            {{-- RIGHT --}}
+            <div class="col-lg-4">
+
+                <aside class="store-order-summary">
+
+                    <div class="store-order-summary-header">
+
+                        <h2>
+                            Order Summary
+                        </h2>
+
+                        <i class="bi bi-receipt"></i>
+
+                    </div>
+
+
+                    <div class="store-order-summary-body">
+
+                        <div class="store-order-summary-row">
+                            <span>
+                                Products
+                            </span>
+
+                            <strong>
+                                Rp {{ number_format($order->subtotal, 0, ',', '.') }}
+                            </strong>
+                        </div>
+
+
+                        <div class="store-order-summary-row">
+                            <span>
+                                Shipping
+                            </span>
+
+                            <strong>
+                                Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
+                            </strong>
+                        </div>
+
+
+                        <div class="store-order-summary-divider"></div>
+
+
+                        <div class="store-order-summary-total">
+
+                            <span>
+                                Total
+                            </span>
+
+                            <strong>
+                                Rp {{ number_format($order->total, 0, ',', '.') }}
+                            </strong>
+
+                        </div>
+
+
+                        @if ($order->payment)
+
+                            <div class="store-order-payment-status">
+
+                                <span>
+                                    Payment
+                                </span>
+
+                                <strong>
+                                    {{ ucfirst($order->payment->status) }}
+                                </strong>
+
+                            </div>
+
+                        @endif
+
+
+                        @if (
+                            $order->status === 'completed'
+                            && $order->payment
+                            && $order->payment->status === 'succeeded'
+                        )
+
+                            <form
+                                method="POST"
+                                action="{{ route('orders.refund.store', $order) }}"
+                                class="store-order-detail-refund-form"
+                            >
+                                @csrf
+
+                                <input
+                                    type="hidden"
+                                    name="amount"
+                                    value="{{ $order->total }}"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="reason"
+                                    value="Refund order completed"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="store-order-refund-button store-order-refund-button-full"
+                                    onclick="return confirm('Ajukan refund untuk order #{{ $order->order_number }} sebesar Rp {{ number_format($order->total, 0, ',', '.') }}?')"
+                                >
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                    Request Refund
+                                </button>
+
+                            </form>
+
+                        @endif
+
+
+                        <a
+                            href="{{ route('storefront.shop') }}"
+                            class="store-order-continue-button"
+                        >
+                            <i class="bi bi-bag"></i>
+                            Continue Shopping
+                        </a>
+
+                    </div>
+
+                </aside>
+
+            </div>
+
         </div>
+
     </div>
+
 </section>
+
 @endsection

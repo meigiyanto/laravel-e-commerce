@@ -164,9 +164,9 @@
                                 </li>
 
                                 <li>
-                                    <a class="dropdown-item" href="{{ route('dashboard') }}">
+                                    <a class="dropdown-item" href="{{ route('account.index') }}">
                                         <i class="bi bi-speedometer2 me-2"></i>
-                                        Dashboard
+                                        Account
                                     </a>
                                 </li>
                                 <li>
