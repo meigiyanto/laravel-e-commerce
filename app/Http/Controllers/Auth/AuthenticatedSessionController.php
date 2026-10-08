@@ -66,9 +66,6 @@ class AuthenticatedSessionController extends Controller
             route('account.index', absolute: false)
         );
 
-        return redirect()->intended(
-            route('dashboard', absolute: false)
-        );
     }
 
     /**
