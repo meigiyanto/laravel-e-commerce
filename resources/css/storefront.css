@@ -7511,42 +7511,8 @@ textarea.store-form-control {
 }
 
 /* =========================================================
-   MOBILE TOPBAR
+   MOBILE STICKY TOP NAVBAR
 ========================================================= */
-
-.store-mobile-topbar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-
-    z-index: 1050;
-
-    display: none;
-
-    background: #ffffff;
-    border-bottom: 1px solid var(--store-border);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
-
-    transform: translateY(-110%);
-    visibility: hidden;
-
-    transition:
-        transform .25s ease,
-        visibility .25s ease;
-}
-
-.store-mobile-topbar.is-visible {
-    transform: translateY(0);
-    visibility: visible;
-}
-
-.store-mobile-topbar-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 58px;
-}
 
 .store-mobile-brand {
     display: inline-flex;
@@ -7579,19 +7545,69 @@ textarea.store-form-control {
     font-size: .95rem;
 }
 
+.store-mobile-user-dropdown {
+    position: relative;
+}
+
 .store-mobile-user {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 40px;
     height: 40px;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--store-dark);
     font-size: 1.35rem;
-    text-decoration: none;
 }
 
-.store-mobile-user:hover {
+.store-mobile-user:hover,
+.store-mobile-user:focus-visible {
     color: var(--store-primary-dark);
+    outline: none;
+}
+
+.store-mobile-user-dropdown .dropdown-menu {
+    min-width: 220px;
+    margin-top: .5rem !important;
+    padding: .45rem 0;
+}
+
+.store-mobile-user-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    gap: .35rem;
+    font-size: .8rem;
+}
+
+.store-mobile-user-dropdown .dropdown-item form {
+    width: 100%;
+}
+
+.store-mobile-user-dropdown .dropdown-item button {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+}
+
+.store-mobile-user-dropdown .dropdown-user-info {
+    padding: .55rem .85rem .65rem;
+}
+
+.store-mobile-user-dropdown .dropdown-user-name {
+    color: var(--store-dark);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.store-mobile-user-dropdown .dropdown-user-email {
+    margin-top: .15rem;
+    color: var(--store-muted);
+    font-size: .7rem;
+    word-break: break-word;
 }
 
 @media (max-width: 767.98px) {
@@ -7614,12 +7630,10 @@ textarea.store-form-control {
     }
 }
 
-/* =========================================================
-   MOBILE STICKY TOP NAVBAR
-========================================================= */
-
-.store-mobile-topbar {
-    display: none;
+@media (max-width: 575.98px) {
+    .store-mobile-topbar-inner {
+        min-height: 54px;
+    }
 }
 
 /* =========================================================
@@ -7628,35 +7642,23 @@ textarea.store-form-control {
 
 .store-back-to-top {
     position: fixed;
-
     right: 1.25rem;
-    bottom: 1.25rem;
-
+    bottom: 3.95rem;
     z-index: 1035;
-
     width: 44px;
     height: 44px;
-
     display: inline-flex;
     align-items: center;
     justify-content: center;
-
     padding: 0;
-
     border: 1px solid var(--store-border);
-    border-radius: 50%;
-
-    
+    border-radius: 50%; 
     background: var(--store-primary);
     color: var(--store-dark);
-
     box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
-
     opacity: 0;
     visibility: hidden;
-
     transform: translateY(12px);
-
     pointer-events: none;
 
     transition:
@@ -7696,26 +7698,16 @@ textarea.store-form-control {
 
     .store-mobile-topbar {
         position: fixed;
-
         top: 0;
         right: 0;
         left: 0;
-
         z-index: 1050;
-
         display: block;
-
         background: #fff;
-
         border-bottom: 1px solid var(--store-border);
-
-        box-shadow:
-            0 4px 18px rgba(0, 0, 0, .08);
-
+        box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
         transform: translateY(-110%);
-
         visibility: hidden;
-
         transition:
             transform .25s ease,
             visibility .25s ease;
@@ -8949,4 +8941,32 @@ body.store-mobile-drawer-open {
 .store-mobile-cart-empty-button:hover {
     background: var(--store-primary-dark);
     color: #fff;
+}
+
+/* =========================================================
+   MOBILE TOP NAVBAR
+   Always visible + sticky
+========================================================= */
+
+.store-mobile-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+
+    z-index: 1050;
+
+    display: block !important;
+    width: 100%;
+
+    background: #fff;
+    border-bottom: 1px solid var(--store-border);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+}
+
+.store-mobile-topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 58px;
 }

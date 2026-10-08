@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name', 'E-Commerce Store'))</title>
     <link rel="shortcut icon" href="{{ asset('images/favicon.png') }}">
-    @vite(['resources/css/app.css', 'resources/css/auth.css'])
+    @vite('resources/css/app.css')
 </head>
 <body class="auth-page">
     <main class="auth-shell">

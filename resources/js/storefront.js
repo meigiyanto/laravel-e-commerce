@@ -2,60 +2,25 @@ import * as bootstrap from 'bootstrap';
 
 /**
  * =========================================================
- * MOBILE STICKY NAVBAR & BACK TO TOP
+ * STICKY TOP NAVBAR & BACK TO TOP
  * =========================================================
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    const mobileTopbar = document.querySelector(
-        '.store-mobile-topbar'
-    );
+    // const mobileTopbar = document.querySelector('.store-mobile-topbar');
+    const backToTop = document.querySelector('.store-back-to-top');
 
-    const backToTop = document.querySelector(
-        '.store-back-to-top'
-    );
-
-    if (!mobileTopbar && !backToTop) {
+    if (!backToTop) {
         return;
     }
 
-    /*
-     * Mobile sticky navbar muncul
-     * setelah user scroll lebih dari 120px.
-     */
     const mobileScrollThreshold = 120;
-
-    /*
-     * Back to top muncul
-     * setelah user scroll lebih dari 300px.
-     */
     const backToTopThreshold = 300;
-
     let ticking = false;
 
     function updateScrollUI() {
-        const scrollY =
-            window.scrollY ||
-            window.pageYOffset ||
-            0;
+        const scrollY = window.scrollY || window.pageYOffset || 0;
 
-        const isMobile =
-            window.innerWidth <= 767.98;
-
-        /*
-         * Mobile sticky top navbar
-         */
-        if (mobileTopbar) {
-            mobileTopbar.classList.toggle(
-                'is-visible',
-                isMobile &&
-                scrollY > mobileScrollThreshold
-            );
-        }
-
-        /*
-         * Back to top
-         */
         if (backToTop) {
             backToTop.classList.toggle(
                 'is-visible',
@@ -71,35 +36,21 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        window.requestAnimationFrame(
-            updateScrollUI
-        );
-
+        window.requestAnimationFrame(updateScrollUI);
         ticking = true;
     }
 
-    /*
-     * Scroll
-     */
     window.addEventListener(
         'scroll',
         requestScrollUpdate,
-        {
-            passive: true,
-        }
+        { passive: true }
     );
 
-    /*
-     * Resize
-     */
     window.addEventListener(
         'resize',
         requestScrollUpdate
     );
 
-    /*
-     * Back to top click
-     */
     if (backToTop) {
         backToTop.addEventListener(
             'click',
@@ -112,145 +63,6 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    /*
-     * Initial state
-     */
-    updateScrollUI();
-});
-
-/**
- * =========================================================
- * BACK TO TOP
- * =========================================================
- */
-
-document.addEventListener('DOMContentLoaded', function () {
-    const mobileTopbar = document.querySelector(
-        '.store-mobile-topbar'
-    );
-
-    const backToTop = document.querySelector(
-        '.store-back-to-top'
-    );
-
-    if (!mobileTopbar && !backToTop) {
-        return;
-    }
-
-
-    /*
-     * Navbar mobile mulai muncul
-     * setelah scroll 120px.
-     */
-    const mobileScrollThreshold = 120;
-
-
-    /*
-     * Back to top mulai muncul
-     * setelah scroll 300px.
-     */
-    const backToTopThreshold = 300;
-
-
-    let ticking = false;
-
-
-    /**
-     * Update tampilan berdasarkan
-     * posisi scroll.
-     */
-    function updateScrollUI() {
-        const scrollY =
-            window.scrollY ||
-            window.pageYOffset;
-
-
-        /*
-         * MOBILE STICKY NAVBAR
-         */
-        if (mobileTopbar) {
-            mobileTopbar.classList.toggle(
-                'is-visible',
-                window.innerWidth <= 767.98 &&
-                scrollY > mobileScrollThreshold
-            );
-        }
-
-
-        /*
-         * BACK TO TOP
-         */
-        if (backToTop) {
-            backToTop.classList.toggle(
-                'is-visible',
-                scrollY > backToTopThreshold
-            );
-        }
-
-
-        ticking = false;
-    }
-
-
-    /**
-     * Gunakan requestAnimationFrame
-     * agar event scroll tetap ringan.
-     */
-    function requestScrollUpdate() {
-        if (!ticking) {
-            window.requestAnimationFrame(
-                updateScrollUI
-            );
-
-            ticking = true;
-        }
-    }
-
-
-    /*
-     * Scroll listener.
-     */
-    window.addEventListener(
-        'scroll',
-        requestScrollUpdate,
-        {
-            passive: true,
-        }
-    );
-
-
-    /*
-     * Resize listener.
-     *
-     * Penting ketika user berpindah
-     * dari mobile ke desktop.
-     */
-    window.addEventListener(
-        'resize',
-        requestScrollUpdate
-    );
-
-
-    /**
-     * BACK TO TOP ACTION
-     */
-    if (backToTop) {
-        backToTop.addEventListener(
-            'click',
-            function () {
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth',
-                });
-            }
-        );
-    }
-
-
-    /*
-     * Jalankan sekali saat halaman
-     * pertama kali dibuka.
-     */
     updateScrollUI();
 });
 
