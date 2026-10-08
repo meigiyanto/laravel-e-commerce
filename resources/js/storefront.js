@@ -2,60 +2,25 @@ import * as bootstrap from 'bootstrap';
 
 /**
  * =========================================================
- * MOBILE STICKY NAVBAR & BACK TO TOP
+ * STICKY TOP NAVBAR & BACK TO TOP
  * =========================================================
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    const mobileTopbar = document.querySelector(
-        '.store-mobile-topbar'
-    );
+    // const mobileTopbar = document.querySelector('.store-mobile-topbar');
+    const backToTop = document.querySelector('.store-back-to-top');
 
-    const backToTop = document.querySelector(
-        '.store-back-to-top'
-    );
-
-    if (!mobileTopbar && !backToTop) {
+    if (!backToTop) {
         return;
     }
 
-    /*
-     * Mobile sticky navbar muncul
-     * setelah user scroll lebih dari 120px.
-     */
     const mobileScrollThreshold = 120;
-
-    /*
-     * Back to top muncul
-     * setelah user scroll lebih dari 300px.
-     */
     const backToTopThreshold = 300;
-
     let ticking = false;
 
     function updateScrollUI() {
-        const scrollY =
-            window.scrollY ||
-            window.pageYOffset ||
-            0;
+        const scrollY = window.scrollY || window.pageYOffset || 0;
 
-        const isMobile =
-            window.innerWidth <= 767.98;
-
-        /*
-         * Mobile sticky top navbar
-         */
-        if (mobileTopbar) {
-            mobileTopbar.classList.toggle(
-                'is-visible',
-                isMobile &&
-                scrollY > mobileScrollThreshold
-            );
-        }
-
-        /*
-         * Back to top
-         */
         if (backToTop) {
             backToTop.classList.toggle(
                 'is-visible',
@@ -71,35 +36,21 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        window.requestAnimationFrame(
-            updateScrollUI
-        );
-
+        window.requestAnimationFrame(updateScrollUI);
         ticking = true;
     }
 
-    /*
-     * Scroll
-     */
     window.addEventListener(
         'scroll',
         requestScrollUpdate,
-        {
-            passive: true,
-        }
+        { passive: true }
     );
 
-    /*
-     * Resize
-     */
     window.addEventListener(
         'resize',
         requestScrollUpdate
     );
 
-    /*
-     * Back to top click
-     */
     if (backToTop) {
         backToTop.addEventListener(
             'click',
@@ -112,145 +63,6 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
-    /*
-     * Initial state
-     */
-    updateScrollUI();
-});
-
-/**
- * =========================================================
- * BACK TO TOP
- * =========================================================
- */
-
-document.addEventListener('DOMContentLoaded', function () {
-    const mobileTopbar = document.querySelector(
-        '.store-mobile-topbar'
-    );
-
-    const backToTop = document.querySelector(
-        '.store-back-to-top'
-    );
-
-    if (!mobileTopbar && !backToTop) {
-        return;
-    }
-
-
-    /*
-     * Navbar mobile mulai muncul
-     * setelah scroll 120px.
-     */
-    const mobileScrollThreshold = 120;
-
-
-    /*
-     * Back to top mulai muncul
-     * setelah scroll 300px.
-     */
-    const backToTopThreshold = 300;
-
-
-    let ticking = false;
-
-
-    /**
-     * Update tampilan berdasarkan
-     * posisi scroll.
-     */
-    function updateScrollUI() {
-        const scrollY =
-            window.scrollY ||
-            window.pageYOffset;
-
-
-        /*
-         * MOBILE STICKY NAVBAR
-         */
-        if (mobileTopbar) {
-            mobileTopbar.classList.toggle(
-                'is-visible',
-                window.innerWidth <= 767.98 &&
-                scrollY > mobileScrollThreshold
-            );
-        }
-
-
-        /*
-         * BACK TO TOP
-         */
-        if (backToTop) {
-            backToTop.classList.toggle(
-                'is-visible',
-                scrollY > backToTopThreshold
-            );
-        }
-
-
-        ticking = false;
-    }
-
-
-    /**
-     * Gunakan requestAnimationFrame
-     * agar event scroll tetap ringan.
-     */
-    function requestScrollUpdate() {
-        if (!ticking) {
-            window.requestAnimationFrame(
-                updateScrollUI
-            );
-
-            ticking = true;
-        }
-    }
-
-
-    /*
-     * Scroll listener.
-     */
-    window.addEventListener(
-        'scroll',
-        requestScrollUpdate,
-        {
-            passive: true,
-        }
-    );
-
-
-    /*
-     * Resize listener.
-     *
-     * Penting ketika user berpindah
-     * dari mobile ke desktop.
-     */
-    window.addEventListener(
-        'resize',
-        requestScrollUpdate
-    );
-
-
-    /**
-     * BACK TO TOP ACTION
-     */
-    if (backToTop) {
-        backToTop.addEventListener(
-            'click',
-            function () {
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth',
-                });
-            }
-        );
-    }
-
-
-    /*
-     * Jalankan sekali saat halaman
-     * pertama kali dibuka.
-     */
     updateScrollUI();
 });
 
@@ -369,6 +181,111 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
 });
+
+document.addEventListener(
+    'submit',
+    async function (event) {
+        const form =
+            event.target.closest(
+                '.store-mobile-cart-remove-form'
+            );
+
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const button =
+            form.querySelector(
+                'button[type="submit"]'
+            );
+
+        if (!button) {
+            return;
+        }
+
+        const originalHtml =
+            button.innerHTML;
+
+        button.disabled = true;
+
+        button.innerHTML = `
+            <span
+                class="spinner-border spinner-border-sm"
+                aria-hidden="true"
+            ></span>
+        `;
+
+        try {
+            const csrfToken =
+                document.querySelector(
+                    'meta[name="csrf-token"]'
+                )?.getAttribute('content');
+
+            const response = await fetch(
+                form.action,
+                {
+                    method: 'POST',
+
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+
+                        ...(csrfToken
+                            ? {
+                                'X-CSRF-TOKEN':
+                                    csrfToken,
+                            }
+                            : {}),
+                    },
+
+                    body: new FormData(form),
+
+                    credentials:
+                        'same-origin',
+                }
+            );
+
+            const data =
+                await response.json();
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+                throw new Error(
+                    data.message ||
+                    'Gagal menghapus produk dari keranjang.'
+                );
+            }
+
+            await window.refreshCartDrawer();
+
+            window.showStoreNotification(
+                data.message ||
+                'Produk berhasil dihapus dari keranjang.',
+                'success'
+            );
+
+        } catch (error) {
+            console.error(
+                'Cart Drawer remove failed:',
+                error
+            );
+
+            window.showStoreNotification(
+                error.message ||
+                'Gagal menghapus produk dari keranjang.',
+                'danger'
+            );
+
+            button.disabled = false;
+            button.innerHTML =
+                originalHtml;
+        }
+    }
+);
 
 /**
  * =========================================================
@@ -973,6 +890,60 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    window.refreshCartDrawer = async function () {
+        const content =
+            document.getElementById(
+                'storeMobileCartContent'
+            );
+
+        if (!content) {
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                '/cart/drawer',
+                {
+                    method: 'GET',
+
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With':
+                            'XMLHttpRequest',
+                    },
+
+                    credentials:
+                        'same-origin',
+                }
+            );
+
+            const data =
+                await response.json();
+
+            if (
+                !response.ok ||
+                !data.success
+            ) {
+                throw new Error(
+                    data.message ||
+                    'Gagal memperbarui keranjang.'
+                );
+            }
+
+            content.innerHTML =
+                data.html;
+
+            window.updateCartBadge(
+                data.cart_count
+            );
+
+        } catch (error) {
+            console.error(
+                'Cart Drawer refresh failed:',
+                error
+            );
+        }
+    };
 
     function updateButtons(form) {
         const input = form.querySelector('.quantity-input');
@@ -1001,13 +972,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
 window.updateCartBadge = function (count) {
     const badges = document.querySelectorAll(
-        '#cart-count-badge, .store-mobile-bottom .store-badge'
+        '#cart-count-badge, .store-mobile-bottom-badge'
     );
 
     const value = Number(count) || 0;
 
     badges.forEach(function (badge) {
-        badge.textContent = value;
+        badge.textContent =
+            value > 99
+                ? '99+'
+                : value;
 
         if (value > 0) {
             badge.classList.remove('d-none');
@@ -1203,8 +1177,7 @@ document.addEventListener(
 
                 errorMessage:
                     'Gagal menambahkan produk ke keranjang.',
-
-                success: function (data) {
+                success: async function (data) {
                     if (
                         typeof data.cart_count !==
                         'undefined'
@@ -1213,6 +1186,8 @@ document.addEventListener(
                             data.cart_count
                         );
                     }
+
+                    await window.refreshCartDrawer();
 
                     window.showStoreNotification(
                         data.message ||

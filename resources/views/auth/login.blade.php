@@ -1,4 +1,4 @@
-@extends('layouts.guest')
+@extends('layouts.auth')
 
 @section('title', 'Login')
 
@@ -10,11 +10,11 @@
         <p class="text-center">Login untuk melanjutkan ke akun Anda.</p>
     </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
+    @if(session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
 
 
     <form method="POST" action="{{ route('login') }}" class="auth-form">

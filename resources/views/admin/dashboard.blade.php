@@ -11,9 +11,7 @@
                 </h3>
 
                 <div class="nk-block-des text-soft">
-                    <p>
-                        Selamat datang di Admin Panel {{ config('app.name') }}.
-                    </p>
+                    <p>Hello <strong>{{ Auth::user()->name }}</strong>, Welcome to your dashboard.</p>
                 </div>
             </div>
         </div>
@@ -21,7 +19,7 @@
 
     <div class="nk-block">
         <div class="row g-gs">
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-md-3 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -38,7 +36,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                {{ $productsCount ?? 0 }}
+                                <strong>{{ $productsCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Products
@@ -48,7 +46,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-md-3 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -67,7 +65,7 @@
 
                         <div class="data">
                             <div class="amount">
-                                {{ $ordersCount ?? 0 }}
+                                <strong>{{ $ordersCount }}</strong>
                             </div>
 
                             <span class="sub-text">
@@ -78,7 +76,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-md-3 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -94,7 +92,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                {{ $usersCount ?? 0 }}
+                                <strong>{{ $usersCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Customers
@@ -104,7 +102,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
+            <div class="col-sm-6 col-md-3 col-lg-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -122,7 +120,7 @@
                         </div>
                         <div class="data">
                             <div class="amount">
-                                {{ $categoriesCount ?? 0 }}
+                                <strong>{{ $categoriesCount }}</strong>
                             </div>
                             <span class="sub-text">
                                 Total Categories

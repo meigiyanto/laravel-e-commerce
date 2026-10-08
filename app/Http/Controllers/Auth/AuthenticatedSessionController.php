@@ -54,13 +54,17 @@ class AuthenticatedSessionController extends Controller
 
         /*
          * Admin users go to the admin dashboard.
-         * Regular users go to the regular dashboard.
+         * Regular users go to the customer account.
          */
         if ($request->user()->isAdmin()) {
             return redirect()->intended(
                 route('admin.dashboard', absolute: false)
             );
         }
+
+        return redirect()->intended(
+            route('account.index', absolute: false)
+        );
 
         return redirect()->intended(
             route('dashboard', absolute: false)

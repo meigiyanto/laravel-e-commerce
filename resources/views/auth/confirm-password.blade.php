@@ -1,5 +1,8 @@
-<x-guest-layout>
+@extends('layouts.auth')
 
+@section('title', 'Confirm Password')
+
+@section('content')
     <div class="auth-header">
         <h1>Confirm Password</h1>
 
@@ -36,4 +39,4 @@
         </button>
     </form>
 
-</x-guest-layout>
+@endsection

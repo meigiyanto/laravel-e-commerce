@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\DashboardController;
 
 /**
  * Store Front
@@ -34,6 +35,8 @@ Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 
 Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+
+Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
 
 Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.update');
 
@@ -93,9 +96,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/account', function () {
+        return view('storefront.account.index');
+    })->name('account.index');
 });
 
 /*
@@ -105,9 +108,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Refund Management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');

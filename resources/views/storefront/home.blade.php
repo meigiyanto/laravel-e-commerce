@@ -7,7 +7,7 @@
     {{-- =========================================================
          HERO
     ========================================================== --}}
-    <section class="store-hero py-3">
+    <section class="store-hero py-3 mb-3">
         <div class="container">
             <div class="store-hero-content">
 
