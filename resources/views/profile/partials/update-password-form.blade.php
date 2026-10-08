@@ -3,12 +3,6 @@
 @endphp
 
 <section>
-
-    <header class="section-header">
-        <h2>Update Password</h2>
-        <p>Update your password</p>
-    </header>
-
     <form
         method="POST"
         action="{{ route('password.update') }}"
