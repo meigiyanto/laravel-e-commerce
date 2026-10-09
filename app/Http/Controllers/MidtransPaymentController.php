@@ -226,167 +226,230 @@ class MidtransPaymentController extends Controller
     /**
      * HTTP Notification / Webhook Midtrans.
      *
-     * Endpoint ini tidak menggunakan auth middleware
-     * karena dipanggil langsung oleh server Midtrans.
+     * Callback diverifikasi dengan signature, kemudian status
+     * transaksi diverifikasi kembali melalui Midtrans Get Status API.
      */
-    public function notification(Request $request): JsonResponse {        $payload = $request->all();
+    public function notification(Request $request): JsonResponse
+    {
+        $payload = $request->all();
 
-        Log::info('Midtrans notification received.', $payload);
+        // Hindari menyimpan seluruh payload pelanggan/transaksi ke log.
+        $requiredFields = [
+            'order_id',
+            'status_code',
+            'gross_amount',
+            'signature_key',
+        ];
 
-        /*
-         * Field minimum yang diperlukan untuk
-         * memverifikasi notification.
-         */
-        foreach (['order_id', 'status_code', 'gross_amount', 'signature_key'] as $field) {
-            if (! array_key_exists($field, $payload)) {
+        foreach ($requiredFields as $field) {
+            if (
+                ! array_key_exists($field, $payload)
+                || ! is_scalar($payload[$field])
+                || (string) $payload[$field] === ''
+            ) {
                 return response()->json([
-                    'message' => "Field {$field} not found.",
+                    'message' => "Field {$field} tidak valid.",
                 ], 422);
             }
         }
 
-        /*
-         * Verifikasi signature Midtrans.
-         */
-        if (! $this->midtrans->verifyNotification($payload)) {
-            Log::warning('Invalid Midtrans notification signature.',
-                [
-                    'order_id' => $payload['order_id'] ?? null,
-                ]
-            );
-
-            return response()->json(['message' => 'Signature notification is invalid.'], 403);
-        }
-
-        /*
-         * Cari order berdasarkan order_number
-         * yang dikirim sebagai order_id oleh Midtrans.
-         */
-        $order = Order::where('order_number', $payload['order_id'])->first();
-
-        if (! $order) {
-            return response()->json(['message' => 'Order not found.'], 404);
-        }
-
-        // Identitas transaksi berasal dari pesanan di database,
-        // bukan dari transaction_id yang dikirim browser.
-        $transaction = $this->midtrans->getStatus(
-            $order->order_number
-        );
-
-        // Transaksi harus merujuk ke pesanan yang sedang dikonfirmasi.
-        if (
-            (string) ($transaction->order_id ?? '')
-            !== (string) $order->order_number
-        ) {
-            Log::warning('Midtrans order ID mismatch.', [
-                'order_id' => $order->id,
-                'expected_order_number' => $order->order_number,
-                'received_order_id' => $transaction->order_id ?? null,
-            ]);
-
+        if (! is_numeric($payload['gross_amount'])) {
             return response()->json([
-                'message' => 'Transaksi tidak cocok dengan pesanan.',
-            ], 409);
-        }
-
-        // Nominal dari gateway harus sama dengan nominal pesanan.
-        if (
-            ! isset($transaction->gross_amount)
-            || ! $this->amountsMatch(
-                $transaction->gross_amount,
-                $order->total
-            )
-        ) {
-            Log::critical('Midtrans amount mismatch.', [
-                'order_id' => $order->id,
-                'expected_amount' => $order->total,
-                'received_amount' => $transaction->gross_amount ?? null,
-            ]);
-
-            return response()->json([
-                'message' => 'Nominal transaksi tidak sesuai.',
+                'message' => 'Nominal transaksi tidak valid.',
             ], 422);
         }
 
-        // Sinkronisasi baru boleh dilakukan setelah validasi.
-        $this->syncPaymentFromMidtrans(
-            $order,
-            $payment,
-            $transaction
-        );
+        // 1. Verifikasi signature sebelum mempercayai payload.
+        if (! $this->midtrans->verifyNotification($payload)) {
+            Log::warning('Invalid Midtrans notification signature.', [
+                'order_id' => (string) $payload['order_id'],
+            ]);
 
-        $payment = $order->payment;
-
-        if (! $payment) {
-            return response()->json(['message' => 'Payment not found.'], 404);
-        }
-
-        /*
-         * Pastikan notification memang milik
-         * pembayaran Midtrans.
-         */
-        if ($payment->provider !== 'midtrans') {
-            return response()->json(['message' => 'Payment provider mismatch.'], 409);
-        }
-
-        /*
-         * Gross amount dari Midtrans harus sama
-         * dengan total order di database.
-         */
-        if (! $this->amountsMatch($payload['gross_amount'], $order->total)) {
-            Log::critical('Midtrans gross amount mismatch.',
-                [
-                    'order_id' => $order->id,
-                    'expected' => $order->total,
-                    'received' => $payload['gross_amount'],
-                ]
-            );
-
-            return response()->json(['message' => 'Gross amount tidak sesuai.'], 422);
+            return response()->json([
+                'message' => 'Signature notifikasi tidak valid.',
+            ], 403);
         }
 
         try {
-            DB::transaction(
-                function () use (
-                    $order, $payment, $payload) {
-                    /*
-                     * Lock payment untuk mencegah
-                     * race condition ketika notification
-                     * datang bersamaan.
-                     */
-                    $payment = Payment::where('id', $payment->id)->lockForUpdate()->firstOrFail();
+            // 2. Cari pesanan dari order_id yang dikirim Midtrans.
+            $order = Order::where('order_number', (string) $payload['order_id'])->first();
 
-                    /*
-                     * Jangan pernah menurunkan payment
-                     * yang sudah berhasil.
-                     */
-                    if ($payment->status === 'succeeded') {
-                        return;
-                    }
+            if (! $order) {
+                return response()->json([
+                    'message' => 'Pesanan tidak ditemukan.',
+                ], 404);
+            }
 
-                    $this->syncPaymentFromMidtrans($order, $payment, (object) $payload);
-                }
+            // 3. Pastikan pesanan memiliki pembayaran Midtrans.
+            $payment = $order->payment;
+
+            if (! $payment) {
+                return response()->json([
+                    'message' => 'Data pembayaran tidak ditemukan.',
+                ], 404);
+            }
+
+            if ($payment->provider !== 'midtrans') {
+                Log::warning('Midtrans provider mismatch.', [
+                    'order_id' => $order->id,
+                    'provider' => $payment->provider,
+                ]);
+
+                return response()->json([
+                    'message' => 'Provider pembayaran tidak sesuai.',
+                ], 409);
+            }
+
+            // 4. Cocokkan nominal pada notifikasi dengan database.
+            if (! $this->amountsMatch(
+                $payload['gross_amount'],
+                $order->total
+            )) {
+                Log::critical('Midtrans notification amount mismatch.', [
+                    'order_id' => $order->id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Nominal notifikasi tidak sesuai.',
+                ], 422);
+            }
+
+            // Notifikasi duplikat: jika sudah berhasil, jangan proses ulang.
+            if ($payment->status === 'succeeded') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pembayaran sudah diproses sebelumnya.',
+                ]);
+            }
+
+            // 5. Ambil status terbaru dari API Midtrans.
+            // Jangan menggunakan payload webhook sebagai satu-satunya
+            // sumber status pembayaran.
+            $transaction = $this->midtrans->getStatus(
+                $order->order_number
             );
+
+            // 6. Pastikan respons API benar-benar milik pesanan ini.
+            if (
+                (string) ($transaction->order_id ?? '')
+                !== (string) $order->order_number
+            ) {
+                Log::critical('Midtrans API order ID mismatch.', [
+                    'order_id' => $order->id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Identitas transaksi tidak cocok.',
+                ], 409);
+            }
+
+            if (
+                ! isset($transaction->gross_amount)
+                || ! is_numeric($transaction->gross_amount)
+                || ! $this->amountsMatch(
+                    $transaction->gross_amount,
+                    $order->total
+                )
+            ) {
+                Log::critical('Midtrans API amount mismatch.', [
+                    'order_id' => $order->id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Nominal transaksi gateway tidak cocok.',
+                ], 422);
+            }
+
+            // 7. Kunci pesanan dan pembayaran untuk mencegah
+            // dua notifikasi bersamaan mengubah status secara bersaing.
+            $result = DB::transaction(function () use ($order, $transaction) {
+                $lockedOrder = Order::whereKey($order->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $lockedPayment = Payment::where(
+                    'order_id',
+                    $lockedOrder->id
+                )->lockForUpdate()->first();
+
+                if (! $lockedPayment) {
+                    throw new \RuntimeException(
+                        'Data pembayaran tidak ditemukan.'
+                    );
+                }
+
+                if ($lockedPayment->provider !== 'midtrans') {
+                    throw new \RuntimeException(
+                        'Provider pembayaran berubah saat pemrosesan.'
+                    );
+                }
+
+                // Request paralel mungkin sudah menyelesaikan pembayaran.
+                if ($lockedPayment->status === 'succeeded') {
+                    return 'already_succeeded';
+                }
+
+                // Jangan menurunkan status terminal menjadi pending
+                // akibat notifikasi lama atau status gateway yang belum final.
+                $incomingStatus = $this->resolvePaymentStatus(
+                    strtolower((string) ($transaction->transaction_status ?? 'pending')),
+                    isset($transaction->status_code)
+                        ? (string) $transaction->status_code
+                        : null,
+                    isset($transaction->fraud_status)
+                        ? strtolower((string) $transaction->fraud_status)
+                        : null
+                );
+
+                if (
+                    in_array(
+                        $lockedPayment->status,
+                        ['failed', 'expired', 'canceled'],
+                        true
+                    )
+                    && $incomingStatus === 'pending'
+                ) {
+                    return 'ignored_stale';
+                }
+
+                // 8. Satu-satunya tempat sinkronisasi dilakukan.
+                $this->syncPaymentFromMidtrans(
+                    $lockedOrder,
+                    $lockedPayment,
+                    $transaction
+                );
+
+                return 'processed';
+            });
+
+            if ($result === 'ignored_stale') {
+                Log::warning('Ignored stale Midtrans notification.', [
+                    'order_id' => $order->id,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Notification diterima.',
+                'message' => match ($result) {
+                    'already_succeeded' => 'Pembayaran sudah diproses sebelumnya.',
+                    'ignored_stale' => 'Notifikasi lama diabaikan.',
+                    default => 'Notifikasi berhasil diproses.',
+                },
             ]);
         } catch (Throwable $e) {
-            Log::error('Midtrans notification processing failed.',
-                [
-                    'order_id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'message' => $e->getMessage(),
-                ]
-            );
+            // Respons 5xx memungkinkan gateway mencoba kembali notifikasi.
+            Log::error('Midtrans notification processing failed.', [
+                'order_id' => (string) $payload['order_id'],
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
 
             return response()->json([
-                'message' => 'Notification failed to process.',
+                'message' => 'Notifikasi belum dapat diproses.',
             ], 500);
         }
     }
+
 
     /**
      * Sinkronisasi status transaksi Midtrans
