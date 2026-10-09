@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\Refund;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -422,7 +423,7 @@ class MidtransNotificationTest extends TestCase
         $this->assertSame('expired', $payment->fresh()->status);
     }
 
-    public function test_midtrans_success_does_not_reactivate_canceled_order(): void
+    public function test_midtrans_success_on_canceled_order_requests_only_one_refund(): void
     {
         [$order, $payment] = $this->createPendingMidtransPayment();
 
@@ -438,7 +439,7 @@ class MidtransNotificationTest extends TestCase
 
         $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
             $mock->shouldReceive('verifyNotification')
-                ->once()
+                ->twice()
                 ->andReturn(true);
 
             $mock->shouldReceive('getStatus')
@@ -455,25 +456,78 @@ class MidtransNotificationTest extends TestCase
                 ]);
         });
 
-        $response = $this->postJson(
+        $payload = [
+            'order_id' => $order->order_number,
+            'transaction_id' => 'MIDTRANS-TEST-123',
+            'transaction_status' => 'settlement',
+            'fraud_status' => 'accept',
+            'status_code' => '200',
+            'gross_amount' => '100000.00',
+            'payment_type' => 'bank_transfer',
+            'signature_key' => hash(
+                'sha512',
+                $order->order_number
+                .'200'
+                .'100000.00'
+                .'test-server-key'
+            ),
+        ];
+
+        // Notifikasi pertama: pembayaran terlambat berhasil.
+        $this->postJson(
             route('payment.midtrans.notification'),
-            [
-                'order_id' => $order->order_number,
-                'status_code' => '200',
-                'gross_amount' => '100000.00',
-                'signature_key' => hash(
-                    'sha512',
-                    $order->order_number
-                    .'200'
-                    .'100000.00'
-                    .'test-server-key'
-                ),
-            ]
+            $payload
+        )->assertSuccessful();
+
+        $this->assertSame(
+            'canceled',
+            $order->fresh()->status
         );
 
-        $response->assertSuccessful();
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
 
-        $this->assertSame('canceled', $order->fresh()->status);
+        $idempotencyKey =
+            'late-canceled-order-payment-'.$payment->id;
+
+        $this->assertDatabaseHas('refunds', [
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'status' => Refund::STATUS_REQUESTED,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
+        $this->assertSame(
+            1,
+            Refund::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->count()
+        );
+
+        // Notifikasi kedua: tidak boleh membuat refund duplikat.
+        $this->postJson(
+            route('payment.midtrans.notification'),
+            $payload
+        )->assertSuccessful();
+
+        $this->assertSame(
+            'canceled',
+            $order->fresh()->status
+        );
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            1,
+            Refund::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->count()
+        );
     }
 
 
