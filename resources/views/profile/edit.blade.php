@@ -100,22 +100,15 @@
                             AVATAR
                         ====================================== --}}
                         <div class="store-profile-avatar-section">
-
                             <div class="store-profile-avatar">
-
                                 @if ($user->avatar)
-                                    <img
-                                        src="{{ asset('storage/' . $user->avatar) }}"
-                                        alt="{{ $user->name }}"
-                                    >
+                                    <img src="{{ asset('storage/' . $user->avatar) }} " alt="{{ $user->name }}">
                                 @else
                                     <span>
                                         {{ strtoupper(substr($user->name, 0, 1)) }}
                                     </span>
                                 @endif
-
                             </div>
-
                             <div class="store-profile-avatar-info">
 
                                 <label
@@ -144,15 +137,12 @@
                                 @enderror
 
                             </div>
-
                         </div>
 
 
                         <div class="row g-3">
-
                             {{-- NAME --}}
                             <div class="col-md-6">
-
                                 <label
                                     for="name"
                                     class="form-label"
@@ -412,72 +402,6 @@
                 ACCOUNT SIDEBAR
             ================================================= --}}
             <div class="col-lg-4">
-
-                <div class="store-profile-sidebar">
-
-                    <div class="store-profile-sidebar-item">
-
-                        <div class="store-profile-sidebar-icon">
-                            <i class="bi bi-person-circle"></i>
-                        </div>
-
-                        <div>
-                            <strong>
-                                {{ $user->name }}
-                            </strong>
-
-                            <span>
-                                {{ $user->email }}
-                            </span>
-                        </div>
-
-                    </div>
-
-
-                    <div class="store-profile-sidebar-divider"></div>
-
-
-                    <a
-                        href="{{ route('account.index') }}"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-grid"></i>
-                        <span>My Account</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-
-                    <a
-                        href="{{ route('orders.index') }}"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-bag"></i>
-                        <span>My Orders</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-
-                    <a
-                        href="{{ route('profile.edit') }}"
-                        class="store-profile-sidebar-link active"
-                    >
-                        <i class="bi bi-person"></i>
-                        <span>Profile</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-        {{-- =====================================================
-            SECURITY
-        ====================================================== --}}
-        <div class="row g-4 mt-1">
-            <div class="col-lg-8">
                 <div class="store-profile-panel">
                     <div class="store-profile-panel-header">
                         <div>
@@ -485,21 +409,19 @@
                             <p>Use a strong password to keep your account safe from</p>
                         </div>
                     </div>
+                    {{-- =====================================================
+                        SECURITY
+                    ====================================================== --}}
                     @include('profile.partials.update-password-form')
                 </div>
-            </div>
-        </div>
-
-
-        {{-- =====================================================
-            DANGER ZONE
-        ====================================================== --}}
-        <div class="row g-4 mt-1">
-            <div class="col-lg-8">
+                {{-- =====================================================
+                    DANGER ZONE
+                ====================================================== --}}
                 <div class="store-profile-danger">
                     @include('profile.partials.delete-user-form')
                 </div>
             </div>
+
         </div>
 
     </div>
