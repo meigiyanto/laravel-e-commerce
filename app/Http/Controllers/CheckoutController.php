@@ -288,7 +288,7 @@ class CheckoutController extends Controller
          * Jangan tampilkan halaman success.
          */
         return redirect()
-            ->route('storefront.orders.show', $order)
+            ->route('orders.show', $order)
             ->with('error', 'Payment was unsuccessful. Please check your order status. '
             );
     }

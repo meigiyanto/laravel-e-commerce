@@ -72,7 +72,7 @@ class OrderController extends Controller
             ]);
         }
 
-        return view('storefront.orders.show', compact('order')
+        return view('orders.show', compact('order')
         );
     }
 }
