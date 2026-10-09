@@ -19,7 +19,7 @@ class OrderController extends Controller
         'processing',
         'shipped',
         'completed',
-        'cancelled',
+        'canceled',
     ];
 
     /**
@@ -114,11 +114,11 @@ class OrderController extends Controller
         $newStatus = $validated['status'];
 
         /*
-         * Order cancelled tidak boleh diaktifkan kembali.
+         * Order canceled tidak boleh diaktifkan kembali.
          */
         if (
-            $order->status === 'cancelled'
-            && $newStatus !== 'cancelled'
+            $order->status === 'canceled'
+            && $newStatus !== 'canceled'
         ) {
             return back()->with(
                 'error',
@@ -149,8 +149,8 @@ class OrderController extends Controller
              * kembalikan stok produk.
              */
             if (
-                $newStatus === 'cancelled'
-                && $lockedOrder->status !== 'cancelled'
+                $newStatus === 'canceled'
+                && $lockedOrder->status !== 'canceled'
             ) {
                 $items = $lockedOrder->items()->get();
 
