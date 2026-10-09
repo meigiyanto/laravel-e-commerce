@@ -1,4 +1,3 @@
-<!-- main header @s -->
 <div class="nk-header nk-header-fixed is-light">
     <div class="container-fluid">
         <div class="nk-header-wrap">
@@ -95,6 +94,7 @@
                                     </div>
                                 </div>
                             </div>
+
                             <div class="dropdown-inner">
                                 <ul class="link-list">
                                 @if (Auth::user()->isAdmin())
@@ -106,31 +106,31 @@
                                     </li>
                                 @endif
                                     <li>
-                                        <a href="{{ url('/profile') }}">
+                                        <a href="{{ url('admin/profile') }}">
                                             <em class="icon ni ni-user-alt"></em>
                                             <span>View Profile</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="{{ url('/profile') }}">
+                                        <a href="{{ url('admin/profile') }}">
                                             <em class="icon ni ni-setting-alt"></em>
                                             <span>Account Setting</span>
                                         </a>
                                     </li>
                                     <!--
                                     <li>
-                                        <a href="html/user-profile-setting">
+                                        <a href="#">
                                             <em class="icon ni ni-activity-alt"></em>
                                             <span>Login Activity</span>
                                         </a>
                                     </li>
-                                    -->
                                     <li>
                                         <a class="dark-switch" href="#">
                                             <em class="icon ni ni-moon"></em>
                                             <span>Dark Mode</span>
                                         </a>
                                     </li>
+                                    -->
                                 </ul>
                             </div>
 

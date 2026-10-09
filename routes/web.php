@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\AdminController;
 
 /**
  * Store Front
@@ -109,6 +110,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Admin
+    Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
 
     // Refund Management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
