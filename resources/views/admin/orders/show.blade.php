@@ -89,7 +89,7 @@
                             'processing' => 'bg-info text-dark',
                             'shipped' => 'bg-primary',
                             'completed' => 'bg-success',
-                            'cancelled' => 'bg-danger',
+                            'canceled' => 'bg-danger',
                             default => 'bg-secondary',
                         };
                     @endphp
@@ -102,8 +102,8 @@
                         @csrf
                         @method('PATCH')
 
-                        <select name="status" class="form-select mb-3" @disabled($order->status === 'cancelled')>
-                            @foreach(['pending', 'processing', 'shipped', 'completed', 'cancelled' ] as $itemStatus)
+                        <select name="status" class="form-select mb-3" @disabled($order->status === 'canceled')>
+                            @foreach(['pending', 'processing', 'shipped', 'completed', 'canceled' ] as $itemStatus)
                                 <option
                                     value="{{ $itemStatus }}"
                                     @selected(
@@ -115,7 +115,7 @@
                             @endforeach
                         </select>
 
-                        @if($order->status === 'cancelled')
+                        @if($order->status === 'canceled')
                             <div class="alert alert-warning">Order has been cancel cannot reactivate</div>
                         @else
                             <button type="submit" class="btn btn-primary w-100">Save Status</button>

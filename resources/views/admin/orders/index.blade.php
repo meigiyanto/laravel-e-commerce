@@ -41,7 +41,7 @@
                     'processing' => 'text-info',
                     'shipped' => 'text-primary',
                     'completed' => 'text-success',
-                    'cancelled' => 'text-danger',
+                    'canceled' => 'text-danger',
                     default => 'text-soft',
                 };
             @endphp
@@ -104,7 +104,7 @@
                                     'processing' => 'bg-info text-dark',
                                     'shipped' => 'bg-primary',
                                     'completed' => 'bg-success',
-                                    'cancelled' => 'bg-danger',
+                                    'canceled' => 'bg-danger',
                                     default => 'bg-secondary',
                                 };
                             @endphp
