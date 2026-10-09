@@ -437,11 +437,15 @@ class MidtransPaymentController extends Controller
                 },
             ]);
         } catch (Throwable $e) {
-            // Respons 5xx memungkinkan gateway mencoba kembali notifikasi.
             Log::error('Midtrans notification processing failed.', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
                 'order_id' => (string) $payload['order_id'],
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
