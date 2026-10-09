@@ -114,20 +114,7 @@ class OrderController extends Controller
         $newStatus = $validated['status'];
 
         /*
-         * Order canceled tidak boleh diaktifkan kembali.
-         */
-        if (
-            $order->status === 'canceled'
-            && $newStatus !== 'canceled'
-        ) {
-            return back()->with(
-                'error',
-                'Pesanan yang sudah dibatalkan tidak dapat diaktifkan kembali.'
-            );
-        }
-
-        /*
-         * Tidak ada perubahan.
+         * Tidak ada perubahan status.
          */
         if ($order->status === $newStatus) {
             return back()->with(
@@ -136,27 +123,90 @@ class OrderController extends Controller
             );
         }
 
-        DB::transaction(function () use ($order, $newStatus) {
+        $result = DB::transaction(function () use (
+            $order,
+            $newStatus
+        ) {
             /*
-             * Lock order untuk mencegah race condition.
+             * Lock dan baca status pesanan terbaru.
              */
             $lockedOrder = Order::query()
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
             /*
-             * Jika order dibatalkan,
-             * kembalikan stok produk.
+             * Aturan transisi status pesanan.
+             */
+            $allowedTransitions = [
+                'pending' => [
+                    'processing',
+                    'canceled',
+                ],
+                'processing' => [
+                    'shipped',
+                    'canceled',
+                ],
+                'shipped' => [
+                    'completed',
+                ],
+                'completed' => [],
+                'canceled' => [],
+            ];
+
+            /*
+             * Tolak perpindahan status yang tidak diizinkan.
+             */
+            if (
+                ! in_array(
+                    $newStatus,
+                    $allowedTransitions[$lockedOrder->status] ?? [],
+                    true
+                )
+            ) {
+                return 'transition_blocked';
+            }
+
+
+            /*
+             * Pesanan yang sudah dibatalkan tidak boleh
+             * diaktifkan kembali.
+             */
+            if (
+                $lockedOrder->status === 'canceled'
+                && $newStatus !== 'canceled'
+            ) {
+                return 'reactivation_blocked';
+            }
+
+            /*
+             * Pesanan yang sudah dikirim atau selesai
+             * tidak boleh dibatalkan oleh admin.
              */
             if (
                 $newStatus === 'canceled'
-                && $lockedOrder->status !== 'canceled'
+                && in_array(
+                    $lockedOrder->status,
+                    ['shipped', 'completed'],
+                    true
+                )
+            ) {
+                return 'cancellation_blocked';
+            }
+
+            /*
+             * Kembalikan stok hanya ketika status berubah
+             * menjadi canceled dari status yang diizinkan.
+             */
+            if (
+                $newStatus === 'canceled'
+                && in_array(
+                    $lockedOrder->status,
+                    ['pending', 'processing'],
+                    true
+                )
             ) {
                 $items = $lockedOrder->items()->get();
 
-                /*
-                 * Lock product terlebih dahulu.
-                 */
                 $productIds = $items
                     ->pluck('product_id')
                     ->unique()
@@ -167,9 +217,6 @@ class OrderController extends Controller
                     ->lockForUpdate()
                     ->get();
 
-                /*
-                 * Kembalikan stok.
-                 */
                 foreach ($items as $item) {
                     Product::query()
                         ->whereKey($item->product_id)
@@ -180,13 +227,34 @@ class OrderController extends Controller
                 }
             }
 
-            /*
-             * Update status.
-             */
             $lockedOrder->update([
                 'status' => $newStatus,
             ]);
+
+            return 'updated';
         });
+
+        if ($result === 'reactivation_blocked') {
+            return back()->with(
+                'error',
+                'Pesanan yang sudah dibatalkan tidak dapat diaktifkan kembali.'
+            );
+        }
+
+        if ($result === 'cancellation_blocked') {
+            return back()->with(
+                'error',
+                'Pesanan yang sudah dikirim atau selesai tidak dapat dibatalkan.'
+            );
+        }
+
+
+        if ($result === 'transition_blocked') {
+            return back()->with(
+                'error',
+                'Perubahan status pesanan tidak diizinkan.'
+            );
+        }
 
         return redirect()
             ->route('admin.orders.show', $order)
@@ -195,4 +263,5 @@ class OrderController extends Controller
                 'Status pesanan berhasil diperbarui.'
             );
     }
+
 }

@@ -587,6 +587,7 @@ class PaymentController extends Controller
         });
     }
 
+
     private function cancelOrder(
         Order $order,
         $payment,
@@ -594,20 +595,26 @@ class PaymentController extends Controller
         PaymentIntent $paymentIntent
     ): void {
         /*
-         * Method ini dipanggil ketika sudah berada
-         * di dalam transaksi syncPaymentIntent().
-         *
-         * Karena lock sudah diperoleh di caller,
-         * kita tidak membuka transaksi kedua.
+         * Jangan memproses pembatalan pembayaran berulang.
          */
-
         if (
             in_array(
                 $payment->status,
-                [
-                    'failed',
-                    'canceled',
-                ],
+                ['failed', 'canceled'],
+                true
+            )
+        ) {
+            return;
+        }
+
+        /*
+         * Pesanan yang sudah dikirim atau selesai tidak boleh
+         * dibatalkan oleh notifikasi pembayaran yang terlambat.
+         */
+        if (
+            in_array(
+                $order->status,
+                ['shipped', 'completed'],
                 true
             )
         ) {
@@ -616,13 +623,19 @@ class PaymentController extends Controller
 
         $payment->update([
             'status' => $status,
-
             'transaction_status' => $paymentIntent->status,
-
             'metadata' => [
                 'stripe_payment_intent_status' => $paymentIntent->status,
             ],
         ]);
+
+        /*
+         * Jika pesanan sudah dibatalkan sebelumnya, sinkronkan
+         * status pembayaran saja. Jangan kembalikan stok lagi.
+         */
+        if ($order->status === 'canceled') {
+            return;
+        }
 
         $order->update([
             'status' => 'canceled',
@@ -631,12 +644,9 @@ class PaymentController extends Controller
         $order->load('items');
 
         foreach ($order->items as $item) {
-            $product =
-                Product::whereKey(
-                    $item->product_id
-                )
-                    ->lockForUpdate()
-                    ->first();
+            $product = Product::whereKey($item->product_id)
+                ->lockForUpdate()
+                ->first();
 
             if ($product) {
                 $product->increment(
