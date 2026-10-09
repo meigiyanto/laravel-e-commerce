@@ -63,7 +63,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -92,7 +92,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -173,7 +173,7 @@ class StripeWebhookTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
             'total' => self::ORDER_TOTAL,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -377,7 +377,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -543,7 +543,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 

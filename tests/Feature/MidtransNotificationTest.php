@@ -43,6 +43,25 @@ class MidtransNotificationTest extends TestCase
             'test-server-key'
         );
 
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->once()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
         $response = $this->postJson(
             route('payment.midtrans.notification'),
             [
@@ -72,7 +91,7 @@ class MidtransNotificationTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -301,6 +320,25 @@ class MidtransNotificationTest extends TestCase
             ),
         ];
 
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->twice()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
         $firstResponse = $this->postJson(
             route('payment.midtrans.notification'),
             $payload
@@ -312,7 +350,7 @@ class MidtransNotificationTest extends TestCase
         $order->refresh();
 
         $this->assertSame('succeeded', $payment->status);
-        $this->assertSame('completed', $order->status);
+        $this->assertSame('processing', $order->status);
 
         $firstPaidAt = $payment->paid_at;
 
@@ -327,7 +365,7 @@ class MidtransNotificationTest extends TestCase
         $order->refresh();
 
         $this->assertSame('succeeded', $payment->status);
-        $this->assertSame('completed', $order->status);
+        $this->assertSame('processing', $order->status);
 
         $this->assertSame(
             $firstPaidAt?->format('Y-m-d H:i:s'),
