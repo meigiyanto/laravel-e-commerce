@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\MidtransService;
+use App\Services\RefundService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,10 @@ use Throwable;
 
 class MidtransPaymentController extends Controller
 {
-    public function __construct(private MidtransService $midtrans) {}
+    public function __construct(
+        private MidtransService $midtrans,
+        private RefundService $refundService
+    ) {}
 
     /**
      * Menampilkan halaman pembayaran Midtrans.
@@ -568,6 +572,27 @@ class MidtransPaymentController extends Controller
         }
 
         $payment->update($data);
+
+        if (
+            $paymentStatus === 'succeeded'
+            && $order->status === 'canceled'
+        ) {
+            $refund = $this->refundService
+                ->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment->fresh()
+                );
+
+            Log::warning(
+                'Midtrans payment succeeded for a canceled order.',
+                [
+                    'order_id' => $order->id,
+                    'payment_id' => $payment->id,
+                    'refund_id' => $refund?->id,
+                    'refund_status' => $refund?->status,
+                ]
+            );
+        }
     }
 
     /**
