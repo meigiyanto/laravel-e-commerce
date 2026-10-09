@@ -88,7 +88,7 @@
                 </h2>
             </div>
 
-            <button type="button" class="store-mobile-drawer-close" data-mobile-drawer-close aria-label="Tutup menu">
+            <button type="button" class="store-mobile-drawer-close" data-mobile-drawer-close aria-label="Close menu">
                 <i class="bi bi-x-lg"></i>
             </button>
 
@@ -108,7 +108,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Home</strong>
-                        <small>Halaman utama toko</small>
+                        <small>Store homepage</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -123,7 +123,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Shop</strong>
-                        <small>Jelajahi semua produk</small>
+                        <small>Explore all products</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -136,7 +136,7 @@
             <div class="store-mobile-drawer-section">
 
                 <div class="store-mobile-drawer-section-title">
-                    Akun & Pesanan
+                    Account & Order
                 </div>
 
                 @auth
@@ -149,7 +149,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Wishlist</strong>
-                        <small>Produk yang Anda simpan</small>
+                        <small>Products you save</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -164,7 +164,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Compare</strong>
-                        <small>Bandingkan produk</small>
+                        <small>Compare product</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -179,7 +179,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Order</strong>
-                        <small>Lihat riwayat pesanan</small>
+                        <small>See order history</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -194,7 +194,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Login</strong>
-                        <small>Masuk ke akun Anda</small>
+                        <small>Login to your account</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -208,7 +208,7 @@
 
                     <span class="store-mobile-drawer-link-content">
                         <strong>Daftar</strong>
-                        <small>Buat akun baru</small>
+                        <small>Create new account</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -239,7 +239,7 @@
                 </span>
 
                 <h2 class="store-mobile-drawer-title">
-                    Kategori
+                    Category
                 </h2>
             </div>
 
@@ -275,7 +275,7 @@
                             </strong>
 
                             <small>
-                                Lihat subkategori
+                                See subkategori
                             </small>
 
                         </span>
@@ -307,7 +307,7 @@
                         @empty
 
                         <div class="store-mobile-subcategory-empty">
-                            Belum ada subkategori.
+                            No subkategori yet.
                         </div>
 
                         @endforelse
@@ -317,7 +317,7 @@
                         <a href="{{ route('storefront.category', $category->slug) }}" class="store-mobile-category-all">
                             <span>
                                 <i class="bi bi-shop"></i>
-                                Semua produk {{ $category->name }}
+                                All product {{ $category->name }}
                             </span>
 
                             <i class="bi bi-arrow-right"></i>
@@ -331,22 +331,14 @@
 
                 <div class="store-mobile-category-empty">
                     <i class="bi bi-grid"></i>
-
-                    <strong>
-                        Belum ada kategori
-                    </strong>
-
-                    <span>
-                        Kategori produk belum tersedia.
-                    </span>
+                    <strong>No category yet</strong>
+                    <span>Product category unavailable.</span>
                 </div>
 
                 @endforelse
 
             </div>
-
         </div>
-
     </div>
 </div>
 
@@ -365,7 +357,7 @@
                 </span>
 
                 <h2 class="store-mobile-drawer-title">
-                    Cari Produk
+                    Find product
                 </h2>
             </div>
 
@@ -383,7 +375,7 @@
             <form action="{{ route('storefront.shop') }}" method="GET" class="store-mobile-search-form">
 
                 <label for="storeMobileSearchInput" class="store-mobile-search-label">
-                    Apa yang sedang Anda cari?
+                    What you looking for?
                 </label>
 
 
@@ -405,7 +397,7 @@
 
                 <button type="submit" class="store-mobile-search-submit">
                     <i class="bi bi-search"></i>
-                    <span>Cari Produk</span>
+                    <span>Find product</span>
                 </button>
 
             </form>
@@ -417,7 +409,7 @@
             <div class="store-mobile-search-current">
 
                 <span class="store-mobile-search-current-label">
-                    Pencarian aktif
+                    Active search
                 </span>
 
                 <strong>
@@ -433,7 +425,7 @@
             <div class="store-mobile-search-section">
 
                 <div class="store-mobile-search-section-title">
-                    Jelajahi
+                    Explore
                 </div>
 
                 <a href="{{ route('storefront.shop') }}" class="store-mobile-search-link">
@@ -442,8 +434,8 @@
                     </span>
 
                     <span class="store-mobile-search-link-content">
-                        <strong>Semua Produk</strong>
-                        <small>Lihat seluruh katalog produk</small>
+                        <strong>All Product</strong>
+                        <small>View all word products</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>
@@ -457,7 +449,7 @@
 
                     <span class="store-mobile-search-link-content">
                         <strong>Home</strong>
-                        <small>Kembali ke halaman utama</small>
+                        <small>Back to homepage</small>
                     </span>
 
                     <i class="bi bi-chevron-right"></i>

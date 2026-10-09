@@ -17,7 +17,7 @@
                 <a
                     href="{{ route('storefront.product', $product->slug) }}"
                     class="store-mobile-cart-image"
-                    aria-label="Lihat {{ $product->name }}"
+                    aria-label="View {{ $product->name }}"
                 >
                     @if ($product->image_url)
                         <img
@@ -66,7 +66,7 @@
                                     type="button"
                                     class="store-mobile-cart-quantity-button"
                                     data-mobile-cart-decrease
-                                    aria-label="Kurangi {{ $product->name }}"
+                                    aria-label="Decrease {{ $product->name }}"
                                 >
                                     <i class="bi bi-dash"></i>
                                 </button>
@@ -79,14 +79,14 @@
                                     max="{{ max(1, $product->stock) }}"
                                     class="store-mobile-cart-quantity-input"
                                     inputmode="numeric"
-                                    aria-label="Jumlah {{ $product->name }}"
+                                    aria-label="Total {{ $product->name }}"
                                 >
 
                                 <button
                                     type="button"
                                     class="store-mobile-cart-quantity-button"
                                     data-mobile-cart-increase
-                                    aria-label="Tambah {{ $product->name }}"
+                                    aria-label="Increase {{ $product->name }}"
                                 >
                                     <i class="bi bi-plus"></i>
                                 </button>
