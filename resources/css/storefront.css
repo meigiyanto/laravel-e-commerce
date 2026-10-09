@@ -4230,7 +4230,7 @@ textarea.store-form-control {
     color: #0f5132;
 }
 
-.store-order-status-cancelled {
+.store-order-status-canceled {
     background: #f8d7da;
     color: #842029;
 }
@@ -4577,7 +4577,7 @@ textarea.store-form-control {
     font-weight: 800;
 }
 
-.store-order-cancelled-state {
+.store-order-canceled-state {
     display: flex;
     align-items: center;
     gap: .8rem;
@@ -4587,7 +4587,7 @@ textarea.store-form-control {
     color: #842029;
 }
 
-.store-order-cancelled-state > span {
+.store-order-canceled-state > span {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -4598,11 +4598,11 @@ textarea.store-form-control {
     background: #f8d7da;
 }
 
-.store-order-cancelled-state strong {
+.store-order-canceled-state strong {
     font-size: .8rem;
 }
 
-.store-order-cancelled-state p {
+.store-order-canceled-state p {
     margin: .15rem 0 0;
     font-size: .68rem;
 }
