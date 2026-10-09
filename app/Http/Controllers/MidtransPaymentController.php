@@ -181,11 +181,64 @@ class MidtransPaymentController extends Controller
                 ], 422);
             }
 
-            $this->syncPaymentFromMidtrans(
+
+            $result = DB::transaction(function () use (
                 $order,
-                $payment,
                 $transaction
-            );
+            ) {
+                $lockedOrder = Order::query()
+                    ->lockForUpdate()
+                    ->findOrFail($order->id);
+
+                $lockedPayment = Payment::query()
+                    ->where('order_id', $lockedOrder->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($lockedPayment->provider !== 'midtrans') {
+                    throw new \RuntimeException(
+                        'Provider pembayaran tidak sesuai.'
+                    );
+                }
+
+                // Pembayaran mungkin sudah berhasil diproses
+                // oleh request lain saat pemeriksaan gateway berjalan.
+                if ($lockedPayment->status === 'succeeded') {
+                    return 'already_succeeded';
+                }
+
+                $incomingStatus = $this->resolvePaymentStatus(
+                    strtolower(
+                        (string) ($transaction->transaction_status ?? 'pending')
+                    ),
+                    isset($transaction->status_code)
+                        ? (string) $transaction->status_code
+                        : null,
+                    isset($transaction->fraud_status)
+                        ? strtolower((string) $transaction->fraud_status)
+                        : null
+                );
+
+                // Jangan menurunkan status terminal menjadi pending.
+                if (
+                    in_array(
+                        $lockedPayment->status,
+                        ['failed', 'expired', 'canceled'],
+                        true
+                    )
+                    && $incomingStatus === 'pending'
+                ) {
+                    return 'ignored_stale';
+                }
+
+                $this->syncPaymentFromMidtrans(
+                    $lockedOrder,
+                    $lockedPayment,
+                    $transaction
+                );
+
+                return 'processed';
+            });
 
             $payment->refresh();
             $order->refresh();
