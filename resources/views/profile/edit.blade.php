@@ -49,7 +49,7 @@
                 </span>
 
                 <h1 class="store-section-title">Profile</h1>
-                <p class="store-section-subtitle">.Manage your personal information and account security</p>
+                <p class="store-section-subtitle">Manage your personal information and account security</p>
             </div>
 
         </div>
@@ -102,7 +102,7 @@
                         <div class="store-profile-avatar-section">
                             <div class="store-profile-avatar">
                                 @if ($user->avatar)
-                                    <img src="{{ asset('storage/' . $user->avatar) }} " alt="{{ $user->name }}">
+                                    <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}">
                                 @else
                                     <span>
                                         {{ strtoupper(substr($user->name, 0, 1)) }}
