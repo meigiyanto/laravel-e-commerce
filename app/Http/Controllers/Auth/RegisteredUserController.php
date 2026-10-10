@@ -81,6 +81,6 @@ class RegisteredUserController extends Controller
         /*
          * Regular users always enter the regular dashboard.
          */
-        return redirect()->route('account.index');
+        return redirect()->route('verification.notice');
     }
 }

@@ -57,7 +57,7 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name
 |-----------------------------------------------------------| Authenticated User Routes
 |-----------------------------------------------------------*/
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Refund
     Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
 
@@ -99,7 +99,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/account', function () {
         return view('storefront.account.index');
-    })->name('account.index');
+    })->middleware('verified')->name('account.index');
 });
 
 /*
@@ -133,7 +133,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
     // Sub Category CRUD
-    Route::resource('sub-categories', SubCategoryController::class)->parameters(['sub-categories' => 'id'])->except(['show']);
+    Route::resource('sub-categories', SubCategoryController::class)->parameters(['sub-categories' => 'subCategory'])->except(['show']);
 
     // Category CRUD
     Route::resource('categories', CategoryController::class)->except(['show']);
