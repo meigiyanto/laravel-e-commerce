@@ -60,91 +60,91 @@
     {{-- Orders --}}
     <div class="card card-bordered">
         <div class="card-inner">
-            {{-- Search & Filter --}}
-            <form method="GET" action="{{ route('admin.orders.index') }}" class="row g-2 mb-4">
-                <div class="col-md-6">
-                    <input type="text" name="search" value="{{ $search }}" class="form-control-sm form-control" placeholder="Cari nomor order, customer, email, atau telepon">
+            @if($orders->isEmpty())
+                <div class="text-center text-soft py-4">
+                    Order not found.
                 </div>
-                <div class="col-md-3">
-                    <select name="status" class="form-select">
-                        <option value="">All Status</option>
-                        @foreach($statuses as $itemStatus)
-                            <option value="{{ $itemStatus }}" @selected($status === $itemStatus)>{{ ucfirst($itemStatus) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-md btn-primary flex-grow-2">Filter</button>
-                @if($search || $status)
-                    <a class="btn btn-md btn-secondary" href="{{ route('admin.orders.index') }}">Reset</a>
-                @endif
-                </div>
-            </form>
-
-            {{-- Table --}}
-            <div class="table-responsive">
-                <table class="table table-middle js-datatable">
-                    <thead>
-                        <tr>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th class="text-end no-sort">
-                                Action
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($orders as $order)
-                            @php
-                                $statusClass = match ($order->status) {
-                                    'pending' => 'bg-warning text-dark',
-                                    'processing' => 'bg-info text-dark',
-                                    'shipped' => 'bg-primary',
-                                    'completed' => 'bg-success',
-                                    'canceled' => 'bg-danger',
-                                    default => 'bg-secondary',
-                                };
-                            @endphp
-                            <tr>
-                                {{-- Order --}}
-                                <td>
-                                    <strong> #{{ $order->order_number }}</strong>
-                                </td>
-                                {{-- Customer --}}
-                                <td>
-                                    <div class="fw-bold">
-                                        {{ $order->customer_name }}
-                                    </div>
-                                    <small class="text-soft">{{ $order->user?->email ?? '-' }}</small>
-                                </td>
-                                {{-- Total --}}
-                                <td> Rp {{ number_format($order->total, 0, ',', '.') }}</td>
-                                {{-- Status --}}
-                                <td>
-                                    <span class="badge {{ $statusClass }}">{{ ucfirst($order->status) }}</span>
-                                </td>
-                                {{-- Date --}}
-                                <td>{{ optional($order->created_at)->format('d M Y H:i') ?? '-' }} </td>
-                                {{-- Action --}}
-                                <td class="text-end">
-                                    <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-outline-primary">
-                                        Detail
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-                @if($orders->isEmpty())
-                    <div class="text-center text-soft py-4">
-                        Order not found.
+            @else
+                {{-- Search & Filter --}}
+                <form method="GET" action="{{ route('admin.orders.index') }}" class="row g-2 mb-4">
+                    <div class="col-md-6">
+                        <input type="text" name="search" value="{{ $search }}" class="form-control-sm form-control" placeholder="Cari nomor order, customer, email, atau telepon">
                     </div>
-                @endif
-            </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">All Status</option>
+                            @foreach($statuses as $itemStatus)
+                                <option value="{{ $itemStatus }}" @selected($status === $itemStatus)>{{ ucfirst($itemStatus) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-md btn-primary flex-grow-2">Filter</button>
+                    @if($search || $status)
+                        <a class="btn btn-md btn-secondary" href="{{ route('admin.orders.index') }}">Reset</a>
+                    @endif
+                    </div>
+                </form>
 
+                {{-- Table --}}
+                <div class="table-responsive">
+                    <table class="table table-middle js-datatable">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th class="text-end no-sort">
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($orders as $order)
+                                @php
+                                    $statusClass = match ($order->status) {
+                                        'pending' => 'bg-warning text-dark',
+                                        'processing' => 'bg-info text-dark',
+                                        'shipped' => 'bg-primary',
+                                        'completed' => 'bg-success',
+                                        'canceled' => 'bg-danger',
+                                        default => 'bg-secondary',
+                                    };
+                                @endphp
+                                <tr>
+                                    {{-- Order --}}
+                                    <td>
+                                        <strong> #{{ $order->order_number }}</strong>
+                                    </td>
+                                    {{-- Customer --}}
+                                    <td>
+                                        <div class="fw-bold">
+                                            {{ $order->customer_name }}
+                                        </div>
+                                        <small class="text-soft">{{ $order->user?->email ?? '-' }}</small>
+                                    </td>
+                                    {{-- Total --}}
+                                    <td> Rp {{ number_format($order->total, 0, ',', '.') }}</td>
+                                    {{-- Status --}}
+                                    <td>
+                                        <span class="badge {{ $statusClass }}">{{ ucfirst($order->status) }}</span>
+                                    </td>
+                                    {{-- Date --}}
+                                    <td>{{ optional($order->created_at)->format('d M Y H:i') ?? '-' }} </td>
+                                    {{-- Action --}}
+                                    <td class="text-end">
+                                        <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-outline-primary">
+                                            Detail
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
     </div>
 @endsection

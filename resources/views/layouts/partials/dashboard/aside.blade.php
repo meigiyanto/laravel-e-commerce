@@ -31,50 +31,39 @@
                             Administration
                         </h6>
                     </li>
-                    <li class="nk-menu-item">
-                        <a
-                            href="{{ route('admin.dashboard') }}"
-                            class="nk-menu-link"
-                        >
+                    <li class="nk-menu-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        <a href="{{ route('admin.dashboard') }}" class="nk-menu-link">
                             <span class="nk-menu-icon">
                                 <em class="icon ni ni-dashboard"></em>
                             </span>
-                            <span class="nk-menu-text">
-                                Dashboard
-                            </span>
+                            <span class="nk-menu-text">Dashboard</span>
                         </a>
                     </li>
+
                     <li class="nk-menu-heading">
                         <h6 class="overline-title text-primary-alt">
                             Catalog
                         </h6>
                     </li>
-                    <li class="nk-menu-item">
-                        <a
-                            href="{{ route('admin.products.index') }}"
-                            class="nk-menu-link"
-                        >
+
+                    <li class="nk-menu-item {{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
+                        <a href="{{ route('admin.products.index') }}" class="nk-menu-link">
                             <span class="nk-menu-icon">
                                 <em class="icon ni ni-package"></em>
                             </span>
-                            <span class="nk-menu-text">
-                                Products
-                            </span>
+                            <span class="nk-menu-text">Products</span>
                         </a>
                     </li>
-                    <li class="nk-menu-item">
-                        <a
-                            href="{{ route('admin.categories.index') }}"
-                            class="nk-menu-link"
-                        >
+
+                    <li class="nk-menu-item {{ request()->routeIs('admin.categories.index') ? 'active' : '' }}">
+                        <a href="{{ route('admin.categories.index') }}" class="nk-menu-link">
                             <span class="nk-menu-icon">
                                 <em class="icon ni ni-list"></em>
                             </span>
-                            <span class="nk-menu-text">
-                                Categories
-                            </span>
+                            <span class="nk-menu-text">Categories</span>
                         </a>
                     </li>
+
                     <li class="nk-menu-item">
                         <a
                             href="{{ route('admin.sub-categories.index') }}"
@@ -88,6 +77,7 @@
                             </span>
                         </a>
                     </li>
+
                     <li class="nk-menu-item">
                         <a
                             href="{{ route('admin.inventory.index') }}"

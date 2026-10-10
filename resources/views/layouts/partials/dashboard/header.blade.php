@@ -12,49 +12,15 @@
                 </a>
             </div>
 
+            <!--
             <div class="nk-header-search ms-3 ms-xl-0">
                 <em class="icon ni ni-search"></em>
                 <input type="text" class="form-control border-transparent form-focus-none" placeholder="Search anything">
             </div>
+            -->
 
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
-                    <li class="dropdown language-dropdown d-none d-sm-block me-n1">
-                        <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
-                            <div class="quick-icon border border-light">
-                                <img class="icon" src="{{ asset('./images/flags/english-sq.png') }}" alt="">
-                            </div>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end dropdown-menu-s1">
-                            <ul class="language-list">
-                                <li>
-                                    <a href="#" class="language-item">
-                                        <img src="{{ asset('./images/flags/english.png') }}" alt="English Flag" class="language-flag">
-                                        <span class="language-name">English</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" class="language-item">
-                                        <img src="{{ asset('./images/flags/spanish.png') }}" alt="Spanish Flag" class="language-flag">
-                                        <span class="language-name">Español</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" class="language-item">
-                                        <img src="{{ asset('./images/flags/french.png') }}" alt="French Flag" class="language-flag">
-                                        <span class="language-name">Français</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="#" class="language-item">
-                                        <img src="{{ asset('./images/flags/turkey.png') }}" alt="Turkey Flag" class="language-flag">
-                                        <span class="language-name">Türkçe</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-
                     <!-- .dropdown -->
                     <li class="dropdown user-dropdown">
                         <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">
@@ -106,13 +72,13 @@
                                     </li>
                                 @endif
                                     <li>
-                                        <a href="{{ url('admin.profile') }}">
+                                        <a href="{{ route('admin.profile') }}">
                                             <em class="icon ni ni-user-alt"></em>
                                             <span>View Profile</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="{{ url('admin.profile') }}">
+                                        <a href="{{ route('admin.profile') }}">
                                             <em class="icon ni ni-setting-alt"></em>
                                             <span>Account Setting</span>
                                         </a>
