@@ -21,7 +21,7 @@
                 for="name"
                 class="form-label"
             >
-                Nam3le
+                Name
             </label>
 
             <input
@@ -101,7 +101,7 @@
                 for="password_confirmation"
                 class="form-label"
             >
-                Konfirmasi Password Confirmation
+                Password Confirmation
             </label>
 
             <input
@@ -109,9 +109,8 @@
                 type="password"
                 name="password_confirmation"
                 required
-                autocomplete="new-password"
                 class="form-input"
-                placeholder="Re-type password"
+                placeholder="Confirmation password"
             >
 
             @error('password_confirmation')

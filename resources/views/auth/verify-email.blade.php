@@ -5,28 +5,23 @@
 @section('content')
     <div class="auth-header">
         <span class="auth-eyebrow text-center">E-Commerce Store</span>
-        <h1 class="text-center">Verifikasi Email</h1>
+        <h1 class="text-center">Email Verification</h1>
 
-        <p class="text-center">
-            Terima kasih sudah mendaftar.
-            Sebelum melanjutkan, silakan verifikasi alamat email Anda
-            melalui link yang telah kami kirimkan.
-        </p>
+        <p class="text-center">Thank you for registering. Before continuing, please verify your email address.</p>
     </div>
 
     @if (session('status') === 'verification-link-sent')
         <div class="alert alert-success">
-            Link verifikasi baru telah dikirim ke alamat email Anda.
+            A new verification link has been sent to your email address.
         </div>
     @endif
 
-    <div class="auth-actions">
-
+    <div class="auth-form">
         <form method="POST" action="{{ route('verification.send') }}">
             @csrf
 
             <button type="submit" class="btn btn-primary btn-full">
-                Kirim Ulang Email Verifikasi
+                Resend email verification
             </button>
         </form>
 

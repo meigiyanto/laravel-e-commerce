@@ -3,6 +3,12 @@
 @endphp
 
 <section>
+    @if (session('status') === 'password-updated')
+        <div class="alert alert-success" role="alert">
+            Password updated successfully.
+        </div>
+    @endif
+
     <form
         method="POST"
         action="{{ route('password.update') }}"
@@ -77,12 +83,6 @@
         <button type="submit" class="btn btn-primary">
             Save Changes
         </button>
-
-        @if (session('status') === 'password-updated')
-            <p class="success-message">
-                Password updated successfully.
-            </p>
-        @endif
 
     </form>
 

@@ -4,12 +4,9 @@
 
 @section('content')
     <div class="auth-header">
-        <h1>Confirm Password</h1>
+        <h1 class="text-center">Confirm Password</h1>
 
-        <p>
-            Untuk keamanan, silakan konfirmasi password
-            sebelum melanjutkan.
-        </p>
+        <p class="text-center">For security, please confirm the password before continuing </p>
     </div>
 
     <form method="POST" action="{{ route('password.confirm') }}" class="auth-form">

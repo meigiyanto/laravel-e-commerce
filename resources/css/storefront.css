@@ -5853,3 +5853,9 @@ body.store-mobile-drawer-open {
     width: 100%;
   }
 }
+
+.form-error {
+    margin: 7px 0 0;
+    color: #e85347;
+    font-size: 13px;
+}

@@ -5,6 +5,12 @@
         <p>Update your profile information and account email address</p>
     </header>
 
+    @if (session('status') === 'profile-updated')
+        <div class="alert alert-success" role="alert">
+            Profile updated successfully.
+        </div>
+    @endif
+
     <form
         method="POST"
         action="{{ route('profile.update') }}"
@@ -51,12 +57,6 @@
         <button type="submit" class="btn btn-primary">
             Save Changes
         </button>
-
-        @if (session('status') === 'profile-updated')
-            <p class="success-message">
-                Profile updated successfully.
-            </p>
-        @endif
 
     </form>
 </section>
