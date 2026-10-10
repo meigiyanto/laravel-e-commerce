@@ -90,4 +90,25 @@ class AuthenticatedSessionController extends Controller
          */
         return redirect()->route('login');
     }
+
+    /**
+     * Display the administrator login view.
+     */
+    public function createAdmin(): View
+    {
+        return view('auth.admin-login');
+    }
+
+    /**
+     * Authenticate an administrator.
+     */
+    public function storeAdmin(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticateAdmin();
+
+        $request->session()->regenerate();
+
+        return redirect()->route('admin.dashboard');
+    }
+
 }

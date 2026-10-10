@@ -37,14 +37,14 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <div>
+            <div class="table-responsive">
                 <table class="table table-middle datatable-init">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
                             <th>Slug</th>
-                            <th>Product</th>
+                            <th>Subcategories</th>
                             <th class="no-sort text-end">Action</th>
                         </tr>
                     </thead>

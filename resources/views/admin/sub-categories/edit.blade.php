@@ -25,7 +25,7 @@
             </div>
 
             <div class="nk-block-head-content">
-                <a href="{{ route('admin.sub-categories.create') }}" class="btn btn-outline-primary">
+                <a href="{{ route('admin.sub-categories.index') }}" class="btn btn-outline-primary">
                     <em class="icon ni ni-arrow-left"></em>
                     <span>Go Back</span>
                 </a>
@@ -76,7 +76,7 @@
                     @error('name')
                         <span class="error-text">{{ $message }}</span>
                     @enderror
-    
+
                 </div>
                 <div class="form-group">
                     <label for="slug">Slug</label>
@@ -98,7 +98,7 @@
                         name="description"
                         rows="5"
                     >{{ old('description', $subCategory->description) }}</textarea>
-    
+
                     @error('description')
                         <span class="error-text">{{ $message }}</span>
                     @enderror

@@ -35,7 +35,7 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <div>
+            <div class="table-responsive">
                 <table class="table table-bordered table-striped datatable-init">
                     <thead>
                         <tr>
@@ -123,7 +123,7 @@
 
             @if($products->isEmpty())
                 <div class="text-center text-soft py-4">
-                    Belum ada product.
+                     No product yet.
                 </div>
             @endif
 

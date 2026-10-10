@@ -76,7 +76,7 @@
                 <div class="col-md-3">
                     <button type="submit" class="btn btn-md btn-primary flex-grow-2">Filter</button>
                 @if($search || $status)
-                    <button type="submit" class="btn btn-md btn-secondary" onclick="window.location.href='{{ route('admin.orders.index') }}">Reset</button>
+                    <a class="btn btn-md btn-secondary" href="{{ route('admin.orders.index') }}">Reset</a>
                 @endif
                 </div>
             </form>

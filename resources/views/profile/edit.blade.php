@@ -417,7 +417,7 @@
                 {{-- =====================================================
                     DANGER ZONE
                 ====================================================== --}}
-                <div class="store-profile-danger">
+                <div class="store-profile-danger mt-3">
                     @include('profile.partials.delete-user-form')
                 </div>
             </div>

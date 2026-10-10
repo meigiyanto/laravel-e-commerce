@@ -136,7 +136,7 @@
                 PROFILE
             ================================================= --}}
             <div class="col-md-6 col-xl-4">
-                <div class="store-account-card h-100">
+                <div class="store-account-card mb-3">
 
                     <div class="store-account-card-icon">
                         <i class="bi bi-person-circle"></i>
@@ -155,14 +155,14 @@
                     </div>
 
                 </div>
-            </div>
+
 
 
             {{-- =================================================
                 ORDERS
             ================================================= --}}
-            <div class="col-md-6 col-xl-4">
-                <div class="store-account-card h-100">
+
+                <div class="store-account-card mb-3">
 
                     <div class="store-account-card-icon">
                         <i class="bi bi-bag"></i>
@@ -189,14 +189,13 @@
                     </div>
 
                 </div>
-            </div>
 
 
             {{-- =================================================
                 Address
             ================================================= --}}
-            <div class="col-md-6 col-xl-4">
-                <div class="store-account-card h-100">
+
+                <div class="store-account-card">
 
                     <div class="store-account-card-icon">
                         <i class="bi bi-geo-alt-fill"></i>
