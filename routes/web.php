@@ -133,6 +133,7 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::middleware('role:admin')->group(function () {
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
     });
 });
 

@@ -81,7 +81,7 @@
                         <li class="nk-menu-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.users.index') }}" class="nk-menu-link">
                                 <span class="nk-menu-icon"><em class="icon ni ni-users"></em></span>
-                                <span class="nk-menu-text">Users</span>
+                                <span class="nk-menu-text">User Role Management</span>
                             </a>
                         </li>
                     @endif
