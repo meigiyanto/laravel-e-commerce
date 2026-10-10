@@ -86,195 +86,184 @@
     {{-- Refund List --}}
     <div class="card card-bordered">
         <div class="card-inner">
-
-            {{-- Search & Filter --}}
-            <form
-                method="GET"
-                action="{{ route('admin.refunds.index') }}"
-                class="row g-2 mb-4"
-            >
-                <div class="col-md-6">
-                    <input
-                        type="text"
-                        name="search"
-                        value="{{ $search }}"
-                        class="form-control"
-                        placeholder="Cari nomor order, customer, atau email"
-                    >
+            @if($refunds->isEmpty())
+                <div class="text-center text-soft py-4">
+                There has been no refund request yet.
                 </div>
+            @else
+                {{-- Search & Filter --}}
+                <form
+                    method="GET"
+                    action="{{ route('admin.refunds.index') }}"
+                    class="row g-2 mb-4"
+                >
+                    <div class="col-md-6">
+                        <input
+                            type="text"
+                            name="search"
+                            value="{{ $search }}"
+                            class="form-control"
+                            placeholder="Cari nomor order, customer, atau email"
+                        >
+                    </div>
 
-                <div class="col-md-3">
-                    <select
-                        name="status"
-                        class="form-select"
-                    >
-                        <option value="">
-                            All Status
-                        </option>
-
-                        @foreach($statuses as $itemStatus)
-                            <option
-                                value="{{ $itemStatus }}"
-                                @selected($status === $itemStatus)
-                            >
-                                {{ ucfirst($itemStatus) }}
+                    <div class="col-md-3">
+                        <select
+                            name="status"
+                            class="form-select"
+                        >
+                            <option value="">
+                                All Status
                             </option>
-                        @endforeach
-                    </select>
-                </div>
 
-                <div class="col-md-3">
-                    <button
-                        type="submit"
-                        class="btn btn-primary flex-grow-1"
-                    >
-                        Filter
-                    </button>
-
-                    @if($search || $status)
-                        <button
-                            type="button"
-                            class="btn btn-secondary flex-grow-1"
-                            onclick="window.location.href={{ route('admin.refunds.index') }}"
-                        >
-                            Reset
-                        </button>
-                        {{--
-                        <a
-                            href="{{ route('admin.refunds.index') }}"
-                            class="btn btn-secondary"
-                        >
-                            Reset
-                        </a>
-                        --}}
-                    @endif
-                </div>
-            </form>
-
-            {{-- Table --}}
-            <div class="table-responsive">
-                <table class="table table-middle">
-                    <thead>
-                        <tr>
-                            <th>Order</th>
-                            <th>Customer</th>
-                            <th>Nominal</th>
-                            <th>Provider</th>
-                            <th>Status</th>
-                            <th>Tanggal</th>
-                            <th class="text-end">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        @forelse($refunds as $refund)
-                            @php
-                                $statusClass = match ($refund->status) {
-                                    'requested' => 'bg-warning text-dark',
-                                    'approved' => 'bg-primary',
-                                    'processing' => 'bg-info text-dark',
-                                    'completed' => 'bg-success',
-                                    'rejected' => 'bg-danger',
-                                    'failed' => 'bg-danger',
-                                    default => 'bg-secondary',
-                                };
-
-                                $statusLabel = match ($refund->status) {
-                                    'requested' => 'Requested',
-                                    'approved' => 'Approved',
-                                    'processing' => 'Processing',
-                                    'completed' => 'Completed',
-                                    'rejected' => 'Rejected',
-                                    'failed' => 'Failed',
-                                    default => ucfirst($refund->status),
-                                };
-                            @endphp
-
-                            <tr>
-                                {{-- Order --}}
-                                <td>
-                                    @if($refund->order)
-                                        <strong>
-                                            #{{ $refund->order->order_number }}
-                                        </strong>
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-
-                                {{-- Customer --}}
-                                <td>
-                                    @if($refund->order)
-                                        <div class="fw-bold">
-                                            {{ $refund->order->customer_name }}
-                                        </div>
-
-                                        <small class="text-soft">
-                                            {{ $refund->order->user?->email ?? '-' }}
-                                        </small>
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-
-                                {{-- Amount --}}
-                                <td>
-                                    <strong>
-                                        Rp {{ number_format(
-                                            $refund->amount,
-                                            0,
-                                            ',',
-                                            '.'
-                                        ) }}
-                                    </strong>
-                                </td>
-
-                                {{-- Provider --}}
-                                <td>
-                                    {{ ucfirst($refund->provider ?? '-') }}
-                                </td>
-
-                                {{-- Status --}}
-                                <td>
-                                    <span class="badge {{ $statusClass }}">
-                                        {{ $statusLabel }}
-                                    </span>
-                                </td>
-
-                                {{-- Date --}}
-                                <td>
-                                    {{ optional($refund->requested_at ?? $refund->created_at)
-                                        ->format('d M Y H:i') }}
-                                </td>
-
-                                {{-- Action --}}
-                                <td class="text-end">
-                                    <a
-                                        href="{{ route('admin.refunds.show', $refund) }}"
-                                        class="btn btn-sm btn-outline-primary"
-                                    >
-                                        Detail
-                                    </a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td
-                                    colspan="7"
-                                    class="text-center text-soft py-4"
+                            @foreach($statuses as $itemStatus)
+                                <option
+                                    value="{{ $itemStatus }}"
+                                    @selected($status === $itemStatus)
                                 >
-                                    Belum ada pengajuan refund.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                    {{ ucfirst($itemStatus) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-            {{-- Pagination --}}
-            @if($refunds->hasPages())
-                <div class="mt-4">
-                    {{ $refunds->links() }}
+                    <div class="col-md-3">
+                        <button
+                            type="submit"
+                            class="btn btn-primary flex-grow-1"
+                        >
+                            Filter
+                        </button>
+
+                        @if($search || $status)
+                            <a
+                                href="{{ route('admin.refunds.index') }}"
+                                class="btn btn-secondary"
+                            >
+                                Reset
+                            </a>
+                        @endif
+                    </div>
+                </form>
+
+                {{-- Table --}}
+                <div class="table-responsive">
+                    <table class="table table-middle datatable-init">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th>Nominal</th>
+                                <th>Provider</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @forelse($refunds as $refund)
+                                @php
+                                    $statusClass = match ($refund->status) {
+                                        'requested' => 'bg-warning text-dark',
+                                        'approved' => 'bg-primary',
+                                        'processing' => 'bg-info text-dark',
+                                        'completed' => 'bg-success',
+                                        'rejected' => 'bg-danger',
+                                        'failed' => 'bg-danger',
+                                        default => 'bg-secondary',
+                                    };
+
+                                    $statusLabel = match ($refund->status) {
+                                        'requested' => 'Requested',
+                                        'approved' => 'Approved',
+                                        'processing' => 'Processing',
+                                        'completed' => 'Completed',
+                                        'rejected' => 'Rejected',
+                                        'failed' => 'Failed',
+                                        default => ucfirst($refund->status),
+                                    };
+                                @endphp
+
+                                <tr>
+                                    {{-- Order --}}
+                                    <td>
+                                        @if($refund->order)
+                                            <strong>
+                                                #{{ $refund->order->order_number }}
+                                            </strong>
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+
+                                    {{-- Customer --}}
+                                    <td>
+                                        @if($refund->order)
+                                            <div class="fw-bold">
+                                                {{ $refund->order->customer_name }}
+                                            </div>
+
+                                            <small class="text-soft">
+                                                {{ $refund->order->user?->email ?? '-' }}
+                                            </small>
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+
+                                    {{-- Amount --}}
+                                    <td>
+                                        <strong>
+                                            Rp {{ number_format(
+                                                $refund->amount,
+                                                0,
+                                                ',',
+                                                '.'
+                                            ) }}
+                                        </strong>
+                                    </td>
+
+                                    {{-- Provider --}}
+                                    <td>
+                                        {{ ucfirst($refund->provider ?? '-') }}
+                                    </td>
+
+                                    {{-- Status --}}
+                                    <td>
+                                        <span class="badge {{ $statusClass }}">
+                                            {{ $statusLabel }}
+                                        </span>
+                                    </td>
+
+                                    {{-- Date --}}
+                                    <td>
+                                        {{ optional($refund->requested_at ?? $refund->created_at)
+                                            ->format('d M Y H:i') }}
+                                    </td>
+
+                                    {{-- Action --}}
+                                    <td class="text-end">
+                                        <a
+                                            href="{{ route('admin.refunds.show', $refund) }}"
+                                            class="btn btn-sm btn-outline-primary"
+                                        >
+                                            Detail
+                                        </a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td
+                                        colspan="7"
+                                        class="text-center text-soft py-4"
+                                    >
+                                        There has been no refund request yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             @endif
 

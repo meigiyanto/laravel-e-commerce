@@ -35,7 +35,7 @@ class GuestCartLoginMergeTest extends TestCase
         $this->assertAuthenticatedAs($user);
 
         $response->assertRedirect(
-            route('dashboard', absolute: false)
+            route('account.index', absolute: false)
         );
 
         $cart = Cart::where('user_id', $user->id)->first();
@@ -83,7 +83,7 @@ class GuestCartLoginMergeTest extends TestCase
         $this->assertAuthenticatedAs($user);
 
         $response->assertRedirect(
-            route('dashboard', absolute: false)
+            route('account.index', absolute: false)
         );
 
         $this->assertDatabaseHas('cart_items', [
@@ -127,7 +127,7 @@ class GuestCartLoginMergeTest extends TestCase
         $this->assertAuthenticatedAs($user);
 
         $response->assertRedirect(
-            route('dashboard', absolute: false)
+            route('account.index', absolute: false)
         );
 
         $this->assertDatabaseHas('cart_items', [
@@ -151,7 +151,7 @@ class GuestCartLoginMergeTest extends TestCase
         $this->assertAuthenticatedAs($user);
 
         $response->assertRedirect(
-            route('dashboard', absolute: false)
+            route('account.index', absolute: false)
         );
 
         $this->assertDatabaseMissing('carts', [

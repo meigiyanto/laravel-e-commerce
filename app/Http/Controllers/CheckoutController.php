@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
@@ -110,15 +111,15 @@ class CheckoutController extends Controller
                 );
 
                 if (! $product) {
-                    throw new \RuntimeException(
-                        "Product {$cartItem->product_id} not found."
-                    );
+                    throw ValidationException::withMessages([
+                        'stock' => 'One of the products in your cart is no longer available. Please check your cart.',
+                    ]);
                 }
 
                 if ($cartItem->quantity > $product->stock) {
-                    throw new \RuntimeException(
-                        "Product stock {$product->name} not enough."
-                    );
+                    throw ValidationException::withMessages([
+                        'stock' => "Product stock {$product->name} is not enough. Please update your cart.",
+                    ]);
                 }
 
                 /*
@@ -288,7 +289,7 @@ class CheckoutController extends Controller
          * Jangan tampilkan halaman success.
          */
         return redirect()
-            ->route('storefront.orders.show', $order)
+            ->route('orders.show', $order)
             ->with('error', 'Payment was unsuccessful. Please check your order status. '
             );
     }

@@ -224,9 +224,11 @@ class StripeWebhookController extends Controller
                 ),
             ]);
 
-            $order->update([
-                'status' => 'completed',
-            ]);
+            if ($order->status === 'pending') {
+                $order->update([
+                    'status' => 'processing',
+                ]);
+            }
         });
     }
 

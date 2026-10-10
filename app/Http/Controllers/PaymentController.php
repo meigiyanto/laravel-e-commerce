@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class PaymentController extends Controller
         $order->load('payment');
 
         if (! $order->payment) {
-            abort(404, 'Data pembayaran tidak ditemukan.');
+            abort(404, 'Payment data not found.');
         }
 
         $payment = $order->payment;
@@ -51,7 +52,7 @@ class PaymentController extends Controller
                 ->route('orders.show', $order)
                 ->with(
                     'success',
-                    'Pesanan COD berhasil dibuat. Pembayaran dilakukan saat pesanan diterima.'
+                    'Order has been created successfully. Payment is made upon receipt of the order.'
                 );
         }
 
@@ -84,7 +85,7 @@ class PaymentController extends Controller
                     ->route('orders.show', $order)
                     ->with(
                         'error',
-                        'Pembayaran pesanan ini telah dibatalkan.'
+                        'This order payment has been cancelled'
                     );
             }
         }
@@ -117,37 +118,23 @@ class PaymentController extends Controller
                 $paymentIntent = PaymentIntent::create([
                     'amount' => $expectedAmount,
                     'currency' => 'idr',
-
-                    'payment_method_types' => [
-                        'card',
-                    ],
-
+                    'payment_method_types' => ['card'],
                     'description' => config('app.name') . " order {$order->order_number}",
-
                     'metadata' => [
                         'order_id' => (string) $order->id,
-
                         'order_number' => $order->order_number,
                     ],
-
                     'receipt_email' => $order->user?->email,
                 ]);
 
                 $payment->update([
                     'provider' => 'stripe',
-
                     'currency' => 'IDR',
-
                     'status' => 'pending',
-
                     'transaction_status' => $paymentIntent->status,
-
                     'stripe_payment_intent_id' => $paymentIntent->id,
-
                     'transaction_id' => $paymentIntent->id,
-
                     'gross_amount' => $order->total,
-
                     'metadata' => [
                         'stripe_payment_intent_status' => $paymentIntent->status,
                     ],
@@ -164,7 +151,7 @@ class PaymentController extends Controller
 
             abort(
                 502,
-                'Pembayaran Stripe tidak dapat disiapkan.'
+                'Stripe payments could not be set up'
             );
         } catch (Throwable $e) {
             Log::error(
@@ -177,7 +164,7 @@ class PaymentController extends Controller
 
             abort(
                 502,
-                'Pembayaran Stripe tidak dapat disiapkan.'
+                'Stripe payments could not be set up.'
             );
         }
 
@@ -219,7 +206,7 @@ class PaymentController extends Controller
 
         if (! $order->payment) {
             return response()->json([
-                'message' => 'Data pembayaran tidak ditemukan.',
+                'message' => ' Payment data could not be found ',
             ], 404);
         }
 
@@ -262,7 +249,7 @@ class PaymentController extends Controller
                 !== $paymentIntent->id
             ) {
                 return response()->json([
-                    'message' => 'PaymentIntent tidak sesuai dengan pesanan.',
+                    'message' => 'PaymentIntent does not match the order',
                 ], 409);
             }
 
@@ -301,7 +288,7 @@ class PaymentController extends Controller
                 return response()->json([
                     'success' => false,
                     'status' => 'canceled',
-                    'message' => 'Pembayaran dibatalkan.',
+                    'message' => 'Payment canceled .',
                 ]);
             }
 
@@ -309,7 +296,7 @@ class PaymentController extends Controller
                 'success' => false,
                 'status' => $payment->status,
                 'payment_intent_status' => $paymentIntent->status,
-                'message' => 'Pembayaran belum berhasil diselesaikan.',
+                'message' => 'Payment has not been completed successfully ',
             ], 422);
 
         } catch (ApiErrorException $e) {
@@ -322,7 +309,7 @@ class PaymentController extends Controller
             );
 
             return response()->json([
-                'message' => 'Pembayaran tidak dapat diverifikasi.',
+                'message' => 'Payment could not be verified '
             ], 502);
         } catch (Throwable $e) {
             Log::error(
@@ -334,7 +321,7 @@ class PaymentController extends Controller
             );
 
             return response()->json([
-                'message' => 'Pembayaran tidak dapat diverifikasi.',
+                'message' => 'Payment could not be verified ',
             ], 500);
         }
     }
@@ -465,8 +452,7 @@ class PaymentController extends Controller
             );
 
             abort(
-                409,
-                'PaymentIntent tidak sesuai dengan pesanan.'
+                409, 'PaymentIntent does not match the order'
             );
         }
 
@@ -498,8 +484,7 @@ class PaymentController extends Controller
             );
 
             abort(
-                409,
-                'Nominal pembayaran tidak sesuai dengan pesanan.'
+                409,'The payment amount does not match the order.'
             );
         }
     }
@@ -518,84 +503,90 @@ class PaymentController extends Controller
             $payment,
             $paymentIntent
         ) {
-            $payment->lockForUpdate();
-            $order->lockForUpdate();
+            // Kunci baris database yang sebenarnya.
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            /*
-             * Jangan downgrade payment yang sudah succeeded.
-             */
-            if ($payment->status === 'succeeded') {
-                return;
-            }
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            /*
-             * SUCCESS
-             */
+            // Pastikan pembayaran memang milik pesanan ini.
             if (
-                $paymentIntent->status === 'succeeded'
+                (int) $lockedPayment->order_id
+                !== (int) $lockedOrder->id
             ) {
-                $payment->update([
-                    'provider' => 'stripe',
-
-                    'stripe_payment_intent_id' => $paymentIntent->id,
-
-                    'transaction_id' => $paymentIntent->id,
-
-                    'currency' => strtoupper(
-                        $paymentIntent->currency
-                    ),
-
-                    'status' => 'succeeded',
-
-                    'transaction_status' => $paymentIntent->status,
-
-                    'gross_amount' => $order->total,
-
-                    'paid_at' => $payment->paid_at ?? now(),
-
-                    'metadata' => [
-                        'stripe_payment_intent_status' => $paymentIntent->status,
-                    ],
-                ]);
-
-                /*
-                 * Order baru boleh menjadi processing
-                 * setelah Payment berhasil diverifikasi.
-                 */
-                $order->update([
-                    'status' => 'completed',
-                ]);
-
-                return;
-            }
-
-            /*
-             * CANCELED
-             */
-            if (
-                $paymentIntent->status === 'canceled'
-            ) {
-                $this->cancelOrder(
-                    $order,
-                    $payment,
-                    'canceled',
-                    $paymentIntent
+                throw new \RuntimeException(
+                    'Payment tidak sesuai dengan pesanan.'
                 );
             }
 
-            /*
-             * PaymentIntent dengan status lain
-             * tetap pending.
-             */
-            $payment->update([
-                'transaction_status' => $paymentIntent->status,
+            // Jangan menurunkan status pembayaran yang sudah berhasil.
+            if ($lockedPayment->status === 'succeeded') {
+                return;
+            }
 
-                'metadata' => [
-                    'stripe_payment_intent_status' => $paymentIntent->status,
-                ],
+            // SUCCESS
+            if ($paymentIntent->status === 'succeeded') {
+                $lockedPayment->update([
+                    'provider' => 'stripe',
+                    'stripe_payment_intent_id' => $paymentIntent->id,
+                    'transaction_id' => $paymentIntent->id,
+                    'currency' => strtoupper(
+                        $paymentIntent->currency
+                    ),
+                    'status' => 'succeeded',
+                    'transaction_status' => $paymentIntent->status,
+                    'gross_amount' => $lockedOrder->total,
+                    'paid_at' => $lockedPayment->paid_at ?? now(),
+                    'metadata' => array_merge(
+                        $lockedPayment->metadata ?? [],
+                        [
+                            'stripe_payment_intent_status'
+                                => $paymentIntent->status,
+                        ]
+                    ),
+                ]);
+
+                // Hanya pesanan pending yang berubah menjadi processing.
+                if ($lockedOrder->status === 'pending') {
+                    $lockedOrder->update([
+                        'status' => 'processing',
+                    ]);
+                }
+
+                return;
+            }
+
+            // CANCELED
+            if ($paymentIntent->status === 'canceled') {
+                $this->cancelOrder(
+                    $lockedOrder,
+                    $lockedPayment,
+                    'canceled',
+                    $paymentIntent
+                );
+
+                return;
+            }
+
+            // Status PaymentIntent lainnya tidak menurunkan status payment.
+            $lockedPayment->update([
+                'transaction_status' => $paymentIntent->status,
+                'metadata' => array_merge(
+                    $lockedPayment->metadata ?? [],
+                    [
+                        'stripe_payment_intent_status'
+                            => $paymentIntent->status,
+                    ]
+                ),
             ]);
         });
     }
+
 
     private function cancelOrder(
         Order $order,
@@ -604,20 +595,26 @@ class PaymentController extends Controller
         PaymentIntent $paymentIntent
     ): void {
         /*
-         * Method ini dipanggil ketika sudah berada
-         * di dalam transaksi syncPaymentIntent().
-         *
-         * Karena lock sudah diperoleh di caller,
-         * kita tidak membuka transaksi kedua.
+         * Jangan memproses pembatalan pembayaran berulang.
          */
-
         if (
             in_array(
                 $payment->status,
-                [
-                    'failed',
-                    'canceled',
-                ],
+                ['failed', 'canceled'],
+                true
+            )
+        ) {
+            return;
+        }
+
+        /*
+         * Pesanan yang sudah dikirim atau selesai tidak boleh
+         * dibatalkan oleh notifikasi pembayaran yang terlambat.
+         */
+        if (
+            in_array(
+                $order->status,
+                ['shipped', 'completed'],
                 true
             )
         ) {
@@ -626,13 +623,19 @@ class PaymentController extends Controller
 
         $payment->update([
             'status' => $status,
-
             'transaction_status' => $paymentIntent->status,
-
             'metadata' => [
                 'stripe_payment_intent_status' => $paymentIntent->status,
             ],
         ]);
+
+        /*
+         * Jika pesanan sudah dibatalkan sebelumnya, sinkronkan
+         * status pembayaran saja. Jangan kembalikan stok lagi.
+         */
+        if ($order->status === 'canceled') {
+            return;
+        }
 
         $order->update([
             'status' => 'canceled',
@@ -641,12 +644,9 @@ class PaymentController extends Controller
         $order->load('items');
 
         foreach ($order->items as $item) {
-            $product =
-                Product::whereKey(
-                    $item->product_id
-                )
-                    ->lockForUpdate()
-                    ->first();
+            $product = Product::whereKey($item->product_id)
+                ->lockForUpdate()
+                ->first();
 
             if ($product) {
                 $product->increment(

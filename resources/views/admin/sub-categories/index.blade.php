@@ -36,79 +36,81 @@
 
     <div class="card card-bordered">
         <div class="card card-inner">
-            <table class="table table-bordered table-striped datatable-init">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th>Slug</th>
-                        <th>Category</th>
-                        <th>Products</th>
-                        <th class="no-sort">Actions</th>
-                    </tr>
-                </thead>
+            @if($subCategories->isEmpty())
+                <div class="text-center text-soft py-4">
+                    No sub-category yet.
+                </div>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped datatable-init">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Slug</th>
+                                <th>Category</th>
+                                <th>Products</th>
+                                <th class="no-sort">Actions</th>
+                            </tr>
+                        </thead>
 
-                <tbody>
-                    @foreach($subCategories as $subCategory)
-                        <tr>
-                            <td>
-                                {{ $loop->iteration }}
-                            </td>
+                        <tbody>
+                            @foreach($subCategories as $subCategory)
+                                <tr>
+                                    <td>
+                                        {{ $loop->iteration }}
+                                    </td>
 
-                            <td>
-                                <strong>
-                                    {{ $subCategory->name }}
-                                </strong>
-                            </td>
+                                    <td>
+                                        <strong>
+                                            {{ $subCategory->name }}
+                                        </strong>
+                                    </td>
 
-                            <td>
-                                {{ $subCategory->slug }}
-                            </td>
+                                    <td>
+                                        {{ $subCategory->slug }}
+                                    </td>
 
-                            <td>
-                                {{ $subCategory->category?->name ?? '-' }}
-                            </td>
+                                    <td>
+                                        {{ $subCategory->category?->name ?? '-' }}
+                                    </td>
 
-                            <td>
-                                {{ $subCategory->products()->count() }}
-                            </td>
+                                    <td>
+                                        {{ $subCategory->products()->count() }}
+                                    </td>
 
-                            <td>
-                                <div class="btn-group">
-                                    <a
-                                        href="{{ route('admin.sub-categories.edit', $subCategory) }}"
-                                        class="btn btn-secondary"
-                                    >
-                                        Edit
-                                    </a>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a
+                                                href="{{ route('admin.sub-categories.edit', $subCategory) }}"
+                                                class="btn btn-secondary"
+                                            >
+                                                Edit
+                                            </a>
 
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.sub-categories.destroy', $subCategory) }}"
-                                        onsubmit="return confirm('Hapus sub-category ini?')"
-                                    >
-                                        @csrf
-                                        @method('DELETE')
+                                            <form
+                                                method="POST"
+                                                action="{{ route('admin.sub-categories.destroy', $subCategory) }}"
+                                                onsubmit="return confirm('Hapus sub-category ini?')"
+                                            >
+                                                @csrf
+                                                @method('DELETE')
 
-                                        <button
-                                            type="submit"
-                                            class="btn btn-danger"
-                                        >
-                                            Delete
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-danger"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
-
-        @if($subCategories->isEmpty())
-            <div class="text-center text-soft py-4">
-                Belum ada sub-category.
-            </div>
-        @endif
     </div>
 @endsection

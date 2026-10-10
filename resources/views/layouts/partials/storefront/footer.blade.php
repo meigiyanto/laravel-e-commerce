@@ -180,19 +180,19 @@
 
                         <div class="store-payment-icons justify-content-md-end">
 
-                            <span class="store-payment-icon">
+                            <span class="store-footer-payment-icon">
                                 <i class="bi bi-credit-card"></i>
                             </span>
 
-                            <span class="store-payment-icon">
+                            <span class="store-footer-payment-icon">
                                 <i class="bi bi-wallet2"></i>
                             </span>
 
-                            <span class="store-payment-icon">
+                            <span class="store-footer-payment-icon">
                                 <i class="bi bi-bank"></i>
                             </span>
 
-                            <span class="store-payment-icon">
+                            <span class="store-footer-payment-icon">
                                 <i class="bi bi-shield-check"></i>
                             </span>
 

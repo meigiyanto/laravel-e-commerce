@@ -6,7 +6,7 @@
     <div class="auth-header">
         <span class="auth-eyebrow text-center">E-Commerce Store</span>
         <h1 class="text-center">Create your account</h1>
-        <p class="text-center">Buat akun baru untuk mulai berbelanja.</p>
+        <p class="text-center">Create a new account to start shopping </p>
     </div>
 
     <form
@@ -21,7 +21,7 @@
                 for="name"
                 class="form-label"
             >
-                Nama
+                Name
             </label>
 
             <input
@@ -32,7 +32,7 @@
                 required
                 autocomplete="name"
                 class="form-input"
-                placeholder="Nama lengkap"
+                placeholder="Full Name"
             >
             @error('name')
                 <p class="form-error">
@@ -57,7 +57,7 @@
                 required
                 autocomplete="username"
                 class="form-input"
-                placeholder="nama@email.com"
+                placeholder="name@email.com"
             >
 
             @error('email')
@@ -81,10 +81,10 @@
                 id="password"
                 type="password"
                 name="password"
-                required
                 autocomplete="new-password"
                 class="form-input"
-                placeholder="Minimal 8 karakter"
+                placeholder="At least 8 character"
+                required
             >
 
             @error('password')
@@ -101,17 +101,17 @@
                 for="password_confirmation"
                 class="form-label"
             >
-                Konfirmasi Password
+                Password Confirmation
             </label>
 
             <input
                 id="password_confirmation"
                 type="password"
                 name="password_confirmation"
-                required
                 autocomplete="new-password"
                 class="form-input"
-                placeholder="Ulangi password"
+                placeholder="Confirmation password"
+                required
             >
 
             @error('password_confirmation')
@@ -126,14 +126,14 @@
             type="submit"
             class="btn btn-block btn-primary btn-full"
         >
-            Buat akun
+            Create account
         </button>
 
     </form>
 
 
     <div class="auth-footer">
-        <span>Sudah punya akun?</span>
+        <span>Already have an account?</span>
         <a
             href="{{ route('login') }}"
             class="auth-link"

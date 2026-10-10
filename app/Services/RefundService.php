@@ -16,6 +16,76 @@ class RefundService
         protected MidtransService $midtrans,
     ) {}
 
+
+    /**
+     * Membuat permintaan refund idempoten ketika pembayaran
+     * berhasil setelah pesanan dibatalkan.
+     *
+     * Refund hanya dibuat untuk ditinjau admin.
+     * Pemanggilan API provider tetap melalui process().
+     */
+    public function requestLateCanceledOrderRefund(
+        Order $order,
+        Payment $payment
+    ): ?Refund {
+        return DB::transaction(function () use ($order, $payment) {
+            // Gunakan urutan lock yang konsisten.
+            $lockedOrder = Order::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Hanya kasus pembayaran sukses pada pesanan batal.
+            if (
+                $lockedOrder->status !== 'canceled'
+                || $lockedPayment->status !== 'succeeded'
+            ) {
+                return null;
+            }
+
+            // Satu kunci tetap untuk satu pembayaran.
+            $idempotencyKey =
+                'late-canceled-order-payment-'.$lockedPayment->id;
+
+            $existingRefund = Refund::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->first();
+
+            if ($existingRefund) {
+                return $existingRefund;
+            }
+
+            // Jangan melebihi nominal yang masih bisa direfund.
+            $amount = $this->refundableAmount($lockedPayment);
+
+            if ($amount <= 0) {
+                return null;
+            }
+
+            return Refund::create([
+                'order_id' => $lockedOrder->id,
+                'payment_id' => $lockedPayment->id,
+                'amount' => $amount,
+                'currency' => $lockedPayment->currency ?? 'IDR',
+                'reason' => 'Pembayaran berhasil setelah pesanan dibatalkan.',
+                'status' => Refund::STATUS_REQUESTED,
+                'provider' => $lockedPayment->provider,
+                'idempotency_key' => $idempotencyKey,
+                'requested_at' => now(),
+                'metadata' => [
+                    'source' => 'late_payment_after_order_cancellation',
+                    'automatic' => true,
+                    'order_number' => $lockedOrder->order_number,
+                ],
+            ]);
+        });
+    }
+
     /**
      * Mengajukan refund berdasarkan payment yang sudah berhasil.
      */

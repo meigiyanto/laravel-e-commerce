@@ -111,7 +111,7 @@
                             'processing' => 'store-order-status-processing',
                             'shipped' => 'store-order-status-shipped',
                             'completed' => 'store-order-status-completed',
-                            'cancelled' => 'store-order-status-cancelled',
+                            'canceled' => 'store-order-status-canceled',
                             default => 'store-order-status-default',
                         };
 
@@ -120,7 +120,7 @@
                             'processing' => 'Processing',
                             'shipped' => 'Shipped',
                             'completed' => 'Completed',
-                            'cancelled' => 'Cancelled',
+                            'canceled' => 'canceled',
                             default => ucfirst($order->status),
                         };
 

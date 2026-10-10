@@ -95,10 +95,10 @@
                             @error('sub_category_id')
                                 <span class="error-text">{{ $message }}</span>
                             @enderror
-                        </div
+                        </div>
                     </div>
                 </div>
-                </div>
+
                 <div class="form-group">
                     <label for="name">Product Name</label>
                     <input

@@ -63,7 +63,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'user',
+            'role' => User::ROLE_CUSTOMER,
         ]);
 
         event(new Registered($user));
@@ -81,6 +81,6 @@ class RegisteredUserController extends Controller
         /*
          * Regular users always enter the regular dashboard.
          */
-        return redirect()->route('dashboard');
+        return redirect()->route('verification.notice');
     }
 }

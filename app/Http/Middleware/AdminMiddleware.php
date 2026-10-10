@@ -13,7 +13,7 @@ class AdminMiddleware
         Closure $next
     ): Response {
         if (! $request->user()) {
-            return redirect()->route('login');
+            return redirect()->guest(route('admin.login'));
         }
 
         if (! $request->user()->isAdmin()) {

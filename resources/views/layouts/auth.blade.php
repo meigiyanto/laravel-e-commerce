@@ -28,44 +28,31 @@
         <aside class="auth-panel auth-panel-promo">
             <div class="auth-promo">
                 <span class="auth-promo-badge">ONLINE STORE</span>
-                <h2>Belanja lebih mudah, cepat, dan nyaman.</h2>
-                <p>
-                    Kelola akun, temukan produk favorit,
-                    dan nikmati pengalaman berbelanja
-                    yang sederhana dalam satu tempat.
-                </p>
+                <h2>Shopping is easier, faster and more convenient.</h2>
+                <p>Manage your account, find your favorite products, and enjoy a simple shopping experience all in one place.</p>
 
                 <div class="auth-promo-list">
                     <div class="auth-promo-item">
                         <span class="auth-promo-icon">✓</span>
                         <div>
-                            <strong>Produk pilihan</strong>
-                            <small>
-                                Temukan produk yang sesuai
-                                kebutuhan Anda.
-                            </small>
+                            <strong>Selected products</strong>
+                            <small>Find the product that suits your needs.</small>
                         </div>
                     </div>
 
                     <div class="auth-promo-item">
                         <span class="auth-promo-icon">✓</span>
                         <div>
-                            <strong>Checkout mudah</strong>
+                            <strong>Easy Checkout</strong>
 
-                            <small>
-                                Proses pesanan dengan alur
-                                yang sederhana.
-                            </small>
+                            <small>Order process with simple flow.</small>
                         </div>
                     </div>
                     <div class="auth-promo-item">
                         <span class="auth-promo-icon">✓</span>
                         <div>
-                            <strong>Akun aman</strong>
-                            <small>
-                                Data akun dikelola melalui
-                                autentikasi Laravel.
-                            </small>
+                            <strong>Safe Account</strong>
+                            <small>Account data is managed through Laravel authentication.</small>
                         </div>
                     </div>
 

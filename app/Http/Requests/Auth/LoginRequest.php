@@ -83,4 +83,31 @@ class LoginRequest extends FormRequest
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
     }
+
+    /**
+     * Authenticate an administrator only.
+     *
+     * @throws ValidationException
+     */
+    public function authenticateAdmin(): void
+    {
+        $this->ensureIsNotRateLimited();
+
+        $credentials = $this->only('email', 'password');
+        $credentials['role'] = 'admin';
+
+        if (! Auth::attempt(
+            $credentials,
+            $this->boolean('remember')
+        )) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => trans('auth.failed'),
+            ]);
+        }
+
+        RateLimiter::clear($this->throttleKey());
+    }
+
 }

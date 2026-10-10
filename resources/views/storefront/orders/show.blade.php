@@ -75,7 +75,7 @@
                     'processing' => 'store-order-status-processing',
                     'shipped' => 'store-order-status-shipped',
                     'completed' => 'store-order-status-completed',
-                    'cancelled' => 'store-order-status-cancelled',
+                    'canceled' => 'store-order-status-canceled',
                     default => 'store-order-status-default',
                 };
 
@@ -84,7 +84,7 @@
                     'processing' => 'Processing',
                     'shipped' => 'Shipped',
                     'completed' => 'Completed',
-                    'cancelled' => 'Cancelled',
+                    'canceled' => 'canceled',
                     default => ucfirst($order->status),
                 };
             @endphp
@@ -153,9 +153,9 @@
             @endphp
 
 
-            @if ($order->status === 'cancelled')
+            @if ($order->status === 'canceled')
 
-                <div class="store-order-cancelled-state">
+                <div class="store-order-canceled-state">
 
                     <span>
                         <i class="bi bi-x-circle"></i>
@@ -163,11 +163,11 @@
 
                     <div>
                         <strong>
-                            Order Cancelled
+                            Order canceled
                         </strong>
 
                         <p>
-                            This order has been cancelled.
+                            This order has been canceled.
                         </p>
                     </div>
 

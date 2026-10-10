@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\Refund;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -43,6 +44,25 @@ class MidtransNotificationTest extends TestCase
             'test-server-key'
         );
 
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->once()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
         $response = $this->postJson(
             route('payment.midtrans.notification'),
             [
@@ -72,7 +92,7 @@ class MidtransNotificationTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
-            'status' => 'completed',
+            'status' => 'processing',
         ]);
     }
 
@@ -301,6 +321,25 @@ class MidtransNotificationTest extends TestCase
             ),
         ];
 
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->twice()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
         $firstResponse = $this->postJson(
             route('payment.midtrans.notification'),
             $payload
@@ -312,7 +351,7 @@ class MidtransNotificationTest extends TestCase
         $order->refresh();
 
         $this->assertSame('succeeded', $payment->status);
-        $this->assertSame('completed', $order->status);
+        $this->assertSame('processing', $order->status);
 
         $firstPaidAt = $payment->paid_at;
 
@@ -327,11 +366,249 @@ class MidtransNotificationTest extends TestCase
         $order->refresh();
 
         $this->assertSame('succeeded', $payment->status);
-        $this->assertSame('completed', $order->status);
+        $this->assertSame('processing', $order->status);
 
         $this->assertSame(
             $firstPaidAt?->format('Y-m-d H:i:s'),
             $payment->paid_at?->format('Y-m-d H:i:s')
         );
+    }
+
+    public function test_midtrans_pending_notification_does_not_downgrade_expired_payment(): void
+    {
+        [$order, $payment] = $this->createPendingMidtransPayment();
+
+        $payment->update([
+            'status' => 'expired',
+        ]);
+
+        Config::set('midtrans.server_key', 'test-server-key');
+
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->once()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'pending',
+                    'status_code' => '201',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                ]);
+        });
+
+        $response = $this->postJson(
+            route('payment.midtrans.notification'),
+            [
+                'order_id' => $order->order_number,
+                'status_code' => '201',
+                'gross_amount' => '100000.00',
+                'signature_key' => hash(
+                    'sha512',
+                    $order->order_number
+                    .'201'
+                    .'100000.00'
+                    .'test-server-key'
+                ),
+            ]
+        );
+
+        $response->assertSuccessful();
+
+        $this->assertSame('expired', $payment->fresh()->status);
+    }
+
+    public function test_midtrans_success_on_canceled_order_requests_only_one_refund(): void
+    {
+        [$order, $payment] = $this->createPendingMidtransPayment();
+
+        $order->update([
+            'status' => 'canceled',
+        ]);
+
+        $payment->update([
+            'status' => 'canceled',
+        ]);
+
+        Config::set('midtrans.server_key', 'test-server-key');
+
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('verifyNotification')
+                ->twice()
+                ->andReturn(true);
+
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
+        $payload = [
+            'order_id' => $order->order_number,
+            'transaction_id' => 'MIDTRANS-TEST-123',
+            'transaction_status' => 'settlement',
+            'fraud_status' => 'accept',
+            'status_code' => '200',
+            'gross_amount' => '100000.00',
+            'payment_type' => 'bank_transfer',
+            'signature_key' => hash(
+                'sha512',
+                $order->order_number
+                .'200'
+                .'100000.00'
+                .'test-server-key'
+            ),
+        ];
+
+        // Notifikasi pertama: pembayaran terlambat berhasil.
+        $this->postJson(
+            route('payment.midtrans.notification'),
+            $payload
+        )->assertSuccessful();
+
+        $this->assertSame(
+            'canceled',
+            $order->fresh()->status
+        );
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $idempotencyKey =
+            'late-canceled-order-payment-'.$payment->id;
+
+        $this->assertDatabaseHas('refunds', [
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'status' => Refund::STATUS_REQUESTED,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
+        $this->assertSame(
+            1,
+            Refund::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->count()
+        );
+
+        // Notifikasi kedua: tidak boleh membuat refund duplikat.
+        $this->postJson(
+            route('payment.midtrans.notification'),
+            $payload
+        )->assertSuccessful();
+
+        $this->assertSame(
+            'canceled',
+            $order->fresh()->status
+        );
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            1,
+            Refund::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->count()
+        );
+    }
+
+
+    public function test_midtrans_confirm_does_not_downgrade_expired_payment(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'pending',
+            'total' => 100000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'expired',
+            'gross_amount' => 100000,
+        ]);
+
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'pending',
+                    'status_code' => '201',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-EXPIRED-TEST',
+                ]);
+        });
+
+        $this->postJson(
+            route('payment.midtrans.confirm', $order),
+            []
+        );
+
+        $this->assertSame('expired', $payment->fresh()->status);
+    }
+
+    public function test_midtrans_confirm_does_not_reactivate_canceled_order(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'canceled',
+            'total' => 100000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'canceled',
+            'gross_amount' => 100000,
+        ]);
+
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('getStatus')
+                ->once()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => 'settlement',
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-CANCELED-TEST',
+                    'fraud_status' => 'accept',
+                ]);
+        });
+
+        $this->postJson(
+            route('payment.midtrans.confirm', $order),
+            []
+        );
+
+        $this->assertSame('canceled', $order->fresh()->status);
     }
 }

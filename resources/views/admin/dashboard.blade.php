@@ -19,7 +19,7 @@
 
     <div class="nk-block">
         <div class="row g-gs">
-            <div class="col-sm-6 col-md-3 col-lg-3">
+            <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -46,7 +46,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-md-3 col-lg-3">
+            <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -76,7 +76,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-md-3 col-lg-3">
+            <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">
@@ -102,7 +102,7 @@
                 </div>
             </div>
 
-            <div class="col-sm-6 col-md-3 col-lg-3">
+            <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card card-bordered">
                     <div class="card-inner">
                         <div class="card-title-group align-start mb-0">

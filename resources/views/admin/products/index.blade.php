@@ -9,7 +9,7 @@
             <div class="nk-block-head-content">
                 <h3 class="nk-block-title page-title">Products</h3>
                 <div class="nk-block-des text-soft">
-                    <p>Kelola produk toko.</p>
+                    <p>Lists of all product</p>
                     @if(session('success'))
                         <div class="alert alert-success">
                             {{ session('success') }}
@@ -35,7 +35,12 @@
     <div class="card card-bordered">
         <div class="card-inner">
 
-            <div>
+        @if($products->isEmpty())
+            <div class="text-center text-soft py-4">
+                 No product yet.
+            </div>
+        @else
+            <div class="table-responsive">
                 <table class="table table-bordered table-striped datatable-init">
                     <thead>
                         <tr>
@@ -120,12 +125,7 @@
                     </tbody>
                 </table>
             </div>
-
-            @if($products->isEmpty())
-                <div class="text-center text-soft py-4">
-                    Belum ada product.
-                </div>
-            @endif
+        @endif
 
         </div>
     </div>

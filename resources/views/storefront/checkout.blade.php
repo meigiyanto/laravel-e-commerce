@@ -285,17 +285,8 @@
                             </span>
 
                             <span class="store-payment-content">
-
-                                <strong>
-                                    Stripe
-                                </strong>
-
-                                <small>
-                                    Bayar secara online menggunakan kartu
-                                    atau metode pembayaran yang tersedia
-                                    di Stripe.
-                                </small>
-
+                                <strong>Stripe</strong>
+                                <small>Pay online using a card or payment method available on stripe</small>
                             </span>
 
                             <span class="store-payment-check">
@@ -326,16 +317,8 @@
                             </span>
 
                             <span class="store-payment-content">
-
-                                <strong>
-                                    Midtrans
-                                </strong>
-
-                                <small>
-                                    Gunakan berbagai metode pembayaran
-                                    yang tersedia melalui Midtrans.
-                                </small>
-
+                                <strong>Midtrans</strong>
+                                <small>Use various payment methods available through Midtrans.</small>
                             </span>
 
                             <span class="store-payment-check">
@@ -366,15 +349,8 @@
                             </span>
 
                             <span class="store-payment-content">
-
-                                <strong>
-                                    Cash on Delivery
-                                </strong>
-
-                                <small>
-                                    Bayar ketika pesanan diterima.
-                                </small>
-
+                                <strong>Cash on Delivery</strong>
+                                <small>Pay when order is received</small>
                             </span>
 
                             <span class="store-payment-check">

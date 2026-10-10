@@ -22,12 +22,11 @@
                     class="store-mobile-user"
                     data-bs-toggle="dropdown"
                     aria-expanded="false"
-                    aria-label="Akun"
-                    title="Akun"
+                    aria-label="Account"
+                    title="Account"
                 >
                     <i class="bi bi-person-circle" aria-hidden="true"></i>
                 </button>
-
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
 
                     @auth
@@ -53,26 +52,6 @@
                             >
                                 <i class="bi bi-speedometer2"></i>
                                 Account
-                            </a>
-                        </li>
-
-                        <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('profile.edit') }}"
-                            >
-                                <i class="bi bi-person"></i>
-                                My Profile
-                            </a>
-                        </li>
-
-                        <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('orders.index') }}"
-                            >
-                                <i class="bi bi-bag"></i>
-                                My Order
                             </a>
                         </li>
 

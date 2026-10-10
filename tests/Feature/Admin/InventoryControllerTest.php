@@ -15,7 +15,7 @@ class InventoryControllerTest extends TestCase
     {
         $response = $this->get(route('admin.inventory.index'));
 
-        $response->assertRedirect(route('login'));
+        $response->assertRedirect(route('admin.login'));
     }
 
     public function test_non_admin_cannot_access_inventory(): void

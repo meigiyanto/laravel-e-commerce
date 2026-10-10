@@ -31,6 +31,7 @@ class Refund extends Model
         'status',
         'provider',
         'reference_id',
+        'idempotency_key',
         'requested_at',
         'processing_at',
         'processed_at',
