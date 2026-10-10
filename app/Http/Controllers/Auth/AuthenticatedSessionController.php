@@ -12,51 +12,26 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Cart service.
-     */
     public function __construct(
         protected CartService $cartService
     ) {
     }
 
-    /**
-     * Display the login view.
-     */
     public function create(): View
     {
         return view('auth.login');
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
-        /*
-         * Regenerate the session after successful authentication
-         * to prevent session fixation attacks.
-         */
         $request->session()->regenerate();
 
-        /*
-         * Merge the guest cart into the authenticated user's
-         * database cart.
-         *
-         * This allows products added before login to remain
-         * available after authentication.
-         */
         $this->cartService->mergeGuestCartIntoUserCart(
             $request->user()->id
         );
 
-        /*
-         * Admin users go to the admin dashboard.
-         * Regular users go to the customer account.
-         */
-        if ($request->user()->isAdmin()) {
+        if ($request->user()->isAdmin() || $request->user()->isStaff()) {
             return redirect()->intended(
                 route('admin.dashboard', absolute: false)
             );
@@ -65,12 +40,8 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(
             route('account.index', absolute: false)
         );
-
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         $wasAdmin = $request->user()?->isAdmin() ?? false;
@@ -85,24 +56,17 @@ class AuthenticatedSessionController extends Controller
             : redirect()->route('login');
     }
 
-    /**
-     * Display the administrator login view.
-     */
     public function createAdmin(): View
     {
         return view('auth.admin-login');
     }
 
-    /**
-     * Authenticate an administrator.
-     */
     public function storeAdmin(LoginRequest $request): RedirectResponse
     {
         $request->authenticateAdmin();
-
         $request->session()->regenerate();
 
         return redirect()->route('admin.dashboard');
     }
-
 }
+
