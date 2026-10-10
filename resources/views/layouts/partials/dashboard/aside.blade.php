@@ -39,7 +39,6 @@
                             <span class="nk-menu-text">Dashboard</span>
                         </a>
                     </li>
-
                     <li class="nk-menu-heading">
                         <h6 class="overline-title text-primary-alt">
                             Catalog
@@ -54,7 +53,6 @@
                             <span class="nk-menu-text">Products</span>
                         </a>
                     </li>
-
                     <li class="nk-menu-item {{ request()->routeIs('admin.categories.index') ? 'active' : '' }}">
                         <a href="{{ route('admin.categories.index') }}" class="nk-menu-link">
                             <span class="nk-menu-icon">
@@ -63,8 +61,7 @@
                             <span class="nk-menu-text">Categories</span>
                         </a>
                     </li>
-
-                    <li class="nk-menu-item">
+                    <li class="nk-menu-item {{ request()->routeIs('admin.sub-categories.index') ? 'active' : '' }}">
                         <a
                             href="{{ route('admin.sub-categories.index') }}"
                             class="nk-menu-link"
@@ -77,8 +74,7 @@
                             </span>
                         </a>
                     </li>
-
-                    <li class="nk-menu-item">
+                    <li class="nk-menu-item {{ request()->routeIs('admin.inventory.index') ? 'active' : '' }}">
                         <a
                             href="{{ route('admin.inventory.index') }}"
                             class="nk-menu-link"
@@ -98,8 +94,7 @@
                         </h6>
 
                     </li>
-
-                    <li class="nk-menu-item">
+                    <li class="nk-menu-item {{ request()->routeIs('admin.orders.index') ? 'active' : '' }}">
 
                         <a
                             href="{{ route('admin.orders.index') }}"
@@ -113,7 +108,7 @@
                             </span>
                         </a>
                     </li>
-                    <li class="nk-menu-item">
+                    <li class="nk-menu-item {{ request()->routeIs('admin.refunds.index') ? 'active' : '' }}">
                         <a
                             href="{{ route('admin.refunds.index') }}"
                             class="nk-menu-link"
@@ -132,7 +127,7 @@
                         </h6>
 
                     </li>
-                    <li class="nk-menu-item">
+                    <li class="nk-menu-item {{ request()->routeIs('admin.users.index') ? 'active' : '' }}">
                         <a
                             href="{{ route('admin.users.index') }}"
                             class="nk-menu-link"

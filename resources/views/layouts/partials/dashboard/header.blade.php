@@ -6,7 +6,7 @@
             </div>
 
             <div class="nk-header-brand d-xl-none">
-                <a href="{{ url('/admin/dashboard') }}" class="logo-link">
+                <a href="{{ route('admin.dashboard') }}" class="logo-link">
                     <img class="logo-light logo-img" src="{{ asset('/images/logo.png') }}" alt="logo">
                     <img class="logo-dark logo-img" src="{{ asset('/images/logo-dark.png') }}" alt="logo-dark">
                 </a>
