@@ -5264,9 +5264,7 @@ body.store-mobile-drawer-open {
   .store-cart-summary {
     position: static;
   }
-}
 
-@media (max-width: 767.98px) {
   .store-checkout-progress {
     padding: .75rem;
   }
