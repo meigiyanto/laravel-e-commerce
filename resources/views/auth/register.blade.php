@@ -81,10 +81,10 @@
                 id="password"
                 type="password"
                 name="password"
-                required
                 autocomplete="new-password"
                 class="form-input"
                 placeholder="At least 8 character"
+                required
             >
 
             @error('password')
@@ -108,9 +108,10 @@
                 id="password_confirmation"
                 type="password"
                 name="password_confirmation"
-                required
+                autocomplete="new-password"
                 class="form-input"
                 placeholder="Confirmation password"
+                required
             >
 
             @error('password_confirmation')
