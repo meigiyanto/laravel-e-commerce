@@ -20,7 +20,7 @@ class RefundControllerTest extends TestCase
         );
 
         $response->assertRedirect(
-            route('login')
+            route('admin.login')
         );
     }
 

@@ -4,18 +4,31 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate([
-            'name' => 'Administrator',
-            'email' => 'denmasgie0@gmail.com',
-            'password' => Hash::make('password123'),
-            'role' => 'admin',
-            'email_verified_at' => now(),
-        ]);
+        $email = env('ADMIN_EMAIL', 'admin@example.com');
+        $password = env('ADMIN_PASSWORD');
+
+        if (blank($password)) {
+            $this->command?->warn(
+                'AdminSeeder skipped: set ADMIN_PASSWORD (and optionally ADMIN_EMAIL) in .env to create the administrator account.'
+            );
+
+            return;
+        }
+
+        User::updateOrCreate(
+            ['email' => $email],
+            [
+                'name' => 'Administrator',
+                // User's hashed cast hashes this value exactly once.
+                'password' => $password,
+                'role' => User::ROLE_ADMIN,
+                'email_verified_at' => now(),
+            ]
+        );
     }
 }
