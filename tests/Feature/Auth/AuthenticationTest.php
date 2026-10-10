@@ -113,5 +113,17 @@ class AuthenticationTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_admin_logout_clears_authentication_and_redirects_to_admin_login(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
 
+        $response = $this->actingAs($admin)
+            ->post('/logout');
+
+        $this->assertGuest();
+
+        $response->assertRedirect(route('admin.login'));
+    }
 }

@@ -106,13 +106,13 @@
                                     </li>
                                 @endif
                                     <li>
-                                        <a href="{{ url('admin/profile') }}">
+                                        <a href="{{ url('admin.profile') }}">
                                             <em class="icon ni ni-user-alt"></em>
                                             <span>View Profile</span>
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="{{ url('admin/profile') }}">
+                                        <a href="{{ url('admin.profile') }}">
                                             <em class="icon ni ni-setting-alt"></em>
                                             <span>Account Setting</span>
                                         </a>

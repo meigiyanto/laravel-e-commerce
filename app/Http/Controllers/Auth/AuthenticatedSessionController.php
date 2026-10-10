@@ -73,22 +73,16 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $wasAdmin = $request->user()?->isAdmin() ?? false;
+
         Auth::guard('web')->logout();
 
-        /*
-         * Completely invalidate the current session.
-         */
         $request->session()->invalidate();
-
-        /*
-         * Generate a new CSRF token.
-         */
         $request->session()->regenerateToken();
 
-        /*
-         * Send the user back to login.
-         */
-        return redirect()->route('login');
+        return $wasAdmin
+            ? redirect()->route('admin.login')
+            : redirect()->route('login');
     }
 
     /**
