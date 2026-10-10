@@ -171,13 +171,9 @@
                                 Filter
                             </button>
                         @if($search || $stockStatus)
-                            <button
-                                type="submit"
-                                class="btn btn-outline-primary w-50 mx-1"
-                                onclick="window.location.href='{{ route('admin.inventory.index') }}'"
-                            >
+                            <a class="btn btn-outline-primary w-50 mx-1" href="{{ route('admin.inventory.index') }}">
                                 Reset
-                            </button>
+                            </a>
                         @endif
                         </div>
                     </div>
