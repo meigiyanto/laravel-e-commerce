@@ -9,12 +9,10 @@
             <div class="nk-block-head-content">
                 <h3 class="nk-block-title page-title">User Role Management</h3>
                 <div class="nk-block-des text-soft">
-                    <p>Kelola hak akses pengguna. Hanya Admin yang dapat membuka halaman ini dan mengubah role.</p>
+                    <p>Manage user access role. Only admins can access this page and change roles.</p>
                 </div>
             </div>
-            <div class="nk-block-head-content">
-                <span class="badge bg-primary">{{ $users->total() }} pengguna</span>
-            </div>
+
         </div>
     </div>
 
@@ -48,7 +46,7 @@
                     <div class="align-end flex-sm-wrap g-4 flex-md-nowrap">
                         <div>
                             <span class="amount">{{ $roleCounts['staff'] }}</span>
-                            <span class="sub-title"> Operasional toko</span>
+                            <span class="sub-title"> Operational Store</span>
                         </div>
                     </div>
                 </div>
@@ -66,7 +64,7 @@
                     <div class="align-end flex-sm-wrap g-4 flex-md-nowrap">
                         <div>
                             <span class="amount">{{ $roleCounts['customer'] }}</span>
-                            <span class="sub-title"> Pelanggan toko</span>
+                            <span class="sub-title"> Store subscriptions</span>
                         </div>
                     </div>
                 </div>
@@ -77,11 +75,11 @@
     <div class="card card-bordered">
         <div class="card-inner border-bottom">
             <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 align-items-end">
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label class="form-label" for="user-search">Cari pengguna</label>
                     <input id="user-search" type="search" name="search" value="{{ $search }}" class="form-control" placeholder="Nama atau email">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label" for="user-role-filter">Filter role</label>
                     <select id="user-role-filter" name="role" class="form-select">
                         <option value="">Semua role</option>
@@ -90,7 +88,7 @@
                         <option value="customer" @selected($role === 'customer')>Customer</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
+                <div class="col-md-3">
                     <button type="submit" class="btn btn-primary">Filter</button>
                     <a href="{{ route('admin.users.index') }}" class="btn btn-outline-light">Reset</a>
                 </div>
@@ -102,20 +100,22 @@
                 <table class="table table-hover mb-2 datatable-init">
                     <thead>
                         <tr>
-                            <th scope="col">Pengguna</th>
-                            <th scope="col">Role saat ini</th>
-                            <th scope="col">Terdaftar</th>
-                            <th scope="col" style="min-width: 290px">Ubah role</th>
+                            <th>#</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Current Role</th>
+                            <th scope="col">Registered At</th>
+                            <th scope="col" style="min-width: 290px">Change Role</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($users as $user)
                             <tr>
+                                <td></td>
                                 <td class="align-middle">
                                     <div class="fw-bold">{{ $user->name }}</div>
                                     <div class="text-soft small">{{ $user->email }}</div>
                                     @if (auth()->id() === $user->id)
-                                        <span class="badge bg-outline-primary mt-1">Akun Anda</span>
+                                        <span class="badge bg-outline-primary mt-1">Your Account</span>
                                     @endif
                                 </td>
                                 <td class="align-middle">
@@ -134,37 +134,35 @@
                                         @csrf
                                         @method('PATCH')
                                         <label class="visually-hidden" for="role-{{ $user->id }}">Role untuk {{ $user->name }}</label>
-                                        <select id="role-{{ $user->id }}" name="role" class="form-select form-select-sm" style="max-width: 145px" required>
+                                        <select id="role-{{ $user->id }}" name="role" class="form-select form-select-sm" style="max-width: 145px" required {{ (auth()->id() === $user->id) ? 'disabled' : '' }}>
                                             <option value="admin" @selected($currentRole === 'admin')>Admin</option>
                                             <option value="staff" @selected($currentRole === 'staff')>Staff</option>
                                             <option value="customer" @selected($currentRole === 'customer')>Customer</option>
                                         </select>
-                                        <button type="submit" class="btn btn-sm btn-primary" @disabled(auth()->id() === $user->id)>Simpan</button>
-                                    </form>
-                                    @if (auth()->id() === $user->id)
-                                        <small class="text-soft d-block mt-1">Role akun sendiri tidak dapat diubah.</small>
+                                    @if (auth()->id() !== $user->id)
+                                        <button type="submit" class="btn btn-sm btn-primary" @disabled(auth()->id() === $user->id)>Save</button>
                                     @endif
+                                    </form>
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="text-center text-soft py-5">Tidak ada pengguna yang cocok dengan filter.</td></tr>
+                            <tr>
+                                <td colspan="4" class="text-center text-soft py-5">No users matched the filter.</td>
+                                </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-        @if ($users->hasPages())
-            <div class="card-inner border-top">{{ $users->links() }}</div>
-        @endif
     </div>
 
     <div class="card card-bordered mt-3">
         <div class="card-inner">
             <h6 class="title mb-2">Ringkasan hak akses</h6>
             <ul class="list list-sm list-checked">
-                <li><strong>Admin:</strong> akses penuh, termasuk pengelolaan pengguna dan role.</li>
-                <li><strong>Staff:</strong> dashboard operasional, produk, kategori, inventaris, pesanan, dan refund; tanpa pengelolaan akun/role.</li>
-                <li><strong>Customer:</strong> berbelanja, checkout, melihat pesanan sendiri, wishlist, ulasan, dan profil.</li>
+                <li><strong>Admin:</strong> full access, including user and role management.</li>
+                <li><strong>Staff:</strong>Operational dashboard for products, categories, inventory, orders, and refunds. No account/role management</li>
+                <li><strong>Customer:</strong> Shopping, checkout, view own orders, wishlist, reviews, and profile.</li>
             </ul>
         </div>
     </div>
