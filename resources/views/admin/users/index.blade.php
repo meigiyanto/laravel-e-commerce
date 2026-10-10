@@ -76,13 +76,13 @@
         <div class="card-inner border-bottom">
             <form method="GET" action="{{ route('admin.users.index') }}" class="row g-2 align-items-end">
                 <div class="col-md-5">
-                    <label class="form-label" for="user-search">Cari pengguna</label>
+                    <label class="form-label" for="user-search">Search User</label>
                     <input id="user-search" type="search" name="search" value="{{ $search }}" class="form-control" placeholder="Nama atau email">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label" for="user-role-filter">Filter role</label>
+                    <label class="form-label" for="user-role-filter">Filter Role</label>
                     <select id="user-role-filter" name="role" class="form-select">
-                        <option value="">Semua role</option>
+                        <option value="">All Role</option>
                         <option value="admin" @selected($role === 'admin')>Admin</option>
                         <option value="staff" @selected($role === 'staff')>Staff</option>
                         <option value="customer" @selected($role === 'customer')>Customer</option>
@@ -158,7 +158,7 @@
 
     <div class="card card-bordered mt-3">
         <div class="card-inner">
-            <h6 class="title mb-2">Ringkasan hak akses</h6>
+            <h6 class="title mb-2">Role Access Summary</h6>
             <ul class="list list-sm list-checked">
                 <li><strong>Admin:</strong> full access, including user and role management.</li>
                 <li><strong>Staff:</strong>Operational dashboard for products, categories, inventory, orders, and refunds. No account/role management</li>
