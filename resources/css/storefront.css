@@ -1944,12 +1944,12 @@ textarea.store-form-control {
   align-items: center;
   gap: .65rem;
   color: var(--store-muted);
-  font-size: .78rem;
+  font-size: 1.5rem;
 }
 
 .product-trust-list i {
   color: var(--store-primary-dark);
-  font-size: 1rem;
+  font-size: 1.5rem;
 }
 
 .product-information-section {
