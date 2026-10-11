@@ -110,7 +110,7 @@
                     <tbody>
                         @forelse ($users as $user)
                             <tr>
-                                <td></td>
+                                <td>{{ $loop->iteration }}</td>
                                 <td class="align-middle">
                                     <div class="fw-bold">{{ $user->name }}</div>
                                     <div class="text-soft small">{{ $user->email }}</div>

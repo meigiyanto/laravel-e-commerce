@@ -14,9 +14,8 @@ class DatabaseSeeder extends Seeder
             SubCategorySeeder::class,
             ProductSeeder::class,
             AdditionalCatalogSeeder::class,
-            ProductSpecificationSeeder::class,
+            DemoCatalogSeeder::class,
             ReviewSeeder::class,
-            DemoCatalogSeeder::class
         ]);
     }
 }

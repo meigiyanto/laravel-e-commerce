@@ -11,6 +11,7 @@ use App\Models\Review;
 use App\Models\SubCategory;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -760,22 +761,28 @@ class DemoCatalogSeeder extends Seeder
 
             $productModels[$data['name']] = $product;
 
+            $this->seedDefaultVariantAndInventory($product, (int) $data['stock']);
+
             ProductSpecification::where('product_id', $product->id)->delete();
 
-            $sortOrder = 0;
-
             foreach ($data['specifications'] as $group => $specifications) {
+                $sortOrder = 0;
+
                 foreach ($specifications as $name => $value) {
-                    ProductSpecification::create([
-                        'product_id' => $product->id,
-                        'specification_group' => $group,
-                        'specification_name' => $name,
-                        'specification_value' => $value,
-                        'sort_order' => $sortOrder++,
-                    ]);
+                    ProductSpecification::updateOrCreate(
+                        [
+                            'product_id' => $product->id,
+                            'specification_group' => $group,
+                            'specification_name' => $name,
+                        ],
+                        [
+                            'specification_value' => $value,
+                            'sort_order' => $sortOrder++,
+                        ]
+                    );
                 }
             }
-        }
+
 
         /*
         |--------------------------------------------------------------------------
@@ -883,9 +890,105 @@ class DemoCatalogSeeder extends Seeder
             }
         }
 
+}
+
+
         $this->command->info('Demo catalog successfully created.');
         $this->command->info('Products: ' . count($productModels));
         $this->command->info('Customers: ' . $customers->count());
         $this->command->info('Reviews: ' . (count($productModels) * $customers->count()));
+    }
+
+    /**
+     * Pastikan setiap produk memiliki varian dan inventaris.
+     *
+     * SKU dibuat stabil. Inventaris yang sudah ada tidak ditimpa
+     * agar proses seeding ulang tidak mereset stok yang berjalan.
+     */
+    private function seedDefaultVariantAndInventory(Product $product, int $initialStock): void {
+        DB::transaction(function () use ($product, $initialStock): void {
+            // Utamakan varian default yang sudah ada.
+            $variant = DB::table('product_variants')
+                ->where('product_id', $product->id)
+                ->where('is_default', true)
+                ->first();
+
+            // Jika produk sudah mempunyai varian lain, gunakan varian pertama.
+            if (! $variant) {
+                $variant = DB::table('product_variants')
+                    ->where('product_id', $product->id)
+                    ->orderBy('id')
+                    ->first();
+            }
+
+            // Buat satu varian default hanya jika produk belum memiliki varian.
+            if (! $variant) {
+                $sku = 'DEMO-' . Str::upper(
+                    Str::slug($product->slug, '-')
+                );
+
+                // Jangan mengambil alih SKU milik produk lain.
+                $skuOwner = DB::table('product_variants')
+                    ->where('sku', $sku)
+                    ->first();
+
+                if ($skuOwner && (int) $skuOwner->product_id !== (int) $product->id) {
+                    throw new \RuntimeException(
+                        "SKU [{$sku}] sudah digunakan oleh produk lain."
+                    );
+                }
+
+                $now = now();
+
+                $variantId = DB::table('product_variants')->insertGetId([
+                    'product_id' => $product->id,
+                    'sku' => $sku,
+                    'name' => 'Default',
+                    'price' => $product->price,
+                    'compare_at_price' => null,
+                    'cost_price' => null,
+                    'weight' => null,
+                    'is_default' => true,
+                    'status' => 'active',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                $variant = DB::table('product_variants')
+                    ->where('id', $variantId)
+                    ->first();
+            }
+
+            // Jangan reset kuantitas jika inventaris sudah tersedia.
+            $inventoryExists = DB::table('inventories')
+                ->where('product_variant_id', $variant->id)
+                ->exists();
+
+            if (! $inventoryExists) {
+                $quantity = max(0, $initialStock);
+                $now = now();
+
+                DB::table('inventories')->insert([
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $quantity,
+                    'reserved_quantity' => 0,
+                    'reorder_level' => 0,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                // Catat stok awal satu kali, saat inventaris dibuat.
+                DB::table('inventory_movements')->insert([
+                    'product_variant_id' => $variant->id,
+                    'type' => 'opening',
+                    'quantity' => $quantity,
+                    'reference_type' => 'seeder',
+                    'reference_id' => $product->id,
+                    'note' => 'Stok awal demo dari DemoCatalogSeeder.',
+                    'created_by' => null,
+                    'created_at' => $now,
+                ]);
+            }
+        });
     }
 }

@@ -154,40 +154,23 @@
 
 
             @if ($order->status === 'canceled')
-
                 <div class="store-order-canceled-state">
-
                     <span>
                         <i class="bi bi-x-circle"></i>
                     </span>
 
                     <div>
-                        <strong>
-                            Order canceled
-                        </strong>
-
-                        <p>
-                            This order has been canceled.
-                        </p>
+                        <strong>Order canceled</strong>
+                        <p>This order has been canceled.</p>
                     </div>
-
                 </div>
-
             @else
-
                 <div class="store-order-timeline">
-
                     @foreach ($statusSteps as $statusKey => $step)
-
                         @php
-                            $stepNumber =
-                                $statusOrder[$statusKey];
-
-                            $isCompleted =
-                                $currentStep >= $stepNumber;
-
-                            $isCurrent =
-                                $currentStep === $stepNumber;
+                            $stepNumber = $statusOrder[$statusKey];
+                            $isCompleted = $currentStep >= $stepNumber;
+                            $isCurrent = $currentStep === $stepNumber;
                         @endphp
 
                         <div
@@ -203,15 +186,10 @@
                             <span class="store-order-timeline-label">
                                 {{ $step['label'] }}
                             </span>
-
                         </div>
-
                     @endforeach
-
                 </div>
-
             @endif
-
         </div>
 
 
@@ -243,33 +221,13 @@
 
 
                     <div class="store-order-products">
-
                         @foreach ($order->items as $item)
-
                             <article class="store-order-product">
-
                                 <div class="store-order-product-image">
-
                                     @if ($item->product?->image)
-
                                         @php
-                                            $image =
-                                                $item->product->image;
-
-                                            $imageUrl =
-                                                filter_var(
-                                                    $image,
-                                                    FILTER_VALIDATE_URL
-                                                )
-                                                    ? $image
-                                                    : (
-                                                        Storage::disk('public')
-                                                            ->exists($image)
-                                                            ? asset(
-                                                                'storage/' . $image
-                                                            )
-                                                            : null
-                                                    );
+                                            $image = $item->product->image;
+                                            $imageUrl = filter_var($image, FILTER_VALIDATE_URL) ? $image : (Storage::disk('public')->exists($image) ? asset('storage/' . $image) : null);
                                         @endphp
 
                                         @if ($imageUrl)
@@ -281,52 +239,27 @@
                                             >
 
                                         @else
-
                                             <span>
                                                 <i class="bi bi-image"></i>
                                             </span>
-
                                         @endif
-
                                     @else
-
                                         <span>
                                             <i class="bi bi-image"></i>
                                         </span>
-
                                     @endif
-
                                 </div>
 
-
                                 <div class="store-order-product-content">
-
                                     <div class="store-order-product-main">
-
-                                        <h3>
-                                            {{ $item->product_name }}
-                                        </h3>
-
-                                        <span>
-                                            Rp {{ number_format($item->price, 0, ',', '.') }}
-                                            ×
-                                            {{ $item->quantity }}
-                                        </span>
-
+                                        <h3>{{ $item->product_name }}</h3>
+                                        <span>Rp {{ number_format($item->price, 0, ',', '.') }} × {{ $item->quantity }}</span>
                                     </div>
 
 
                                     <div class="store-order-product-total">
-
-                                        <strong>
-                                            Rp {{ number_format($item->subtotal, 0, ',', '.') }}
-                                        </strong>
-
-                                        @if (
-                                            $order->status === 'completed'
-                                            && $item->product
-                                        )
-
+                                        <strong>Rp {{ number_format($item->subtotal, 0, ',', '.') }}</strong>
+                                        @if ($order->status === 'completed' && $item->product)
                                             <a
                                                 href="{{ route('storefront.product', $item->product->slug) }}#review"
                                                 class="store-order-review-button"
@@ -334,185 +267,101 @@
                                                 <i class="bi bi-star"></i>
                                                 Review
                                             </a>
-
                                         @endif
-
                                     </div>
-
                                 </div>
-
                             </article>
-
                         @endforeach
-
                     </div>
-
                 </div>
 
 
                 {{-- SHIPPING --}}
                 <div class="store-order-panel">
-
                     <div class="store-order-panel-header">
-
                         <div>
-                            <h2>
-                                Shipping Information
-                            </h2>
-
-                            <p>
-                                Delivery details for this order.
-                            </p>
+                            <h2>Shipping Information</h2>
+                            <p>Delivery details for this order.</p>
                         </div>
-
                         <i class="bi bi-geo-alt"></i>
-
                     </div>
 
 
                     <div class="store-order-shipping">
-
                         <div class="store-order-shipping-item">
-
                             <span>
                                 <i class="bi bi-person"></i>
                             </span>
 
                             <div>
-                                <small>
-                                    Recipient
-                                </small>
-
-                                <strong>
-                                    {{ $order->customer_name }}
-                                </strong>
+                                <small>Recipient</small>
+                                <strong>{{ $order->customer_name }}</strong>
                             </div>
 
                         </div>
 
 
                         <div class="store-order-shipping-item">
-
                             <span>
                                 <i class="bi bi-telephone"></i>
                             </span>
 
                             <div>
-                                <small>
-                                    Phone
-                                </small>
-
-                                <strong>
-                                    {{ $order->phone }}
-                                </strong>
+                                <small>Phone</small>
+                                <strong>{{ $order->phone }}</strong>
                             </div>
-
                         </div>
 
-
                         <div class="store-order-shipping-item">
-
                             <span>
                                 <i class="bi bi-geo-alt"></i>
                             </span>
 
                             <div>
-                                <small>
-                                    Shipping Address
-                                </small>
-
-                                <strong>
-                                    {{ $order->shipping_address }}
-                                </strong>
+                                <small>Shipping Address</small>
+                                <strong>{{ $order->shipping_address }}</strong>
                             </div>
-
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
 
 
             {{-- RIGHT --}}
             <div class="col-lg-4">
-
                 <aside class="store-order-summary">
-
                     <div class="store-order-summary-header">
-
-                        <h2>
-                            Order Summary
-                        </h2>
-
+                        <h2>Order Summary</h2>
                         <i class="bi bi-receipt"></i>
-
                     </div>
 
-
                     <div class="store-order-summary-body">
-
                         <div class="store-order-summary-row">
-                            <span>
-                                Products
-                            </span>
-
-                            <strong>
-                                Rp {{ number_format($order->subtotal, 0, ',', '.') }}
-                            </strong>
+                            <span>Products</span>
+                            <strong>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</strong>
                         </div>
 
-
                         <div class="store-order-summary-row">
-                            <span>
-                                Shipping
-                            </span>
-
-                            <strong>
-                                Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}
-                            </strong>
+                            <span>Shipping</span>
+                            <strong>Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</strong>
                         </div>
-
 
                         <div class="store-order-summary-divider"></div>
 
-
                         <div class="store-order-summary-total">
-
-                            <span>
-                                Total
-                            </span>
-
-                            <strong>
-                                Rp {{ number_format($order->total, 0, ',', '.') }}
-                            </strong>
-
+                            <span>Total</span>
+                            <strong>Rp {{ number_format($order->total, 0, ',', '.') }}</strong>
                         </div>
 
-
                         @if ($order->payment)
-
                             <div class="store-order-payment-status">
-
-                                <span>
-                                    Payment
-                                </span>
-
-                                <strong>
-                                    {{ ucfirst($order->payment->status) }}
-                                </strong>
-
+                                <span>Payment</span>
+                                <strong>{{ ucfirst($order->payment->status) }}</strong>
                             </div>
-
                         @endif
 
 
-                        @if (
-                            $order->status === 'completed'
-                            && $order->payment
-                            && $order->payment->status === 'succeeded'
-                        )
+                        @if ($order->status === 'completed' && $order->payment && $order->payment->status === 'succeeded')
 
                             <form
                                 method="POST"
@@ -541,11 +390,8 @@
                                     <i class="bi bi-arrow-counterclockwise"></i>
                                     Request Refund
                                 </button>
-
                             </form>
-
                         @endif
-
 
                         <a
                             href="{{ route('storefront.shop') }}"
@@ -554,17 +400,10 @@
                             <i class="bi bi-bag"></i>
                             Continue Shopping
                         </a>
-
                     </div>
-
                 </aside>
-
             </div>
-
         </div>
-
     </div>
-
 </section>
-
 @endsection

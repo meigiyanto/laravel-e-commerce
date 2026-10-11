@@ -81,4 +81,14 @@ class Product extends Model
             ->orderBy('specification_group')
             ->orderBy('sort_order');
     }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
+    }
 }

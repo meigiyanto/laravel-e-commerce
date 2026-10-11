@@ -85,27 +85,18 @@
 
                                 <td>
                                     <div class="btn-group">
-                                        <!-- <a
+                                        <a
                                             href="{{ route('admin.products.edit', $product) }}"
                                             class="btn btn-sm btn-secondary"
                                             title="Edit"
                                         >
                                             <em class="ni ni-edit"></em>
-                                        </a> -->
-
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-secondary"
-                                            title="Edit"
-                                            onclick="window.location.href='{{ route('admin.products.edit', $product) }}'"
-                                        >
-                                            <em class="ni ni-edit"></em>
-                                        </button>
+                                        </a>
 
                                         <form
                                             method="POST"
                                             action="{{ route('admin.products.destroy', $product) }}"
-                                            onsubmit="return confirm('Hapus product ini?')"
+                                            onsubmit="return confirm('Are you sure want to delete this product?')"
                                         >
                                             @csrf
                                             @method('DELETE')
