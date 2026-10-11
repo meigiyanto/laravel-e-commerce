@@ -10,17 +10,6 @@
                 <h3 class="nk-block-title page-title">Edit Category</h3>
                 <div class="nk-block-des text-soft">
                     <p>Update Category Prodct</p>
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-error">
-                            {{ session('error') }}
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -41,7 +30,7 @@
                 @method('PUT')
     
                 <div class="form-group">
-                    <label for="name">Nama Kategori</label>
+                    <label for="name">Category Name</label>
     
                     <input
                         id="name"
@@ -72,11 +61,29 @@
                         <small class="error-text">{{ $message }}</small>
                     @enderror
                 </div>
+
+                <div class="form-group">
+                    <label for="image">Image</label>
+    
+                    <input
+                        id="image"
+                        class="form-control"
+                        type="text"
+                        name="image"
+                        value="{{ old('image', $category->image) }}"
+                    >
+    
+                    @error('image')
+                        <small class="error-text">{{ $message }}</small>
+                    @enderror
+                    <span>{{ $category->image }}</span>
+                </div>
     
                 <div class="form-group">
-                    <label for="description">Deskripsi</label>
+                    <label for="description">Description</label>
     
                     <textarea
+                        class="form-control"
                         id="description"
                         name="description"
                         rows="5"

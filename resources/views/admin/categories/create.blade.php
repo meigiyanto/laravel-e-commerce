@@ -1,7 +1,6 @@
 @extends('layouts.admin')
 
 @section('title', 'Add Category')
-
 @section('header', 'Add Category')
 
 @section('content')
@@ -11,17 +10,6 @@
                 <h3 class="nk-block-title page-title">Add Category</h3>
                 <div class="nk-block-des text-soft">
                     <p>Add New Category</p>
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-error">
-                            {{ session('error') }}
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -39,10 +27,10 @@
         <div class="card-inner">
             <form method="POST" action="{{ route('admin.categories.store') }}">
                 @csrf
-    
+
                 <div class="form-group">
-                    <label for="name">Nama Kategori</label>
-    
+                    <label for="name">Category Name</label>
+
                     <input
                         id="name"
                         class="form-control"
@@ -51,12 +39,12 @@
                         value="{{ old('name') }}"
                         required
                     >
-    
+
                     @error('name')
                         <small class="error-text">{{ $message }}</small>
                     @enderror
                 </div>
-    
+
                 <div class="form-group">
                     <label for="slug">Slug</label>
     
@@ -73,7 +61,20 @@
                         <small class="error-text">{{ $message }}</small>
                     @enderror
                 </div>
+
+                <div class="form-group">
+                    <label for="image">Image</label>
     
+                    <input
+                        id="image"
+                        class="form-control"
+                        type="text"
+                        name="image"
+                        value="{{ old('image') }}">
+                    @error('image')
+                        <small class="error-text">{{ $message }}</small>
+                    @enderror
+                </div>
                 <div class="form-group">
                     <label for="description">Deskripsi</label>
     

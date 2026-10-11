@@ -2098,16 +2098,6 @@ textarea.store-form-control {
   font-weight: 800;
 }
 
-.specification-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 30%) 1fr;
-  border-bottom: 1px solid var(--store-border);
-}
-
-.specification-row:last-child {
-  border-bottom: 0;
-}
-
 .specification-name {
   padding: .85rem 1rem;
   background: #fafafa;
@@ -2121,15 +2111,6 @@ textarea.store-form-control {
   color: var(--store-dark);
   font-size: .84rem;
   line-height: 1.6;
-}
-
-.specification-row:hover .specification-name {
-  background: #fff9e6;
-  color: var(--store-dark);
-}
-
-.specification-row:hover .specification-value {
-  background: #fffdf5;
 }
 
 .review-summary {

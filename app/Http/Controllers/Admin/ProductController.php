@@ -34,14 +34,9 @@ class ProductController extends Controller
             'values' => function ($query) {
                 $query->orderBy('sort_order');
             },
-        ])
-            ->orderBy('sort_order')
-            ->get();
+        ])->orderBy('sort_order')->get();
 
-        return view(
-            'admin.products.create',
-            compact('categories', 'attributes')
-        );
+        return view('admin.products.create', compact('categories', 'attributes'));
     }
 
     public function store(Request $request)

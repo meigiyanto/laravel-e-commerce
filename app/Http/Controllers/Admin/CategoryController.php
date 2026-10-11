@@ -57,6 +57,7 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
+        dd($request->image);
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -73,14 +74,13 @@ class CategoryController extends Controller
             'description' => ['nullable', 'string'],
         ]);
 
-        $validated['slug'] = $validated['slug']
-            ?: Str::slug($validated['name']);
+        $validated['slug'] = $validated['slug'] ?: Str::slug($validated['name']);
 
         $category->update($validated);
 
         return redirect()
             ->route('admin.categories.index')
-            ->with('success', 'Kategori berhasil diperbarui.');
+            ->with('success', 'Category has been updated successfully');
     }
 
     public function destroy(Category $category)

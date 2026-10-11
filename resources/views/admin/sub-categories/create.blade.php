@@ -10,17 +10,6 @@
                 <h3 class="nk-block-title page-title">Add Sub Categories</h3>
                 <div class="nk-block-des text-soft">
                     <p>Create New Sub Category Product</p>
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-error">
-                            {{ session('error') }}
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -91,6 +80,20 @@
                         <span class="error-text">{{ $message }}</span>
                     @enderror
                 </div>
+
+                <div class="form-group">
+                    <label for="image">Image</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="image"
+                        name="image"
+                        value="{{ old('image') }}">
+                    @error('image')
+                        <span class="error-text">{{ $message }}</span>
+                    @enderror
+                </div>
+
                 <div class="form-group">
                     <label for="description">Description</label>
                     <textarea

@@ -1,0 +1,462 @@
+@extends('layouts.admin')
+
+@section('title', 'Add Product')
+@section('header', 'Add Product')
+
+@section('content')
+<div class="nk-block-head nk-block-head-sm">
+    <div class="nk-block-between">
+        <div class="nk-block-head-content">
+            <h3 class="nk-block-title page-title">Add Produk</h3>
+            <p class="text-soft">
+                Manage product information, specifications, variants, and inventory.
+            </p>
+        </div>
+        <div class="nk-block-head-content">
+            <a href="{{ route('admin.products.index') }}"
+               class="btn btn-outline-primary">
+                Go back
+            </a>
+        </div>
+    </div>
+</div>
+
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <strong>Double-check the following input:</strong>
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+{{--
+@php
+    $specificationRows = old(
+        'specifications',
+        $product->specifications->map(fn ($spec) => [
+            'id' => $spec->id,
+            'specification_group' => $spec->specification_group,
+            'specification_name' => $spec->specification_name,
+            'specification_value' => $spec->specification_value,
+            'sort_order' => $spec->sort_order,
+        ])->values()->all()
+    );
+@endphp
+--}}
+
+<div class="card card-bordered">
+    <div class="card-inner">
+        <form method="POST"
+              action="{{ route('admin.products.store') }}"
+              enctype="multipart/form-data">
+            @csrf
+
+            <h5>1. Product Informatio</h5>
+
+            <div class="form-group">
+                <label for="name">Product Name *</label>
+                <input class="form-control" id="name" name="name"
+                       value="{{ old('name') }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="slug">Slug</label>
+                <input class="form-control" id="slug" name="slug"
+                       value="{{ old('slug') }}">
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+
+                    <div class="form-group">
+                        <label for="category_id">Kategori *</label>
+                        <select class="form-control" id="category_id"
+                                name="category_id" required>
+                            <option value="">Select category</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}"
+                                    @selected(old('category_id') == $category->id)>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+        
+                    <div class="form-group">
+                        <label for="sub_category_id">Subkategori *</label>
+                        <select class="form-control" id="sub_category_id"
+                                name="sub_category_id" required>
+                            <option value="">Select subcategory</option>
+                            @foreach ($categories as $category)
+                                @foreach ($category->subCategories as $subCategory)
+                                    <option value="{{ $subCategory->id }}"
+                                            data-category="{{ $category->id }}"
+                                        @selected(old('sub_category_id') == $subCategory->id)>
+                                        {{ $category->name }} — {{ $subCategory->name }}
+                                    </option>
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="5">{{ old('description') }}</textarea>
+            </div>
+
+            <hr>
+            <div class="d-flex justify-content-between align-items-center">
+                <h5>2. Product Specifications</h5>
+            </div>
+
+            <p class="text-soft">Descriptive specifications such as screen resolution, materials, or processor type. The SKU is not part of the specifications.</p>
+
+            <div id="specifications-container">
+                <table class="table table-hover table-striped nowrap">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Group</th>
+                            <th>Specification Name</th>
+                            <th>Value</th>
+                            <th>Order</th>
+                            <th>
+                                <button type="button" class="btn btn-outline-secondary" id="add-specification">
+                                    <em class="ni ni-plus"></em>
+                                </button>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($specificationRows as $index => $spec)
+                            @if (!empty($spec['id']))
+                                <input type="hidden" name="specifications[{{ $index }}][id]" value="{{ $spec['id'] }}">
+                            @endif
+                            <tr class="specification-item">
+                                <td>
+                                    <input type="checkbox" value="" class="spec-input">
+                                </td>
+                                <td>
+                                    <div class="form-group">
+                                        <input class="form-control" name="specifications[{{ $index }}][specification_group]" value="{{ $spec['specification_group'] ?? '' }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-group">
+                                        <input class="form-control" name="specifications[{{ $index }}][specification_name]" value="{{ $spec['specification_name'] ?? '' }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-group">
+                                        <input class="form-control" name="specifications[{{ $index }}][specification_value]" value="{{ $spec['specification_value'] ?? '' }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="form-group">
+                                        <input class="form-control" name="specifications[{{ $index }}][sort_order]" value="{{ $spec['sort_order'] ?? '' }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-outline-danger remove-specification">
+                                        <em class="ni ni-trash"></em>
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>
+                                <input type="checkbox" value="" id="check-all">
+                            </td>
+                            <td colspan="5">
+                                <button type="button" class="btn btn-danger">
+                                    <em class="ni ni-trash"></em>
+                                    Delete Selected
+                                </button>
+                            </td>
+                        <tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <hr>
+            <h5>3. Variants, SKUs, and Inventory</h5>
+            <p class="text-soft">
+                The changes below apply to existing variants. Stock cannot be lower than the reserved quantity.
+            </p>
+
+            @forelse ($product->variants as $variant)
+                @php
+                    $variantKey = $variant->id;
+                    $oldVariant = old("variants.$variantKey", []);
+                    $selectedValueIds = $oldVariant['attribute_value_ids'] ?? $variant->attributeValues->pluck('id')->all();
+                    $inventory = $variant->inventory;
+                @endphp
+
+            <div class="border rounded p-3 mb-4">
+                <input type="hidden" name="variants[{{ $variantKey }}][id]" value="{{ $variant->id }}">
+                <h6>Varian #{{ $variant->id }}
+                    @if ($variant->is_default)
+                        <span class="badge badge-primary">Default</span>
+                    @endif
+                </h6>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Variant Name</label>
+                            <input class="form-control" name="variants[{{ $variantKey }}][name]" value="{{ old("variants.$variantKey.name", $variant->name) }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>SKU *</label>
+                            <input class="form-control" name="variants[{{ $variantKey }}][sku]" value="{{ old("variants.$variantKey.sku", $variant->sku) }}" required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Barcode</label>
+                            <input class="form-control" name="variants[{{ $variantKey }}][barcode]" value="{{ old("variants.$variantKey.barcode", $variant->barcode) }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Selling price *</label>
+                            <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][price]" value="{{ old("variants.$variantKey.price", $variant->price) }}" required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Price Before Discount</label>
+                            <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][compare_at_price]" value="{{ old("variants.$variantKey.compare_at_price", $variant->compare_at_price) }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Capital price</label>
+                            <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][cost_price]" value="{{ old("variants.$variantKey.cost_price", $variant->cost_price) }}">
+                        </div>
+                    <dfiv>
+                </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Weight (kg)</label>
+                            <input type="number" min="0" step="0.001" class="form-control" name="variants[{{ $variantKey }}][weight]" value="{{ old("variants.$variantKey.weight", $variant->weight) }}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select class="form-control" name="variants[{{ $variantKey }}][status]" required>
+                                <option value="active" @selected(old("variants.$variantKey.status", $variant->status) === 'active')>Active</option>
+                                <option value="inactive" @selected(old("variants.$variantKey.status", $variant->status) === 'inactive')>Non-active</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <h6>Variant Attributes</h6>
+                <p class="text-soft">Select a maximum of one value for each attribute.</p>
+
+                @foreach ($attributes as $attribute)
+                    <div class="form-group">
+                        <label for="attribute-{{ $variantKey }}-{{ $attribute->id }}">{{ $attribute->name }}</label>
+                        <select class="form-control variant-attribute"
+                                id="attribute-{{ $variantKey }}-{{ $attribute->id }}"
+                                data-attribute-id="{{ $attribute->id }}"
+                                name="variants[{{ $variantKey }}][attribute_value_ids][]">
+                            <option value="">Not selected</option>
+                            @foreach ($attribute->values as $value)
+                                <option value="{{ $value->id }}"
+                                        data-attribute-id="{{ $attribute->id }}"
+                                    @selected(in_array($value->id, $selectedValueIds))>
+                                    {{ $value->value }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endforeach
+
+                <h6>Inventory</h6>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Stock *</label>
+                            <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][quantity]" value="{{ old("variants.$variantKey.quantity", $inventory?->quantity ?? 0) }}" required>
+                            <small class="text-soft">
+                                Changes in stock will be recorded as inventory movements.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Reserved Stock</label>
+                            <input type="number" class="form-control" value="{{ $inventory?->reserved_quantity ?? 0 }}" readonly>
+                            <small class="text-soft">
+                                Unchanged from this form.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Minimum Stock Level *</label>
+                            <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][reorder_level]" value="{{ old("variants.$variantKey.reorder_level", $inventory?->reorder_level ?? 0) }}" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @empty
+                <div class="alert alert-warning">This product does not yet have any variants. Create a variant first before editing the SKU and inventory.</div>
+            @endforelse
+
+            <hr>
+            <h5>4. Product Image</h5>
+
+            @if ($product->images->isNotEmpty())
+                @php
+                    $productImages = $product->images;
+                    $hasLegacyImage = filled($product->image);
+                    $showLegacyImage = $productImages->isEmpty() && $hasLegacyImage;
+                @endphp
+
+                @if ($productImages->isNotEmpty() || $showLegacyImage)
+                    <div class="row mb-3">
+                        @foreach ($productImages as $image)
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-2">
+                                    <img
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $image->alt_text ?? $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
+
+                                    @if ($image->is_primary)
+                                        <small class="d-block mt-2">Main image</small>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+
+                        @if ($showLegacyImage)
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-2">
+                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
+                                    <small class="d-block mt-2">Old product image</small>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <p class="text-soft"> No images are saved for this product yet.</p>
+                @endif
+            </div>
+            @endif
+
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <div class="form-group mb-4">
+                        <label class="form-label">Current Product Image</label>
+                        @if ($product->image)
+                            <div class="mb-3">
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded border" style="width: 220px; max-height: 220px; object-fit: contain;">
+                            </div>
+                        @else
+                            <p class="text-soft">No product image yet.</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="form-group">
+                        <label for="image" class="form-label">Change Image (Optional)</label>
+                        <input type="file" name="image" id="image" class="form-control"accept="image/*">
+                        @error('image')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                        <small class="text-soft">Leave blank to keep the current image.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <div class="form-group mb-4">
+                        <label class="form-label">Current Product Image</label>
+                        @if ($product->image)
+                            <div class="mb-3">
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded border" style="width: 220px; max-height: 220px; object-fit: contain;">
+                            </div>
+                        @else
+                            <p class="text-soft">No product image yet.</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <div class="form-group">
+                        <label for="image" class="form-label">Change Image (Optional)</label>
+                        <input type="file" name="image" id="image" class="form-control"accept="image/*">
+                        @error('image')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                        <small class="text-soft">Leave blank to keep the current image.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{{ route('admin.products.index') }}"
+                   class="btn btn-secondary">
+                    Batal
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    Simpan Produk
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const category = document.getElementById('category_id');
+    const subCategory = document.getElementById('sub_category_id');
+
+    function filterSubCategories() {
+        const categoryId = category.value;
+
+        Array.from(subCategory.options).forEach(function (option) {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+
+            option.hidden = option.dataset.category !== categoryId;
+
+            if (option.hidden && option.selected) {
+                subCategory.value = '';
+            }
+        });
+    }
+
+    category.addEventListener('change', filterSubCategories);
+    filterSubCategories();
+});
+</script>
+@endsection

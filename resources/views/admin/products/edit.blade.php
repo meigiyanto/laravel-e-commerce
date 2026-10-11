@@ -13,8 +13,9 @@
             </p>
         </div>
         <div class="nk-block-head-content">
-            <a href="{{ route('admin.products.index') }}"
-               class="btn btn-outline-primary"><em class="ni ni-arrow-left"></em>Go back</a>
+            <a href="{{ route('admin.products.index') }}" class="btn btn-outline-primary">
+               <em class="ni ni-arrow-left"></em>Go back
+            </a>
         </div>
     </div>
 </div>
@@ -49,12 +50,9 @@
 
 <div class="card card-bordered">
     <div class="card-inner">
-        <form method="POST"
-              action="{{ route('admin.products.update', $product) }}"
-              enctype="multipart/form-data">
+        <form method="POST" action="{{ route('admin.products.update', $product) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
-
             <h5>1. Product Information</h5>
 
             <div class="form-group">
@@ -67,35 +65,43 @@
                 <input class="form-control" id="slug" name="slug" value="{{ old('slug', $product->slug) }}">
             </div>
 
-            <div class="form-group">
-                <label for="category_id">Category *</label>
-                <select class="form-control" id="category_id"
-                        name="category_id" required>
-                    <option value="">Pilih kategori</option>
-                    @foreach ($categories as $category)
-                        <option value="{{ $category->id }}"
-                            @selected(old('category_id', $product->category_id) == $category->id)>
-                            {{ $category->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+            <div class="row">
 
-            <div class="form-group">
-                <label for="sub_category_id">Subkategori *</label>
-                <select class="form-control" id="sub_category_id"
-                        name="sub_category_id" required>
-                    <option value="">Select a subcategory</option>
-                    @foreach ($categories as $category)
-                        @foreach ($category->subCategories as $subCategory)
-                            <option value="{{ $subCategory->id }}"
-                                data-category="{{ $category->id }}"
-                                @selected(old('sub_category_id', $product->sub_category_id) == $subCategory->id)>
-                                {{ $subCategory->name }}
-                            </option>
-                        @endforeach
-                    @endforeach
-                </select>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="category_id">Category *</label>
+                        <select class="form-control" id="category_id"
+                                name="category_id" required>
+                            <option value="">Pilih kategori</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}"
+                                    @selected(old('category_id', $product->category_id) == $category->id)>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="sub_category_id">Subcategory *</label>
+                        <select class="form-control" id="sub_category_id"
+                                name="sub_category_id" required>
+                            <option value="">Select a subcategory</option>
+                            @foreach ($categories as $category)
+                                @foreach ($category->subCategories as $subCategory)
+                                    <option value="{{ $subCategory->id }}"
+                                        data-category="{{ $category->id }}"
+                                        @selected(old('sub_category_id', $product->sub_category_id) == $subCategory->id)>
+                                        {{ $subCategory->name }}
+                                    </option>
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
             </div>
 
             <div class="form-group">
@@ -192,63 +198,77 @@
                 @endphp
 
                 <div class="border rounded p-3 mb-4">
-                    <input type="hidden"
-                           name="variants[{{ $variantKey }}][id]"
-                           value="{{ $variant->id }}">
-
-                    <h6>
-                        Varian #{{ $variant->id }}
+                    <input type="hidden" name="variants[{{ $variantKey }}][id]" value="{{ $variant->id }}">
+                    <h6>Varian #{{ $variant->id }}
                         @if ($variant->is_default)
                             <span class="badge badge-primary">Default</span>
                         @endif
                     </h6>
 
-                    <div class="form-group">
-                        <label>Variant Name</label>
-                        <input class="form-control" name="variants[{{ $variantKey }}][name]" value="{{ old("variants.$variantKey.name", $variant->name) }}">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Variant Name</label>
+                                <input class="form-control" name="variants[{{ $variantKey }}][name]" value="{{ old("variants.$variantKey.name", $variant->name) }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>SKU *</label>
+                                <input class="form-control" name="variants[{{ $variantKey }}][sku]" value="{{ old("variants.$variantKey.sku", $variant->sku) }}" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Barcode</label>
+                                <input class="form-control" name="variants[{{ $variantKey }}][barcode]" value="{{ old("variants.$variantKey.barcode", $variant->barcode) }}">
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>SKU *</label>
-                        <input class="form-control" name="variants[{{ $variantKey }}][sku]" value="{{ old("variants.$variantKey.sku", $variant->sku) }}" required>           
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Selling price *</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][price]" value="{{ old("variants.$variantKey.price", $variant->price) }}" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Price Before Discount</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][compare_at_price]" value="{{ old("variants.$variantKey.compare_at_price", $variant->compare_at_price) }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Capital price</label>
+                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][cost_price]" value="{{ old("variants.$variantKey.cost_price", $variant->cost_price) }}">
+                            </div>
+                        <dfiv>
+                    </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Barcode</label>
-                        <input class="form-control" name="variants[{{ $variantKey }}][barcode]" value="{{ old("variants.$variantKey.barcode", $variant->barcode) }}">           
-                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Weight (kg)</label>
+                                <input type="number" min="0" step="0.001" class="form-control" name="variants[{{ $variantKey }}][weight]" value="{{ old("variants.$variantKey.weight", $variant->weight) }}">
+                            </div>
+                        </div>
 
-                    <div class="form-group">
-                        <label>Selling price *</label>
-                        <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][price]" value="{{ old("variants.$variantKey.price", $variant->price) }}" required>          
-                    </div>
-
-                    <div class="form-group">
-                        <label>Price Before Discount</label>
-                        <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][compare_at_price]" value="{{ old("variants.$variantKey.compare_at_price", $variant->compare_at_price) }}">        
-                    </div>
-
-                    <div class="form-group">
-                        <label>Capital price</label>
-                        <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][cost_price]" value="{{ old("variants.$variantKey.cost_price", $variant->cost_price) }}">       
-                    </div>
-
-                    <div class="form-group">
-                        <label>Weight (kg)</label>
-                        <input type="number" min="0" step="0.001" class="form-control" name="variants[{{ $variantKey }}][weight]" value="{{ old("variants.$variantKey.weight", $variant->weight) }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Status</label>
-                        <select class="form-control" name="variants[{{ $variantKey }}][status]" required>                                
-                            <option value="active" @selected(old("variants.$variantKey.status", $variant->status) === 'active')>
-                                Active
-                            </option>
-                            <option value="inactive"
-                                @selected(old("variants.$variantKey.status", $variant->status) === 'inactive')>
-                                Non-active
-                            </option>
-                        </select>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select class="form-control" name="variants[{{ $variantKey }}][status]" required>
+                                    <option value="active" @selected(old("variants.$variantKey.status", $variant->status) === 'active')>Active</option>
+                                    <option value="inactive" @selected(old("variants.$variantKey.status", $variant->status) === 'inactive')>Non-active</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <h6>Variant Attributes</h6>
@@ -256,8 +276,7 @@
 
                     @foreach ($attributes as $attribute)
                         <div class="form-group">
-                            <label for="attribute-{{ $variantKey }}-{{ $attribute->id }}">{{ $attribute->name }}</label>                             
-                            
+                            <label for="attribute-{{ $variantKey }}-{{ $attribute->id }}">{{ $attribute->name }}</label>
                             <select class="form-control variant-attribute"
                                     id="attribute-{{ $variantKey }}-{{ $attribute->id }}"
                                     data-attribute-id="{{ $attribute->id }}"
@@ -276,141 +295,108 @@
 
                     <h6>Inventory</h6>
 
-                    <div class="form-group">
-                        <label>Stock *</label>
-                        <input type="number" min="0" class="form-control"
-                               name="variants[{{ $variantKey }}][quantity]"
-                               value="{{ old("variants.$variantKey.quantity", $inventory?->quantity ?? 0) }}"
-                               required>
-                        <small class="text-soft">
-                            Changes in stock will be recorded as inventory movements.
-                        </small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Reserved Stock</label>
-                        <input type="number" class="form-control"
-                               value="{{ $inventory?->reserved_quantity ?? 0 }}"
-                               readonly>
-                        <small class="text-soft">
-                            Unchanged from this form.
-                        </small>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Minimum Stock Level *</label>
-                        <input type="number" min="0" class="form-control"
-                               name="variants[{{ $variantKey }}][reorder_level]"
-                               value="{{ old("variants.$variantKey.reorder_level", $inventory?->reorder_level ?? 0) }}"
-                               required>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Stock *</label>
+                                <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][quantity]" value="{{ old("variants.$variantKey.quantity", $inventory?->quantity ?? 0) }}" required>
+                                <small class="text-soft">
+                                    Changes in stock will be recorded as inventory movements.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Reserved Stock</label>
+                                <input type="number" class="form-control" value="{{ $inventory?->reserved_quantity ?? 0 }}" readonly>
+                                <small class="text-soft">
+                                    Unchanged from this form.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Minimum Stock Level *</label>
+                                <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][reorder_level]" value="{{ old("variants.$variantKey.reorder_level", $inventory?->reorder_level ?? 0) }}" required>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            @empty
-                <div class="alert alert-warning">
-                    This product does not yet have any variants. Create a variant first before editing the SKU and inventory.
-                </div>
-            @endforelse
+                @empty
+                    <div class="alert alert-warning">This product does not yet have any variants. Create a variant first before editing the SKU and inventory.</div>
+                @endforelse
 
-            <hr>
-            <h5>4. Product Image</h5>
+                <hr>
+                <h5>4. Product Image</h5>
 
-            @if ($product->images->isNotEmpty())
-                @php
-                    $productImages = $product->images;
-                    $hasLegacyImage = filled($product->image);
+                @if ($product->images->isNotEmpty())
+                    @php
+                        $productImages = $product->images;
+                        $hasLegacyImage = filled($product->image);
+                        $showLegacyImage = $productImages->isEmpty() && $hasLegacyImage;
+                    @endphp
 
-                    $showLegacyImage = $productImages->isEmpty() && $hasLegacyImage;
-                @endphp
+                    @if ($productImages->isNotEmpty() || $showLegacyImage)
+                        <div class="row mb-3">
+                            @foreach ($productImages as $image)
+                                <div class="col-6 col-md-3 mb-3">
+                                    <div class="border rounded p-2">
+                                        <img
+                                            src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $image->alt_text ?? $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
 
-                @if ($productImages->isNotEmpty() || $showLegacyImage)
-                    <div class="row mb-3">
-                        @foreach ($productImages as $image)
-                            <div class="col-6 col-md-3 mb-3">
-                                <div class="border rounded p-2">
-                                    <img
-                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}"
-                                        alt="{{ $image->alt_text ?? $product->name }}"
-                                        class="img-fluid rounded"
-                                        style="width: 100%; height: 180px; object-fit: contain;"
-                                        onerror="this.style.display='none';"
-                                    >
-
-                                    @if ($image->is_primary)
-                                        <small class="d-block mt-2">Main image</small>
-                                    @endif
+                                        @if ($image->is_primary)
+                                            <small class="d-block mt-2">Main image</small>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
+                            @endforeach
 
-                        @if ($showLegacyImage)
-                            <div class="col-6 col-md-3 mb-3">
-                                <div class="border rounded p-2">
-                                    <img
-                                        src="{{ $product->image_url }}"
-                                        alt="{{ $product->name }}"
-                                        class="img-fluid rounded"
-                                        style="width: 100%; height: 180px; object-fit: contain;"
-                                        onerror="this.style.display='none';"
-                                    >
-
-                                    <small class="d-block mt-2">
-                                        Old product image
-                                    </small>
+                            @if ($showLegacyImage)
+                                <div class="col-6 col-md-3 mb-3">
+                                    <div class="border rounded p-2">
+                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
+                                        <small class="d-block mt-2">Old product image</small>
+                                    </div>
                                 </div>
-                            </div>
-                        @endif
-                    </div>
-                @else
-                    <p class="text-soft">
-                        No images are saved for this product yet.
-                    </p>
-                @endif
+                            @endif
+                        </div>
+                    @else
+                        <p class="text-soft"> No images are saved for this product yet.</p>
+                    @endif
                 </div>
             @endif
 
-            <div class="form-group mb-4">
-                <label class="form-label">Current Product Image</label>
-
-                @if ($product->image)
-                    <div class="mb-3">
-                        <img
-                            src="{{ $product->image_url }}"
-                            alt="{{ $product->name }}"
-                            class="img-fluid rounded border"
-                            style="width: 220px; max-height: 220px; object-fit: contain;"
-                        >
+            <div class="row mb-3">
+                <div class="col-md-5">
+                    <div class="form-group mb-4">
+                        <label class="form-label">Current Product Image</label>
+                        @if ($product->image)
+                            <div class="mb-3">
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded border" style="width: 220px; max-height: 220px; object-fit: contain;">
+                            </div>
+                        @else
+                            <p class="text-soft">No product image yet.</p>
+                        @endif
                     </div>
-                @else
-                    <p class="text-soft">
-                        No product image yet.
-                    </p>
-                @endif
+                </div>
 
-                <label for="image" class="form-label">Change Image (Optional)</label>
-
-                <input
-                    type="file"
-                    name="image"
-                    id="image"
-                    class="form-control"
-                    accept="image/*"
-                >
-
-                @error('image')
-                    <small class="text-danger">{{ $message }}</small>
-                @enderror
-
-                <small class="text-soft">
-                    Leave blank to keep the current image.
-                </small>
+                <div class="col-md-7">
+                    <div class="form-group">
+                        <label for="image" class="form-label">Change Image (Optional)</label>
+                        <input type="file" name="image" id="image" class="form-control"accept="image/*">
+                        @error('image')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                        <small class="text-soft">Leave blank to keep the current image.</small>
+                    </div>
+                </div>
             </div>
 
             <div class="form-actions mt-4">
-                <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Batal</a>
-                <button type="submit" class="btn btn-primary">
-                    Save Changes
-                </button>
+                <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
+
         </form>
     </div>
 </div>
