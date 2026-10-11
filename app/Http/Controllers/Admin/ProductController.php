@@ -317,28 +317,64 @@ class ProductController extends Controller
                 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120',
             ],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
+            // Pengelolaan gambar lama
+            'delete_images' => ['nullable', 'array'],
+            'delete_images.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
+            ],
+
+            'primary_image_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
+            ],
         ];
 
         // SKU dan barcode harus unik, kecuali milik varian yang sama.
         foreach ($request->input('variants', []) as $key => $input) {
-            $variantId = filter_var(
-                $input['id'] ?? null,
-                FILTER_VALIDATE_INT
-            );
+            $variantId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT );
 
-            $rules["variants.$key.sku"][] = Rule::unique(
-                'product_variants',
-                'sku'
-            )->ignore($variantId);
+            $rules["variants.$key.sku"][] = Rule::unique('product_variants', 'sku')->ignore($variantId);
 
-            $rules["variants.$key.barcode"][] = Rule::unique(
-                'product_variants',
-                'barcode'
-            )->ignore($variantId);
+            $rules["variants.$key.barcode"][] = Rule::unique('product_variants', 'barcode')->ignore($variantId);
         }
 
         $data = $request->validate($rules);
 
+        foreach ($data['variants'] as $key => $variant) {
+            $compareAtPrice = $variant['compare_at_price'] ?? null;
+
+            if (
+                $compareAtPrice !== null &&
+                $compareAtPrice !== '' &&
+                (float) $compareAtPrice < (float) $variant['price']
+            ) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "variants.$key.compare_at_price" =>
+                        'Harga sebelum diskon harus sama dengan atau lebih besar daripada harga jual.',
+                ]);
+            }
+        }
+
+        $deleteImageIds = array_map('intval', $data['delete_images'] ?? []);
+
+        if (
+            ! empty($data['primary_image_id']) &&
+            in_array(
+                (int) $data['primary_image_id'],
+                $deleteImageIds,
+                true
+            )
+        ) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'primary_image_id' =>
+                    'Gambar utama tidak boleh dipilih untuk dihapus.',
+            ]);
+        }
         // Membuat slug unik, termasuk ketika slug dibuat otomatis.
         $baseSlug = Str::slug($data['slug'] ?: $data['name']);
         $slug = $baseSlug;
@@ -353,6 +389,8 @@ class ProductController extends Controller
         }
 
         $uploadedPaths = [];
+        $uploadedPaths = [];
+        $deletedImagePaths = [];
 
         try {
             DB::transaction(function () use (
@@ -360,7 +398,8 @@ class ProductController extends Controller
                 $data,
                 $product,
                 $slug,
-                &$uploadedPaths
+                &$uploadedPaths,
+                &$deletedImagePaths
             ) {
                 $product->update([
                     'category_id' => $data['category_id'],
@@ -496,30 +535,70 @@ class ProductController extends Controller
                 }
 
                 /*
-                 * 4. Tambahkan gambar baru tanpa menghapus gambar lama.
-                 */
+                |--------------------------------------------------------------------------
+                | 4. Hapus gambar yang dipilih dan tambahkan gambar baru
+                |--------------------------------------------------------------------------
+                */
+
+                // Simpan path sebelum record database dihapus.
+                // File fisik baru akan dihapus setelah transaksi berhasil.
+                $imagesToDelete = $product->images()
+                    ->whereIn('id', $data['delete_images'] ?? [])
+                    ->get();
+
+                foreach ($imagesToDelete as $image) {
+                    $deletedImagePaths[] = $image->path;
+                    $image->delete();
+                }
+
+                // Tambahkan gambar baru tanpa langsung menjadikannya utama.
                 foreach ($request->file('images', []) as $image) {
                     $path = $image->store('products', 'public');
                     $uploadedPaths[] = $path;
-
-                    $hasPrimary = $product->images()
-                        ->where('is_primary', true)
-                        ->exists();
 
                     $product->images()->create([
                         'product_variant_id' => null,
                         'path' => $path,
                         'alt_text' => $data['image_alt_text'] ?? $product->name,
                         'sort_order' => (int) $product->images()->max('sort_order') + 1,
-                        'is_primary' => ! $hasPrimary,
+                        'is_primary' => false,
                     ]);
+                }
 
-                    if (! $hasPrimary || ! $product->image) {
-                        $product->update(['image' => $path]);
+                // Pilih gambar utama: pilihan admin, gambar utama lama yang masih ada,
+                // atau gambar pertama yang tersisa.
+                $primaryImage = null;
+
+                if (! empty($data['primary_image_id'])) {
+                    $primaryImage = $product->images()
+                        ->whereKey($data['primary_image_id'])
+                        ->firstOrFail();
+                } else {
+                    $primaryImage = $product->images()
+                        ->where('is_primary', true)
+                        ->first();
+
+                    if (! $primaryImage) {
+                        $primaryImage = $product->images()
+                            ->orderBy('sort_order')
+                            ->orderBy('id')
+                            ->first();
                     }
                 }
 
-                /*
+                // Pastikan hanya satu gambar utama.
+                $product->images()->update(['is_primary' => false]);
+
+                if ($primaryImage) {
+                    $primaryImage->update(['is_primary' => true]);
+
+                    // Sinkronkan gambar utama dengan kolom katalog lama.
+                    $product->update(['image' => $primaryImage->path]);
+                } else {
+                    $product->update(['image' => null]);
+                }
+
+                /**
                  * 5. Sinkronkan kolom katalog lama.
                  * Ini diperlukan selama storefront masih membaca
                  * products.price dan products.stock.
@@ -543,6 +622,10 @@ class ProductController extends Controller
             }
 
             throw $exception;
+        }
+
+        foreach (array_unique($deletedImagePaths) as $path) {
+            Storage::disk('public')->delete($path);
         }
 
         return redirect()

@@ -1,4 +1,3 @@
-
 @extends('layouts.admin')
 
 @section('title', 'Edit Product')
@@ -351,20 +350,100 @@
             <h5>4. Gambar Produk</h5>
 
             @if ($product->images->isNotEmpty())
-                <div class="row mb-3">
-                    @foreach ($product->images as $image)
-                        <div class="col-6 col-md-3 mb-3">
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url($image->path) }}"
-                                 alt="{{ $image->alt_text ?? $product->name }}"
-                                 class="img-fluid rounded">
-                            @if ($image->is_primary)
-                                <small class="d-block">Gambar utama</small>
-                            @endif
-                        </div>
-                    @endforeach
+                @php
+                    $productImages = $product->images;
+                    $hasLegacyImage = filled($product->image);
+
+                    // Jika tabel product_images kosong, tampilkan gambar
+                    // lama dari kolom products.image.
+                    $showLegacyImage = $productImages->isEmpty() && $hasLegacyImage;
+                @endphp
+
+                @if ($productImages->isNotEmpty() || $showLegacyImage)
+                    <div class="row mb-3">
+                        @foreach ($productImages as $image)
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-2">
+                                    <img
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}"
+                                        alt="{{ $image->alt_text ?? $product->name }}"
+                                        class="img-fluid rounded"
+                                        style="width: 100%; height: 180px; object-fit: contain;"
+                                        onerror="this.style.display='none';"
+                                    >
+
+                                    @if ($image->is_primary)
+                                        <small class="d-block mt-2">Gambar utama</small>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+
+                        @if ($showLegacyImage)
+                            <div class="col-6 col-md-3 mb-3">
+                                <div class="border rounded p-2">
+                                    <img
+                                        src="{{ $product->image_url }}"
+                                        alt="{{ $product->name }}"
+                                        class="img-fluid rounded"
+                                        style="width: 100%; height: 180px; object-fit: contain;"
+                                        onerror="this.style.display='none';"
+                                    >
+
+                                    <small class="d-block mt-2">
+                                        Gambar produk lama
+                                    </small>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <p class="text-soft">
+                        Belum ada gambar yang tersimpan untuk produk ini.
+                    </p>
+                @endif
                 </div>
             @endif
 
+            <div class="form-group mb-4">
+                <label class="form-label">Gambar Produk Saat Ini</label>
+
+                @if ($product->image)
+                    <div class="mb-3">
+                        <img
+                            src="{{ $product->image_url }}"
+                            alt="{{ $product->name }}"
+                            class="img-fluid rounded border"
+                            style="width: 220px; max-height: 220px; object-fit: contain;"
+                        >
+                    </div>
+                @else
+                    <p class="text-soft">
+                        Belum ada gambar produk.
+                    </p>
+                @endif
+
+                <label for="image" class="form-label">
+                    Ganti Gambar (Opsional)
+                </label>
+
+                <input
+                    type="file"
+                    name="image"
+                    id="image"
+                    class="form-control"
+                    accept="image/*"
+                >
+
+                @error('image')
+                    <small class="text-danger">{{ $message }}</small>
+                @enderror
+
+                <small class="text-soft">
+                    Kosongkan jika ingin mempertahankan gambar saat ini.
+                </small>
+            </div>
+            <!--
             <div class="form-group">
                 <label for="images">Tambah Gambar</label>
                 <input type="file" class="form-control" id="images"
@@ -381,6 +460,7 @@
                        name="image_alt_text"
                        value="{{ old('image_alt_text', $product->name) }}">
             </div>
+            -->
 
             <div class="form-actions mt-4">
                 <a href="{{ route('admin.products.index') }}"
