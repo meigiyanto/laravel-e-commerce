@@ -390,16 +390,30 @@
     <form method="POST" action="{{ route('admin.products.images.update', $product) }}" enctype="multipart/form-data">
             @csrf
             @method('PATCH')
-        
+
             @php
                 $productImages = $product->images;
             
-                /*
-                 * Gambar lama dari products.image tetap didukung
-                 * selama migrasi ke product_images berlangsung.
-                 *
-                 * URL eksternal tidak digunakan sebagai fallback.
-                 */
+                // 1. Gambar utama yang terhubung melalui product_images.
+                $primaryImage = $productImages->firstWhere(
+                    'is_primary',
+                    true
+                ) ?? $productImages->first();
+            
+                $primaryImageUrl = null;
+            
+                if (
+                    $primaryImage &&
+                    is_string($primaryImage->path) &&
+                    trim($primaryImage->path) !== '' &&
+                    Storage::disk('public')->exists($primaryImage->path)
+                ) {
+                    $primaryImageUrl = Storage::disk('public')
+                        ->url($primaryImage->path);
+                }
+            
+                // 2. Gambar lama dari products.image.
+                // Hanya izinkan path lokal, bukan URL eksternal.
                 $legacyImagePath = $product->image;
                 $legacyImageUrl = null;
             
@@ -424,19 +438,78 @@
                     }
                 }
             
-                // Aset lokal yang sudah ada di repo, bukan URL eksternal.
-                $defaultImageUrl = asset('images/product/a.png');
+                // 3. Fallback lokal. Tidak menghasilkan URL gambar
+                // yang rusak jika file default belum tersedia.
+                $defaultImageUrl = null;
             
-                $primaryImage = $productImages->firstWhere(
-                    'is_primary',
-                    true
-                ) ?? $productImages->first();
+                if (is_file(public_path('images/product/a.png'))) {
+                    $defaultImageUrl = asset('images/product/a.png');
+                } elseif (Storage::disk('public')->exists('placeholder.png')) {
+                    $defaultImageUrl = Storage::disk('public')
+                        ->url('placeholder.png');
+                }
+            
+                $displayImageUrl = $primaryImageUrl
+                    ?: $legacyImageUrl
+                    ?: $defaultImageUrl;
+            
+                $displayImageSource = $primaryImageUrl
+                    ? 'Gambar utama yang terhubung'
+                    : ($legacyImageUrl
+                        ? 'Gambar lama dari products.image'
+                        : ($defaultImageUrl
+                            ? 'Gambar default lokal'
+                            : null));
             @endphp
-
+            
+            <h6>Current Main Image</h6>
+            
+            <div class="card card-bordered mb-4">
+                <div class="card-inner">
+                    @if ($displayImageUrl)
+                        <img
+                            src="{{ $displayImageUrl }}"
+                            alt="{{ $product->name }}"
+                            class="img-fluid img-responsive mb-3"
+                            style="max-width: 320px; max-height: 320px; object-fit: contain;"
+                        >
+            
+                        <p class="text-soft mb-0">
+                            {{ $displayImageSource }}
+                        </p>
+            
+                        @if (! $primaryImageUrl && $legacyImageUrl)
+                            <div class="alert alert-info mt-3 mb-0">
+                                Gambar masih berasal dari kolom lama
+                                <code>products.image</code>.
+                                Gambar tidak akan diunggah ulang hanya karena
+                                halaman edit dibuka.
+                            </div>
+                        @elseif (! $primaryImageUrl && ! $legacyImageUrl)
+                            <div class="alert alert-secondary mt-3 mb-0">
+                                Ini hanya gambar fallback untuk tampilan.
+                                Gambar tersebut belum tentu tersimpan sebagai
+                                gambar produk.
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-warning mb-0">
+                            Belum ada gambar utama yang dapat ditampilkan.
+                            Periksa path gambar produk atau sediakan gambar
+                            default lokal.
+                        </div>
+                    @endif
+                </div>
+            </div>
             
             <h6>Available Gallery Images</h6>
-        
-            <p class="text-soft">Select the image you want to link to this product. Images already used by other products are not displayed. </p>
+            
+            <p class="text-soft">
+                Pilih gambar galeri yang belum terhubung untuk menambahkannya
+                ke produk. Preview gambar utama di atas tetap ditampilkan
+                terlepas dari ketersediaan gambar galeri.
+            </p>
+
             @if (count($availableGalleryImages))
                 <div class="gallery-images-container mb-4" style="height: 320px; overflow-y: auto; overflow-x: hidden; border: 2px solid lightgrey; border-radius: 4px; margin: 6px; padding: 6px;">
                     <div class="row">
@@ -457,30 +530,11 @@
                         @endforeach
                     </div>
                 </div>
-            @else
-                <div class="card card-bordered">
-                    <div class="card-inner">
-                        <img
-                            src="{{ $legacyImageUrl ?: $defaultImageUrl }}"
-                            alt="{{ $product->name }}"
-                            class="img-fluid img-responsive mb-3"
-                            style="max-width: 320px; max-height: 320px; object-fit: contain;"
-                        >
             
-                        @if ($legacyImageUrl)
-                            <div class="alert alert-info" role="alert">
-                                Gambar ini berasal dari kolom lama
-                                products.image dan belum tercatat di
-                                product_images.
-                            </div>
-                        @else
-                            <div class="alert alert-secondary" role="alert">
-                                Belum ada gambar produk lokal yang terhubung.
-                                Gambar di atas hanya fallback tampilan;
-                                belum disimpan sebagai gambar produk.
-                            </div>
-                        @endif
-                    </div>
+            @else
+                <div class="alert alert-info" role="alert">
+                    Belum ada gambar galeri yang tersedia untuk dihubungkan.
+                    Gambar utama produk tetap ditampilkan pada bagian sebelumnya.
                 </div>
             @endif
 
