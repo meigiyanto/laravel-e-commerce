@@ -140,7 +140,7 @@
                             @endif
                             <tr class="specification-item">
                                 <td>
-                                    <input type="checkbox" value="" class="spec-input">
+                                    <input type="checkbox" value="{{ $spec['id'] ?? '' }}" name="specifications[{{ $index }}][id]" class="spec-input">
                                 </td>
                                 <td>
                                     <div class="form-group">
@@ -173,10 +173,10 @@
                     <tfoot>
                         <tr>
                             <td>
-                                <input type="checkbox" value="" id="check-all">
+                                <input type="checkbox" value="spec_id[]" name="spec_id" id="check-all">
                             </td>
                             <td colspan="5">
-                                <button type="button" class="btn btn-danger">
+                                <button type="button" id="btn-delete" class="btn btn-danger" disabled>
                                     <em class="ni ni-trash"></em>
                                     Delete Selected
                                 </button>
@@ -352,11 +352,9 @@
 
     <h5>5. Product Images</h5>
     
-    <p class="text-soft">Kelola gambar secara terpisah. Perubahan gambar tidak mengubah varian, harga, stok, atau spesifikasi produk.
-    </p>
+    <p class="text-soft">Manage images separately. Changes to images do not alter product variants, prices, stock, or specifications.</p>
 
     <form method="POST" action="{{ route('admin.products.images.update', $product) }}" enctype="multipart/form-data">
-
             @csrf
             @method('PATCH')
         
@@ -366,9 +364,7 @@
             
             <h6>Available Gallery Images</h6>
         
-            <p class="text-soft">Pilih gambar yang ingin dihubungkan dengan produk ini. Gambar yang sudah digunakan oleh produk lain tidak ditampilkan.
-            </p>
-            
+            <p class="text-soft">Select the image you want to link to this product. Images already used by other products are not displayed. </p>
             @if (count($availableGalleryImages))
                 <div class="gallery-images-container mb-4" style="height: 320px; overflow-y: auto; overflow-x: hidden; border: 2px solid lightgrey; border-radius: 4px; margin: 6px; padding: 6px;">
                     <div class="row">
@@ -383,15 +379,15 @@
                                     </div>
     
                                     <small class="text-soft d-block text-break">{{ $image['filename'] }}</small>
-                                    <small class="text-soft">Belum terhubung</small>
+                                    <small class="text-soft">Unlinked yet</small>
                                 </div>
                             </div>
                         @endforeach
                     </div>
                 </div>
             @else
-                <div class="alert alert-info">
-                    Tidak ada gambar galeri yang belum terhubung.
+                <div class="alert alert-info" role="alert">
+                    There are no unlinked gallery images.
                 </div>
             @endif
 
@@ -421,22 +417,23 @@
                                             <span class="text-soft">Image unavailable</span>
                                         </div>
                                     @endif
-                                    
-                                    <div class="custom-control custom-radio mb-2">
-                                        <input type="radio" class="custom-control-input" id="primary-image-{{ $image->id }}" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
-                                        <label class="custom-control-label" for="primary-image-{{ $image->id }}">Main image</label>
-                                    </div>
-                                    
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="delete-image-{{ $image->id }}" name="delete_images[]" value="{{ $image->id }}">
-                                        <label class="custom-control-label" for="delete-image-{{ $image->id }}">Delete image</label>
+                                    <div class="d-flex justify-content-between">
+                                        <div class="custom-control custom-radio mb-2">
+                                            <input type="radio" class="custom-control-input" id="primary-image-{{ $image->id }}" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
+                                            <label class="custom-control-label" for="primary-image-{{ $image->id }}">Main image</label>
+                                        </div>
+                                        
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="delete-image-{{ $image->id }}" name="delete_images[]" value="{{ $image->id }}">
+                                            <label class="custom-control-label" for="delete-image-{{ $image->id }}">Delete image</label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         @endforeach
                     @else
-                        <div class="alert alert-light">
-                            Belum ada gambar yang terhubung melalui tabel product_images. Anda dapat memilih gambar galeri di bawah.
+                        <div class="alert alert-info" role="alert">
+                            No images are currently linked via the product_images table. You can select gallery images below.
                         </div>
                     @endif
                 </div>
@@ -453,7 +450,7 @@
                             class="form-control"
                         >
                 
-                        <small class="text-soft">Format JPG, PNG, atau WebP; maksimal 5 MB per gambar.</small>
+                        <small class="text-soft">Format JPG, PNG, atau WebP; maximum 5 MB per image.</small>
                         
                     </div>
                     <div class="form-group">
@@ -574,8 +571,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Dropdown atribut: pilihan kosong tidak ikut dikirim.
-    // Hanya satu nilai yang dipilih untuk setiap atribut pada setiap varian.
     document.querySelectorAll('.variant-attribute').forEach(function (select) {
         select.addEventListener('change', function () {
             if (!this.value) {
@@ -593,13 +588,40 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const selectAllBox = document.getElementById('check-all');
-    const checkboxes = document.querySelectorAll('.spec-input');
-
-    selectAllBox.addEventListener('change', function() {
-        checkboxes.forEach(checkbox => {
+    const selectAllCheckbox = document.getElementById('check-all');
+    const deleteBtn = document.getElementById('btn-delete');
+    
+    function updateButtonStatus() {
+        const checkedBoxes = document.querySelectorAll('.spec-input:checked');
+        return checkedBoxes.length > 2 ? deleteBtn.disabled = false : deleteBtn.disabled = true
+    }
+    
+    document.querySelector('#specifications-container table tbody').addEventListener('change', function(e) {
+        if (e.target.classList.contains('spec-input')) {
+            updateButtonStatus();
+        }
+    });
+    
+    selectAllCheckbox.addEventListener('change', function() {
+        const itemCheckboxes = document.querySelectorAll('.spec-input');
+        itemCheckboxes.forEach(checkbox => {
             checkbox.checked = this.checked;
         });
+        updateButtonStatus();
+    });
+    
+    deleteBtn.addEventListener('click', () => {
+        const checkedBoxes = document.querySelectorAll('.spec-input:checked');
+        
+        if (confirm(`Apakah Anda yakin ingin menghapus ${checkedBoxes.length} item?`)) {
+            checkedBoxes.forEach(checkbox => {
+                const row = checkbox.closest('tr'); 
+                if (row) row.remove();
+            });
+            
+            selectAllCheckbox.checked = false;
+            deleteBtn.disabled = true; 
+        }
     });
 });
 </script>
