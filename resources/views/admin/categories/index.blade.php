@@ -10,17 +10,6 @@
                 <h3 class="nk-block-title page-title">Categories</h3>
                 <div class="nk-block-des text-soft">
                     <p>Lists of all category product</p>
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-error">
-                            {{ session('error') }}
-                        </div>
-                    @endif
                 </div>
             </div>
 

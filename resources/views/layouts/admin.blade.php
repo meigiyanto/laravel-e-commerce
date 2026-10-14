@@ -17,21 +17,22 @@
         <div class="nk-main">
             @include('layouts.partials.dashboard.aside')
             <div class="nk-wrap">
-                @include('layouts.partials.dashboard.header')                <div class="nk-content">
-                    <div class="container-fluid">
-                        <div class="nk-content-inner">
-                            <div class="nk-content-body">
+                @include('layouts.partials.dashboard.header')                           <div class="nk-content">
+                        <div class="container-fluid">
+                            <div class="nk-content-inner">
+                                <div class="nk-content-body">
+
                                 @if (session('success'))
                                     <div class="alert alert-pro alert-success alert-dismissible">
                                         <div class="alert-text">{{ session('success') }}</div>
-                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"><em class="icon ni ni-cross"></em></button>
+                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"></button>
                                     </div>
                                 @endif
 
                                 @if (session('error'))
                                     <div class="alert alert-pro alert-danger alert-dismissible">
                                         <div class="alert-text">{{ session('error') }}</div>
-                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"><em class="icon ni ni-cross"></em></button>
+                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"></button>
                                     </div>
                                 @endif
 
@@ -40,7 +41,8 @@
                         </div>
                     </div>
                 </div>
-                @include('layouts.partials.dashboard.footer')            </div>
+                @include('layouts.partials.dashboard.footer')
+            </div>
         </div>
     </div>
     @stack('scripts')

@@ -29,10 +29,7 @@ class OrderController extends Controller
         /*
          * User hanya boleh melihat order miliknya sendiri.
          */
-        abort_unless(
-            $order->user_id === auth()->id(),
-            403
-        );
+        abort_unless($order->user_id === auth()->id(), 403);
 
         $order->load([
             'items.product',
@@ -72,7 +69,6 @@ class OrderController extends Controller
             ]);
         }
 
-        return view('orders.show', compact('order')
-        );
+        return view('storefront.orders.show', compact('order'));
     }
 }

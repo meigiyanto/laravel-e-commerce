@@ -88,9 +88,10 @@
 
                 {{-- Table --}}
                 <div class="table-responsive">
-                    <table class="table table-middle js-datatable">
+                    <table class="table table-middle datatable-init">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Order</th>
                                 <th>Customer</th>
                                 <th>Total</th>
@@ -114,6 +115,7 @@
                                     };
                                 @endphp
                                 <tr>
+                                    <td>{{ $loop->iteration }}</td>
                                     {{-- Order --}}
                                     <td>
                                         <strong> #{{ $order->order_number }}</strong>

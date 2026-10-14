@@ -32,6 +32,7 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:categories,name'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:categories,slug'],
+            'image' => ['nullable', 'string', 'max:2048'],
             'description' => ['nullable', 'string'],
         ]);
 
@@ -70,17 +71,21 @@ class CategoryController extends Controller
                 'max:255',
                 Rule::unique('categories', 'slug')->ignore($category->id),
             ],
+            'image' => [
+                'nullable',
+                'string',
+                'max:2048',
+            ],
             'description' => ['nullable', 'string'],
         ]);
 
-        $validated['slug'] = $validated['slug']
-            ?: Str::slug($validated['name']);
+        $validated['slug'] = $validated['slug'] ?: Str::slug($validated['name']);
 
         $category->update($validated);
 
         return redirect()
             ->route('admin.categories.index')
-            ->with('success', 'Kategori berhasil diperbarui.');
+            ->with('success', 'Category has been updated successfully');
     }
 
     public function destroy(Category $category)

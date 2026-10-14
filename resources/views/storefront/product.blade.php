@@ -397,69 +397,44 @@
                     >
 
                         <div class="product-content-header">
-                            <h2>
-                                Deskripsi Produk
-                            </h2>
-
-                            <p>
-                                Informasi mengenai {{ $product->name }}.
-                            </p>
+                            <h2>Deskripsi Produk</h2>
+                            <p>Informasi mengenai {{ $product->name }}.</p>
                         </div>
 
 
                         @if ($product->description)
-
                             <div class="product-description">
                                 {!! nl2br(e($product->description)) !!}
                             </div>
-
                         @else
-
                             <div class="product-empty-content">
                                 <i class="bi bi-file-text"></i>
-
-                                <p>
-                                    Belum ada deskripsi untuk produk ini.
-                                </p>
+                                <p>Belum ada deskripsi untuk produk ini.</p>
                             </div>
 
                         @endif
 
 
                         <div class="product-meta-list">
-
                             <div class="product-meta-item">
                                 <span>Kategori</span>
-
-                                <strong>
-                                    {{ $product->category?->name ?? '-' }}
-                                </strong>
+                                <strong>{{ $product->category?->name ?? '-' }}</strong>
                             </div>
 
                             <div class="product-meta-item">
                                 <span>Subkategori</span>
-
-                                <strong>
-                                    {{ $product->subCategory?->name ?? '-' }}
-                                </strong>
+                                <strong>{{ $product->subCategory?->name ?? '-' }}</strong>
                             </div>
 
                             <div class="product-meta-item">
                                 <span>Ketersediaan</span>
-
-                                <strong>
-                                    {{ $product->stock > 0 ? 'Tersedia' : 'Habis' }}
-                                </strong>
+                                <strong>{{ $product->stock > 0 ? 'Tersedia' : 'Habis' }}</strong>
                             </div>
 
                             <div class="product-meta-item">
                                 <span>Stok</span>
-
-                                <strong>
-                                    {{ $product->stock }} unit
-                                </strong>
+                                <strong>{{ $product->stock }} unit</strong>
                             </div>
-
                         </div>
 
                     </div>
@@ -477,74 +452,45 @@
                     >
 
                         <div class="product-content-header">
-                            <h2>
-                                Spesifikasi Produk
-                            </h2>
-
-                            <p>
-                                Informasi teknis dan spesifikasi
-                                {{ $product->name }}.
-                            </p>
+                            <h2>Spesifikasi Produk</h2>
+                            <p>Informasi teknis dan spesifikasi {{ $product->name }}.</p>
                         </div>
 
 
                         @if ($product->specifications->isNotEmpty())
 
                             @php
-                                $specificationGroups = $product->specifications
-                                    ->groupBy('specification_group');
+                                $specificationGroups = $product->specifications->groupBy('specification_group');
                             @endphp
 
                             <div class="product-specifications">
-
                                 @foreach ($specificationGroups as $groupName => $specifications)
-
                                     <div class="specification-group">
-
                                         <div class="specification-group-header">
                                             <i class="bi bi-list-check"></i>
-
-                                            <h3>
-                                                {{ $groupName }}
-                                            </h3>
+                                            <h3>{{ $groupName }}</h3>
                                         </div>
 
-                                        <div class="specification-rows">
-
+                                        <table class="table table-striped">
                                             @foreach ($specifications as $specification)
-
-                                                <div class="specification-row">
-
-                                                    <div class="specification-name">
+                                                <tr>
+                                                    <th style="width: 60%">
                                                         {{ $specification->specification_name }}
-                                                    </div>
-
-                                                    <div class="specification-value">
+                                                    </th>
+                                                    <td style="width: 40%">
                                                         {{ $specification->specification_value }}
-                                                    </div>
-
-                                                </div>
-
+                                                    </td>
+                                                </tr>
                                             @endforeach
-
-                                        </div>
-
+                                        </table>
                                     </div>
-
                                 @endforeach
-
                             </div>
-
                         @else
-
                             <div class="product-empty-content">
                                 <i class="bi bi-card-list"></i>
-
-                                <p>
-                                    Belum ada spesifikasi untuk produk ini.
-                                </p>
+                                <p>Belum ada spesifikasi untuk produk ini.</p>
                             </div>
-
                         @endif
 
                     </div>
@@ -564,14 +510,8 @@
                         <div id="product-reviews">
 
                             <div class="product-content-header">
-                                <h2>
-                                    Review Produk
-                                </h2>
-
-                                <p>
-                                    Pengalaman pelanggan setelah membeli
-                                    produk ini.
-                                </p>
+                                <h2>Review Produk</h2>
+                                <p>Pengalaman pelanggan setelah membeli produk ini.</p>
                             </div>
 
 
@@ -579,11 +519,8 @@
                             @if ($product->reviews_count > 0)
 
                                 <div class="review-summary">
-
                                     <div class="review-summary-score">
-                                        <strong>
-                                            {{ number_format($product->reviews_avg_rating, 1) }}
-                                        </strong>
+                                        <strong>{{ number_format($product->reviews_avg_rating, 1) }}s</strong>
 
                                         <div class="rating-stars">
                                             @for ($i = 1; $i <= 5; $i++)

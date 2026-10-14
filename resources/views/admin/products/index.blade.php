@@ -10,17 +10,6 @@
                 <h3 class="nk-block-title page-title">Products</h3>
                 <div class="nk-block-des text-soft">
                     <p>Lists of all product</p>
-                    @if(session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-error">
-                            {{ session('error') }}
-                        </div>
-                    @endif
                 </div>
             </div>
             <div class="nk-block-head-content">
@@ -41,7 +30,7 @@
             </div>
         @else
             <div class="table-responsive">
-                <table class="table table-bordered table-striped datatable-init">
+                <table class="table table-bordered table-striped datatable-init text-nowrap">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -53,70 +42,30 @@
                             <th class="no-sort">Actions</th>
                         </tr>
                     </thead>
-
                     <tbody>
                         @foreach($products as $product)
                             <tr>
-                                <td>
-                                    {{ $loop->iteration }}
-                                </td>
-
-                                <td>
-                                    <strong>
-                                        {{ $product->name }}
-                                    </strong>
-                                </td>
-
-                                <td>
-                                    {{ $product->category?->name ?? '-' }}
-                                </td>
-
-                                <td>
-                                    {{ $product->subCategory?->name ?? '-' }}
-                                </td>
-
-                                <td>
-                                    Rp {{ number_format($product->price, 0, ',', '.') }}
-                                </td>
-
-                                <td>
-                                    {{ $product->stock }}
-                                </td>
-
+                                <td>{{ $loop->iteration }}</td>
+                                <td><strong>{{ $product->name }}</strong></td>
+                                <td>{{ $product->category?->name ?? '-' }}</td>
+                                <td>{{ $product->subCategory?->name ?? '-' }}</td>    
+                                <td>Rp {{ number_format($product->price, 0, ',', '.') }}</td>
+                                <td>{{ $product->stock }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <!-- <a
-                                            href="{{ route('admin.products.edit', $product) }}"
-                                            class="btn btn-sm btn-secondary"
-                                            title="Edit"
-                                        >
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-info" title="Show">
+                                            <em class="ni ni-eye"></em>
+                                        </a>
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary" title="Edit">
                                             <em class="ni ni-edit"></em>
-                                        </a> -->
-
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-secondary"
-                                            title="Edit"
-                                            onclick="window.location.href='{{ route('admin.products.edit', $product) }}'"
-                                        >
-                                            <em class="ni ni-edit"></em>
-                                        </button>
-
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.products.destroy', $product) }}"
-                                            onsubmit="return confirm('Hapus product ini?')"
-                                        >
+                                        </a>
+                                        <form method="POST" class="d-inline" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Are you sure want to delete this product?')">
                                             @csrf
                                             @method('DELETE')
-
-                                            <button
-                                                type="submit"
-                                                class="btn btn-sm btn-danger pt-1"
-                                                title="Delete"
-                                            >
+                                        
+                                            <a href="#" class="btn btn-sm btn-danger pt-1" title="Delete" onclick="event.preventDefault(); this.closest('form').requestSubmit();">
                                                 <em class="ni ni-trash"></em>
-                                            </button>
+                                            </a>
                                         </form>
                                     </div>
                                 </td>

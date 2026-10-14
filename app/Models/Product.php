@@ -45,6 +45,7 @@ class Product extends Model
 
         return Storage::url($this->image);
     }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -80,5 +81,15 @@ class Product extends Model
         return $this->hasMany(ProductSpecification::class)
             ->orderBy('specification_group')
             ->orderBy('sort_order');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
     }
 }
