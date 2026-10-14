@@ -444,9 +444,9 @@
             
                 if (is_file(public_path('images/product/a.png'))) {
                     $defaultImageUrl = asset('images/product/a.png');
-                } elseif (Storage::disk('public')->exists('placeholder.png')) {
+                } elseif (Storage::disk('public')->exists('public/placeholder.png')) {
                     $defaultImageUrl = Storage::disk('public')
-                        ->url('placeholder.png');
+                        ->url('public/placeholder.png');
                 }
             
                 $displayImageUrl = $primaryImageUrl
