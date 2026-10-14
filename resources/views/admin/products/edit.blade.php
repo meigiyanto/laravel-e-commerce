@@ -12,17 +12,8 @@
                 Manage product information, specifications, variants, and inventory.
             </p>
         </div>
-        <div class="nk-block-head-content">
-            <a href="{{ route('admin.products.index') }}" class="btn btn-outline-primary">
-               <em class="ni ni-arrow-left"></em>Go back
-            </a>
-        </div>
     </div>
 </div>
-
-@if (session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
 
 @if ($errors->any())
     <div class="alert alert-danger">
@@ -322,82 +313,129 @@
                         </div>
                     </div>
                 </div>
+                
                 @empty
-                    <div class="alert alert-warning">This product does not yet have any variants. Create a variant first before editing the SKU and inventory.</div>
+                    <div class="alert alert-warning" role="alert">This product does not yet have any variants. Create a variant first before editing the SKU and inventory.</div>
                 @endforelse
 
                 <hr>
                 <h5>4. Product Image</h5>
 
-                @if ($product->images->isNotEmpty())
-                    @php
-                        $productImages = $product->images;
-                        $hasLegacyImage = filled($product->image);
-                        $showLegacyImage = $productImages->isEmpty() && $hasLegacyImage;
-                    @endphp
+                {{-- Galeri gambar produk --}}
 
-                    @if ($productImages->isNotEmpty() || $showLegacyImage)
-                        <div class="row mb-3">
-                            @foreach ($productImages as $image)
-                                <div class="col-6 col-md-3 mb-3">
-                                    <div class="border rounded p-2">
-                                        <img
-                                            src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($image->path) }}" alt="{{ $image->alt_text ?? $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
-
-                                        @if ($image->is_primary)
-                                            <small class="d-block mt-2">Main image</small>
-                                        @endif
+                @php
+                    use Illuminate\Support\Facades\Storage;
+                
+                    $productImages = $product->images;
+                
+                    // products.image mungkin berisi URL Unsplash atau path lokal.
+                    $legacyImage = $product->image;
+                    $legacyImageUrl = null;
+                
+                    if (is_string($legacyImage) && trim($legacyImage) !== '') {
+                        $legacyImage = trim($legacyImage);
+                
+                        // Hanya terima path lokal, bukan URL eksternal.
+                        $isExternalUrl = filter_var($legacyImage, FILTER_VALIDATE_URL) || str_starts_with($legacyImage, '//');
+                
+                        if (! $isExternalUrl) {
+                            $legacyPath = ltrim($legacyImage, '/');
+                
+                            // Mendukung nilai lama seperti storage/products/image.jpg.
+                            if (str_starts_with($legacyPath, 'storage/')) {
+                                $legacyPath = substr($legacyPath, strlen('storage/'));
+                            }
+                
+                            if (Storage::disk('public')->exists($legacyPath)) {
+                                $legacyImageUrl = Storage::disk('public')->url($legacyPath);
+                            }
+                        }
+                    }
+                
+                    // Gambar utama dari galeri, jika ada.
+                    $primaryImage = $productImages->firstWhere('is_primary', true) ?? $productImages->first();
+                @endphp
+                
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    {{-- Galeri gambar yang sudah tersimpan --}}
+                    @if ($productImages->isNotEmpty())
+                        @foreach ($productImages as $image)
+                            @php
+                                $imageExists = is_string($image->path) && Storage::disk('public')->exists($image->path);
+                                $imageUrl = $imageExists ? Storage::disk('public')->url($image->path) : null;
+                            @endphp
+            
+                            <div class="border rounded-lg p-3">
+                                @if ($imageUrl)
+                                    <img src="{{ $imageUrl }}" alt="{{ $image->alt_text ?: $product->name }}" class="w-full h-32 object-cover rounded">
+                                @else
+                                    <div class="w-full h-32 rounded bg-gray-100 flex flex-col items-center justify-center text-gray-500 text-sm">
+                                        <span>Image unavailable</span>
+                                    </div>
+                                @endif
+                                
+                                <div class="d-flex justify-content-between">
+                                    <div class="custom-control custom-checkbox custom-control-sm mt-2">
+                                        <input type="radio" class="custom-control-input" id="main-image" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
+                                        <label class="custom-control-label" for="main-image">Main Image</label>
+                                    </div>
+                                    
+                                    <div class="custom-control custom-checkbox custom-control-sm mt-2">
+                                        <input type="checkbox" class="custom-control-input" id="delete-image" name="delete_images[]" value="{{ $image->id }}">
+                                        <label class="custom-control-label" for="delete-image">Delete image</label>
                                     </div>
                                 </div>
-                            @endforeach
-
-                            @if ($showLegacyImage)
-                                <div class="col-6 col-md-3 mb-3">
-                                    <div class="border rounded p-2">
-                                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded" style="width: 100%; height: 180px; object-fit: contain;" onerror="this.style.display='none';">
-                                        <small class="d-block mt-2">Old product image</small>
-                                    </div>
-                                </div>
-                            @endif
+                                
+                            </div>
+                        @endforeach
+                
+                        {{-- Fallback hanya jika path lokal lama benar-benar ada --}}
+                        @elseif ($legacyImageUrl)
+                            <div class="mb-4">
+                                <img src="{{ $legacyImageUrl }}" alt="{{ $product->name }}" id="image-preview" class="img-fluid border p-2 rounded" style="width: 220px; max-height: 220px; object-fit: contain;">
+                            </div>
+                    
+                        {{-- Placeholder visual; tidak membutuhkan file gambar --}}
+                        @else
+                        <div class="form-group">
+                            <label for="image-preview" class="form-label">Image preview (**)</label>
+                            <div class="mt-1">
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('placeholder.png') }}" id="image-preview" class="img-fluid border p-2 rounded" style="width: 220px; max-height: 220px; object-fit: contain;" alt="Default Image">
+                            </div>
                         </div>
-                    @else
-                        <p class="text-soft"> No images are saved for this product yet.</p>
                     @endif
                 </div>
-            @endif
-
-            <div class="row mb-3">
-                <div class="col-md-5">
-                    <div class="form-group mb-4">
-                        <label class="form-label">Current Product Image</label>
-                        @if ($product->image)
-                            <div class="mb-3">
-                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="img-fluid rounded border" style="width: 220px; max-height: 220px; object-fit: contain;">
-                            </div>
-                        @else
-                            <p class="text-soft">No product image yet.</p>
-                        @endif
-                    </div>
-                </div>
-
-                <div class="col-md-7">
-                    <div class="form-group">
-                        <label for="image" class="form-label">Change Image (Optional)</label>
-                        <input type="file" name="image" id="image" class="form-control"accept="image/*">
-                        @error('image')
-                            <small class="text-danger">{{ $message }}</small>
-                        @enderror
+                
+                <div class="col-md-8">
+                    <div class="form-group mt-4">
+                        <label for="images" class="form-label">{{ $productImages->isNotEmpty() || $legacyImageUrl ? 'Add new image' : 'Upload image produk' }} (**)</label>
+                
+                        <input
+                            type="file"
+                            id="files-upload"
+                            name="images[]"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            class="form-control"
+                        >
                         <small class="text-soft">Leave blank to keep the current image.</small>
                     </div>
                 </div>
             </div>
-
+            
+            
+            
             <div class="form-actions mt-4">
                 <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
 
         </form>
+        
+        <p class="mt-3">(**)<br>
+        - Existing images will be retained if no new images are uploaded.<br>
+        - Existing images will remain unless you choose to delete them.</p>
     </div>
 </div>
 
@@ -510,6 +548,17 @@ document.addEventListener('DOMContentLoaded', function () {
         checkboxes.forEach(checkbox => {
             checkbox.checked = this.checked;
         });
+    });
+    
+    const input = document.getElementById('files-upload');
+    const preview = document.getElementById('image-preview');
+    
+    input.addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+        }
     });
 
 });

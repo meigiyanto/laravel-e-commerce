@@ -45,6 +45,7 @@ class Product extends Model
 
         return Storage::url($this->image);
     }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

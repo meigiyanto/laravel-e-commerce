@@ -28,12 +28,6 @@
 
 <div class="card card-bordered">
     <div class="card-inner">
-        {{ $categories }}
-    </div>
-</div>
-
-<div class="card card-bordered">
-    <div class="card-inner">
         <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data">
             @csrf
             <h5>1. Product Information</h5>
@@ -187,15 +181,54 @@
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="images">Upload Image (maximal 10)</label>
-                        <input class="form-control" type="file" id="images" name="images[]" accept=".jpg,.jpeg,.png,.webp" multiple>
-                        <small class="text-soft mt-1">Format JPG, PNG, or WebP; maximal 5 MB per image. The first picture becomes the main picture.</small>
+                        <input type="text" id="image" name="image" class="form-control" value="{{ old('image') }}">
                     </div>
                 </div>
+                
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="image_alt_text">Alt Text Image</label>
                         <input class="form-control" id="image_alt_text" name="image_alt_text" value="{{ old('image_alt_text') }}">
                     </div>
+                </div>
+                
+                <div class="form-group mt-2">
+                    <label>Choose Existing Gallery Images</label>
+                
+                    @if (count($availableGalleryImages))
+                        <div class="row">
+                            @foreach ($availableGalleryImages as $image)
+                                <div class="col-6 col-md-3 mb-3">
+                                    <label class="border rounded p-2 d-block">
+                                        <img
+                                            src="{{ $image['url'] }}"
+                                            alt="{{ $image['filename'] }}"
+                                            class="img-fluid mb-2"
+                                            style="width: 100%; height: 130px; object-fit: contain;"
+                                        >
+                
+                                        <input
+                                            type="checkbox"
+                                            name="existing_image_paths[]"
+                                            value="{{ $image['path'] }}"
+                                            @checked(
+                                                in_array(
+                                                    $image['path'],
+                                                    old('existing_image_paths', [])
+                                                )
+                                            )
+                                        >
+                
+                                        <span>{{ $image['filename'] }}</span>
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-soft">
+                            No unused gallery images available.
+                        </p>
+                    @endif
                 </div>
             </div>
 

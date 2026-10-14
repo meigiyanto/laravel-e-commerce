@@ -16,27 +16,6 @@
         </div>
     </div>
 
-    {{-- Flash Message --}}
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            <em class="icon ni ni-check-circle"></em>
-            <span> {{ session('success') }}</span>
-            <button type="button" class="close" data-bs-dismiss="alert">
-                <span>&times;</span>
-            </button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">
-            <em class="icon ni ni-alert-circle"></em>
-            <span>{{ session('error') }}</span>
-            <button type="button" class="close" data-bs-dismiss="alert">
-                <span>&times;</span>
-            </button>
-        </div>
-    @endif
-
     {{-- Validation Errors --}}
     @if($errors->any())
         <div class="alert alert-danger">
@@ -184,6 +163,7 @@
                     <table class="table table-hover datatable-init">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Product</th>
                                 <th>Category</th>
                                 <th>Price</th>
@@ -197,6 +177,7 @@
                         @foreach($products as $product)
                             <tr>
                                 {{-- Product --}}
+                                <td>{{ $loop->iteration }}</td>
                                 <td>
                                     <div class="user-card">
                                         <div class="user-avatar bg-primary">

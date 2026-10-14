@@ -73,7 +73,17 @@
                             <span class="nk-menu-text">Refunds</span>
                         </a>
                     </li>
-
+                    
+                    <li class="nk-menu-heading">
+                        <h6 class="overline-title text-primary-alt">Media</h6>
+                    </li>
+                    <li class="nk-menu-item {{ request()->routeIs('admin.product-gallery.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.product-gallery.index') }}" class="nk-menu-link">
+                            <span class="nk-menu-icon"><em class="icon ni ni-img"></em></span>
+                            <span class="nk-menu-text">Product Gallery</span>
+                        </a>
+                    </li>
+                    
                     @if (auth()->user()?->isAdmin())
                         <li class="nk-menu-heading">
                             <h6 class="overline-title text-primary-alt">Administration</h6>
@@ -86,15 +96,6 @@
                         </li>
                     @endif
 
-                    <li class="nk-menu-heading">
-                        <h6 class="overline-title text-primary-alt">Store</h6>
-                    </li>
-                    <li class="nk-menu-item">
-                        <a href="{{ route('storefront.home') }}" class="nk-menu-link">
-                            <span class="nk-menu-icon"><em class="icon ni ni-home"></em></span>
-                            <span class="nk-menu-text">Visit Store</span>
-                        </a>
-                    </li>
                 </ul>
             </div>
         </div>

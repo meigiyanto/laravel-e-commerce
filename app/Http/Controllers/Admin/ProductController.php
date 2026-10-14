@@ -36,7 +36,13 @@ class ProductController extends Controller
             },
         ])->orderBy('sort_order')->get();
 
-        return view('admin.products.create', compact('categories', 'attributes'));
+        $availableGalleryImages = $this->availableGalleryImages();
+
+        return view('admin.products.create', compact(
+            'categories',
+            'attributes',
+            'availableGalleryImages'
+        ));
     }
 
     public function store(Request $request)
@@ -98,7 +104,6 @@ class ProductController extends Controller
                 'distinct',
                 'exists:attribute_values,id',
             ],
-
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => [
                 'image',
@@ -134,7 +139,6 @@ class ProductController extends Controller
                     'slug' => $slug,
                     'description' => $validated['description'] ?? null,
 
-                    // Kompatibilitas dengan katalog lama.
                     'price' => $validated['price'],
                     'stock' => $validated['quantity'],
                     'image' => null,
@@ -155,8 +159,7 @@ class ProductController extends Controller
                 $valueIds = $validated['attribute_value_ids'] ?? [];
 
                 if ($valueIds !== []) {
-                    $validCount = AttributeValue::whereIn('id', $valueIds)
-                        ->count();
+                    $validCount = AttributeValue::whereIn('id', $valueIds)->count();
 
                     if ($validCount !== count($valueIds)) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
@@ -235,11 +238,14 @@ class ProductController extends Controller
         $attributes = Attribute::with([
             'values' => fn ($query) => $query->orderBy('sort_order'),
         ])->orderBy('sort_order')->get();
-
+        
+        $availableGalleryImages = $this->availableGalleryImages();
+        
         return view('admin.products.edit', compact(
             'product',
             'categories',
-            'attributes'
+            'attributes',
+            'availableGalleryImages'
         ));
     }
 
@@ -331,11 +337,13 @@ class ProductController extends Controller
 
         // SKU dan barcode harus unik, kecuali milik varian yang sama.
         foreach ($request->input('variants', []) as $key => $input) {
-            $variantId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT );
+            $variantId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
 
             $rules["variants.$key.sku"][] = Rule::unique('product_variants', 'sku')->ignore($variantId);
 
-            $rules["variants.$key.barcode"][] = Rule::unique('product_variants', 'barcode')->ignore($variantId);
+            if (filled($input['barcode'] ?? null)) {
+                $rules["variants.$key.barcode"][] = Rule::unique('product_variants', 'barcode')->ignore($variantId);
+            }
         }
 
         $data = $request->validate($rules);
@@ -349,8 +357,7 @@ class ProductController extends Controller
                 (float) $compareAtPrice < (float) $variant['price']
             ) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    "variants.$key.compare_at_price" =>
-                        'Harga sebelum diskon harus sama dengan atau lebih besar daripada harga jual.',
+                    "variants.$key.compare_at_price" =>'Harga sebelum diskon harus sama dengan atau lebih besar daripada harga jual.',
                 ]);
             }
         }
@@ -366,8 +373,7 @@ class ProductController extends Controller
             )
         ) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'primary_image_id' =>
-                    'Gambar utama tidak boleh dipilih untuk dihapus.',
+                'primary_image_id' => 'Gambar utama tidak boleh dipilih untuk dihapus.',
             ]);
         }
         // Membuat slug unik, termasuk ketika slug dibuat otomatis.
@@ -375,11 +381,10 @@ class ProductController extends Controller
         $slug = $baseSlug;
         $suffix = 1;
 
-        while (
-            Product::where('slug', $slug)
+        while (Product::where('slug', $slug)
                 ->where('id', '!=', $product->id)
-                ->exists()
-        ) {
+                ->exists())
+        {
             $slug = $baseSlug . '-' . $suffix++;
         }
 
@@ -462,10 +467,7 @@ class ProductController extends Controller
                     $values = AttributeValue::whereIn('id', $valueIds)->get();
 
                     // Maksimal satu nilai untuk setiap atribut per varian.
-                    if (
-                        $values->groupBy('attribute_id')
-                            ->contains(fn ($group) => $group->count() > 1)
-                    ) {
+                    if ($values->groupBy('attribute_id')->contains(fn ($group) => $group->count() > 1)) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
                             "variants.$key.attribute_value_ids" =>
                                 'Pilih maksimal satu nilai untuk setiap atribut.',
@@ -537,16 +539,13 @@ class ProductController extends Controller
 
                 // Simpan path sebelum record database dihapus.
                 // File fisik baru akan dihapus setelah transaksi berhasil.
-                $imagesToDelete = $product->images()
-                    ->whereIn('id', $data['delete_images'] ?? [])
-                    ->get();
+                $imagesToDelete = $product->images()->whereIn('id', $data['delete_images'] ?? [])->get();
 
                 foreach ($imagesToDelete as $image) {
                     $deletedImagePaths[] = $image->path;
                     $image->delete();
                 }
 
-                // Tambahkan gambar baru tanpa langsung menjadikannya utama.
                 foreach ($request->file('images', []) as $image) {
                     $path = $image->store('products', 'public');
                     $uploadedPaths[] = $path;
@@ -639,5 +638,42 @@ class ProductController extends Controller
         $product->delete();
 
         return redirect()->route('admin.products.index')->with('success', 'Product berhasil dihapus.');
+    }
+    
+    
+    private function availableGalleryImages(): array
+    {
+        $usedPaths = DB::table('products')
+            ->whereNotNull('image')
+            ->pluck('image')
+            ->merge(
+                DB::table('product_images')->pluck('path')
+            )
+            ->filter()
+            ->unique()
+            ->all();
+    
+        return collect(
+            Storage::disk('public')->files('products')
+        )
+            ->filter(function ($path) {
+                return in_array(
+                    strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+                    ['jpg', 'jpeg', 'png', 'webp'],
+                    true
+                );
+            })
+            ->reject(function ($path) use ($usedPaths) {
+                return in_array($path, $usedPaths, true);
+            })
+            ->map(function ($path) {
+                return [
+                    'path' => $path,
+                    'filename' => basename($path),
+                    'url' => Storage::disk('public')->url($path),
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\SubCategoryController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\ProductGalleryController;
 
 /**
  * Store Front
@@ -105,7 +106,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
+    
+    // Gallery management
+    Route::get('/product-gallery', [ProductGalleryController::class,'index'])->name('product-gallery.index');
+    
+    Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
+    
     // Refund management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
     Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
