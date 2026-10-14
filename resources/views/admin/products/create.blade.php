@@ -12,6 +12,13 @@
                 Complete product information, variants, images and stock
             </p>
         </div>
+        <div class="nk-block-head-content">
+            <a href="{{ route('admin.products.index') }}" class="btn btn-white btn-outline-light">
+                <em class="icon ni ni-arrow-left"></em>
+                <span>Go back</span>
+            </a>
+        </div>
+
     </div>
 </div>
 
@@ -57,6 +64,7 @@
                         </select>
                     </div>
                 </div>
+                
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="sub_category_id">Subcategory *</label>
@@ -81,11 +89,9 @@
             </div>
 
             <hr>
-            <h5>2. Variant & Price</h5>
+            <h5>2. Variant</h5>
             <p class="text-soft">
-                This form creates one initial variant as the default variant.
-            </p>
-
+                This form creates one initial variant as the default variant.</p>
 
             <div class="row mb-3">
                 <div class="col-md-6">
@@ -110,37 +116,14 @@
                         <input class="form-control" id="barcode" name="barcode" value="{{ old('barcode') }}">
                     </div>
                 </div>
-
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="price">Selling Price *</label>
-                        <input class="form-control" type="number" step="0.01" min="0" id="price" name="price" value="{{ old('price', 0) }}" required>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="compare_at_price">Price Before Discount</label>
-                        <input class="form-control" type="number" step="0.01" min="0" id="compare_at_price" name="compare_at_price" value="{{ old('compare_at_price') }}">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="cost_price">Capital Price</label>
-                        <input class="form-control" type="number" step="0.01" min="0" id="cost_price" name="cost_price" value="{{ old('cost_price') }}">
-                    </div>
-                </div>
-
+                
                 <div class="col-md-4">
                     <div class="form-group">
                         <label for="weight">Weight (kg)</label>
                         <input class="form-control" type="number" step="0.001" min="0" id="weight" name="weight" value="{{ old('weight') }}">
                     </div>
                 </div>
+                
                 <div class="col-md-4">
                     <div class="form-group">
                         <label for="status">Variant Status *</label>
@@ -176,59 +159,27 @@
             @endforelse
 
             <hr>
-            <h5>4. Product Image</h5>
+            <h5>4. Price</h5>
             <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="form-group">
-                        <label for="images">Upload Image (maximal 10)</label>
-                        <input type="text" id="image" name="image" class="form-control" value="{{ old('image') }}">
+                        <label for="price">Selling Price *</label>
+                        <input class="form-control" type="number" step="0.01" min="0" id="price" name="price" value="{{ old('price', 0) }}" required>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="compare_at_price">Price Before Discount</label>
+                        <input class="form-control" type="number" step="0.01" min="0" id="compare_at_price" name="compare_at_price" value="{{ old('compare_at_price') }}">
                     </div>
                 </div>
                 
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="form-group">
-                        <label for="image_alt_text">Alt Text Image</label>
-                        <input class="form-control" id="image_alt_text" name="image_alt_text" value="{{ old('image_alt_text') }}">
+                        <label for="cost_price">Capital Price</label>
+                        <input class="form-control" type="number" step="0.01" min="0" id="cost_price" name="cost_price" value="{{ old('cost_price') }}">
                     </div>
-                </div>
-                
-                <div class="form-group mt-2">
-                    <label>Choose Existing Gallery Images</label>
-                
-                    @if (count($availableGalleryImages))
-                        <div class="row">
-                            @foreach ($availableGalleryImages as $image)
-                                <div class="col-6 col-md-3 mb-3">
-                                    <label class="border rounded p-2 d-block">
-                                        <img
-                                            src="{{ $image['url'] }}"
-                                            alt="{{ $image['filename'] }}"
-                                            class="img-fluid mb-2"
-                                            style="width: 100%; height: 130px; object-fit: contain;"
-                                        >
-                
-                                        <input
-                                            type="checkbox"
-                                            name="existing_image_paths[]"
-                                            value="{{ $image['path'] }}"
-                                            @checked(
-                                                in_array(
-                                                    $image['path'],
-                                                    old('existing_image_paths', [])
-                                                )
-                                            )
-                                        >
-                
-                                        <span>{{ $image['filename'] }}</span>
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-soft">
-                            No unused gallery images available.
-                        </p>
-                    @endif
                 </div>
             </div>
 
@@ -254,6 +205,48 @@
                         <label for="reorder_level">Minimum Stock Limit *</label>
                         <input class="form-control" type="number" min="0" id="reorder_level" name="reorder_level" value="{{ old('reorder_level', 0) }}" required>
                     </div>
+                </div>
+            </div>
+
+            <hr>
+            <h5>6. Product Image</h5>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="images">Upload Image (maximal 10)</label>
+                        <input type="text" id="image" name="image" class="form-control" value="{{ old('image') }}">
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="image_alt_text">Alt Text Image</label>
+                        <input class="form-control" id="image_alt_text" name="image_alt_text" value="{{ old('image_alt_text') }}">
+                    </div>
+                </div>
+                
+                <div class="form-group mt-2">
+                    <label>Choose Existing Gallery Images</label>
+                    @if (count($availableGalleryImages))
+                    <div class="gallery-images-container" style="height: 320px; overflow-y: auto; overflow-x: hidden; border: 2px solid lightgrey; border-radius: 4px; padding: 8px; margin: 4px;">
+                        <div class="row">
+                            @foreach ($availableGalleryImages as $image)
+                                <div class="col-md-6 col-lg-2">
+                                    <div class="custom-control custom-checkbox image-control">
+                                        <input type="checkbox" class="custom-control-input" id="gallery-image-{{ $loop->index }}" name="existing_image_paths[]" value="{{ $image['path'] }}" @checked(in_array($image['path'], old('existing_image_paths', [])))>
+                                        <label class="custom-control-label" for="gallery-image-{{ $loop->index }}">
+                                            <img src="{{ $image['url'] }}" alt="" class="img-fluid img-responsive mb-2" loading="lazy">
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @else
+                        <p class="text-soft">
+                            No unused gallery images available.
+                        </p>
+                    @endif
                 </div>
             </div>
 

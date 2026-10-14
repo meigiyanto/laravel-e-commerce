@@ -6,14 +6,24 @@
 @section('content')
 <div class="nk-block-head nk-block-head-sm">
     <div class="nk-block-between">
+        
         <div class="nk-block-head-content">
             <h3 class="nk-block-title page-title">Edit Product</h3>
-            <p class="text-soft">
-                Manage product information, specifications, variants, and inventory.
-            </p>
+            <div class="nk-block-des text-soft">
+                <p>Manage product information, specifications, variants, and inventory.</p>
+            </div>
         </div>
+        
+        <div class="nk-block-head-content">
+            <a href="{{ route('admin.products.index') }}" class="btn btn-white btn-outline-light">
+                <em class="icon ni ni-arrow-left"></em>
+                <span>Go back</span>
+            </a>
+        </div>
+        
     </div>
 </div>
+
 
 @if ($errors->any())
     <div class="alert alert-danger">
@@ -319,118 +329,160 @@
                 @endforelse
 
                 <hr>
-                <h5>4. Product Image</h5>
+                
+            {{-- Tombol untuk form data produk utama --}}
+            <div class="form-actions mt-4 mb-4">
+                <a href="{{ route('admin.products.index') }}"
+                   class="btn btn-secondary">
+                    Cancel
+                </a>
+            
+                <button type="submit" class="btn btn-primary">
+                    Save Product Changes
+                </button>
+            </div>
+        
+        {{-- Tutup form data produk utama --}}
+        </form>
+    </div>
+</div>
 
-                {{-- Galeri gambar produk --}}
+<div class="card card-bordered">
+    <div class="card-inner">
 
-                @php
-                    use Illuminate\Support\Facades\Storage;
-                
-                    $productImages = $product->images;
-                
-                    // products.image mungkin berisi URL Unsplash atau path lokal.
-                    $legacyImage = $product->image;
-                    $legacyImageUrl = null;
-                
-                    if (is_string($legacyImage) && trim($legacyImage) !== '') {
-                        $legacyImage = trim($legacyImage);
-                
-                        // Hanya terima path lokal, bukan URL eksternal.
-                        $isExternalUrl = filter_var($legacyImage, FILTER_VALIDATE_URL) || str_starts_with($legacyImage, '//');
-                
-                        if (! $isExternalUrl) {
-                            $legacyPath = ltrim($legacyImage, '/');
-                
-                            // Mendukung nilai lama seperti storage/products/image.jpg.
-                            if (str_starts_with($legacyPath, 'storage/')) {
-                                $legacyPath = substr($legacyPath, strlen('storage/'));
-                            }
-                
-                            if (Storage::disk('public')->exists($legacyPath)) {
-                                $legacyImageUrl = Storage::disk('public')->url($legacyPath);
-                            }
-                        }
-                    }
-                
-                    // Gambar utama dari galeri, jika ada.
-                    $primaryImage = $productImages->firstWhere('is_primary', true) ?? $productImages->first();
-                @endphp
-                
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    {{-- Galeri gambar yang sudah tersimpan --}}
+    <h5>5. Product Images</h5>
+    
+    <p class="text-soft">Kelola gambar secara terpisah. Perubahan gambar tidak mengubah varian, harga, stok, atau spesifikasi produk.
+    </p>
+
+    <form method="POST" action="{{ route('admin.products.images.update', $product) }}" enctype="multipart/form-data">
+
+            @csrf
+            @method('PATCH')
+        
+            @php
+                $productImages = $product->images;
+            @endphp
+            
+            <h6>Available Gallery Images</h6>
+        
+            <p class="text-soft">Pilih gambar yang ingin dihubungkan dengan produk ini. Gambar yang sudah digunakan oleh produk lain tidak ditampilkan.
+            </p>
+            
+            @if (count($availableGalleryImages))
+                <div class="gallery-images-container mb-4" style="height: 320px; overflow-y: auto; overflow-x: hidden; border: 2px solid lightgrey; border-radius: 4px; margin: 6px; padding: 6px;">
+                    <div class="row">
+                        @foreach ($availableGalleryImages as $image)
+                            <div class="col-md-4 col-lg-2 mb-3">
+                                <div class="card-inner px-2">
+                                    <div class="custom-control custom-radio image-control mb-2">
+                                        <input type="radio" class="custom-control-input" id="gallery-image-{{ $loop->index }}" name="existing_image_paths[]" value="{{ $image['path'] }}" @checked(in_array($image['path'], old('existing_image_paths', [])))>
+                                        <label class="custom-control-label" for="gallery-image-{{ $loop->index }}" title="{{ $image['filename'] }}">
+                                            <img src="{{ $image['url'] }}" alt="{{ $image['filename'] }}" class="img-fluid img-responsive mb-2" loading="lazy">
+                                         </label>
+                                    </div>
+    
+                                    <small class="text-soft d-block text-break">{{ $image['filename'] }}</small>
+                                    <small class="text-soft">Belum terhubung</small>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <div class="alert alert-info">
+                    Tidak ada gambar galeri yang belum terhubung.
+                </div>
+            @endif
+
+            {{-- Gambar yang sudah terhubung --}}
+            <h6>Connected Images</h6>
+        
+            {{-- Gambar galeri yang belum terhubung --}}
+            <hr>
+        
+            {{-- Unggah gambar baru --}}
+            <div class="row mb-3">
+                <div class="col-md-6">
                     @if ($productImages->isNotEmpty())
                         @foreach ($productImages as $image)
                             @php
                                 $imageExists = is_string($image->path) && Storage::disk('public')->exists($image->path);
                                 $imageUrl = $imageExists ? Storage::disk('public')->url($image->path) : null;
+                                $primaryImage = $productImages->firstWhere('is_primary', true) ?? $productImages->first();
                             @endphp
             
-                            <div class="border rounded-lg p-3">
-                                @if ($imageUrl)
-                                    <img src="{{ $imageUrl }}" alt="{{ $image->alt_text ?: $product->name }}" class="w-full h-32 object-cover rounded">
-                                @else
-                                    <div class="w-full h-32 rounded bg-gray-100 flex flex-col items-center justify-center text-gray-500 text-sm">
-                                        <span>Image unavailable</span>
-                                    </div>
-                                @endif
-                                
-                                <div class="d-flex justify-content-between">
-                                    <div class="custom-control custom-checkbox custom-control-sm mt-2">
-                                        <input type="radio" class="custom-control-input" id="main-image" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
-                                        <label class="custom-control-label" for="main-image">Main Image</label>
+                            <div class="card card-bordered">
+                                <div class="card-inner">
+                                    @if ($imageUrl)
+                                        <img src="{{ $imageUrl }}" alt="{{ $image->alt_text ?: $product->name }}" class="img-fluid img-responsive mb-3">
+                                    @else
+                                        <div class="d-flex align-items-center justify-content-center mb-3" style="height: 150px;">
+                                            <span class="text-soft">Image unavailable</span>
+                                        </div>
+                                    @endif
+                                    
+                                    <div class="custom-control custom-radio mb-2">
+                                        <input type="radio" class="custom-control-input" id="primary-image-{{ $image->id }}" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
+                                        <label class="custom-control-label" for="primary-image-{{ $image->id }}">Main image</label>
                                     </div>
                                     
-                                    <div class="custom-control custom-checkbox custom-control-sm mt-2">
-                                        <input type="checkbox" class="custom-control-input" id="delete-image" name="delete_images[]" value="{{ $image->id }}">
-                                        <label class="custom-control-label" for="delete-image">Delete image</label>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="delete-image-{{ $image->id }}" name="delete_images[]" value="{{ $image->id }}">
+                                        <label class="custom-control-label" for="delete-image-{{ $image->id }}">Delete image</label>
                                     </div>
                                 </div>
-                                
                             </div>
                         @endforeach
-                
-                        {{-- Fallback hanya jika path lokal lama benar-benar ada --}}
-                        @elseif ($legacyImageUrl)
-                            <div class="mb-4">
-                                <img src="{{ $legacyImageUrl }}" alt="{{ $product->name }}" id="image-preview" class="img-fluid border p-2 rounded" style="width: 220px; max-height: 220px; object-fit: contain;">
-                            </div>
-                    
-                        {{-- Placeholder visual; tidak membutuhkan file gambar --}}
-                        @else
-                        <div class="form-group">
-                            <label for="image-preview" class="form-label">Image preview (**)</label>
-                            <div class="mt-1">
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url('placeholder.png') }}" id="image-preview" class="img-fluid border p-2 rounded" style="width: 220px; max-height: 220px; object-fit: contain;" alt="Default Image">
-                            </div>
+                    @else
+                        <div class="alert alert-light">
+                            Belum ada gambar yang terhubung melalui tabel product_images. Anda dapat memilih gambar galeri di bawah.
                         </div>
                     @endif
                 </div>
-                
-                <div class="col-md-8">
-                    <div class="form-group mt-4">
-                        <label for="images" class="form-label">{{ $productImages->isNotEmpty() || $legacyImageUrl ? 'Add new image' : 'Upload image produk' }} (**)</label>
-                
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="product-images-upload">Upload New Images</label>
+        
                         <input
                             type="file"
-                            id="files-upload"
+                            id="product-images-upload"
                             name="images[]"
                             accept="image/jpeg,image/png,image/webp"
                             multiple
                             class="form-control"
                         >
-                        <small class="text-soft">Leave blank to keep the current image.</small>
+                
+                        <small class="text-soft">Format JPG, PNG, atau WebP; maksimal 5 MB per gambar.</small>
+                        
+                    </div>
+                    <div class="form-group">
+                        <label for="image-alt-text">Alt text</label>
+                
+                        <input
+                            type="text"
+                            id="image-alt-text"
+                            name="image_alt_text"
+                            class="form-control"
+                            maxlength="255"
+                            value="{{ old('image_alt_text', $product->name) }}"
+                        >
                     </div>
                 </div>
             </div>
-            
-            
-            
+        
             <div class="form-actions mt-4">
-                <a href="{{ route('admin.products.index') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="submit" class="btn btn-primary">
+                    Save Images
+                </button>
+        
+                <a
+                    href="{{ route('admin.products.edit', $product) }}"
+                    class="btn btn-secondary"
+                >
+                    Cancel
+                </a>
             </div>
-
         </form>
         
         <p class="mt-3">(**)<br>
@@ -549,18 +601,6 @@ document.addEventListener('DOMContentLoaded', function () {
             checkbox.checked = this.checked;
         });
     });
-    
-    const input = document.getElementById('files-upload');
-    const preview = document.getElementById('image-preview');
-    
-    input.addEventListener('change', function () {
-        const file = this.files[0];
-        if (file) {
-            preview.src = URL.createObjectURL(file);
-            preview.style.display = 'block';
-        }
-    });
-
 });
 </script>
 @endsection

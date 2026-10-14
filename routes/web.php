@@ -133,6 +133,7 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
         ->parameters(['sub-categories' => 'subCategory'])
         ->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
+    Route::patch('/products/{product}/images', [ProductController::class, 'updateImages'])->name('products.images.update');
     Route::resource('products', ProductController::class)->except(['show']);
 
     // Only administrators can manage user accounts or access the admin profile page.

@@ -29,44 +29,85 @@ class ProductGalleryController extends Controller
             ->unique()
             ->values()
             ->all();
+        
+        $productNamesByPath = collect();
 
-        $images = collect(
-            Storage::disk('public')->files('products')
-        )
+        // Gambar yang terhubung melalui product_images.
+        DB::table('product_images')
+            ->join(
+                'products',
+                'products.id',
+                '=',
+                'product_images.product_id'
+            )
+            ->whereNotNull('product_images.path')
+            ->select(
+                'product_images.path',
+                'products.name'
+            )
+            ->get()
+            ->each(function ($row) use ($productNamesByPath) {
+                $productNamesByPath
+                    ->put(
+                        $row->path,
+                        collect($productNamesByPath->get($row->path, []))
+                            ->push($row->name)
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all()
+                    );
+            });
+        
+        // Gambar lama yang tersimpan pada products.image.
+        DB::table('products')
+            ->whereNotNull('image')
+            ->where('image', '!=', '')
+            ->select('image', 'name')
+            ->get()
+            ->each(function ($row) use ($productNamesByPath) {
+                $path = ltrim($row->image, '/');
+        
+                if (str_starts_with($path, 'storage/')) {
+                    $path = substr($path, strlen('storage/'));
+                }
+        
+                $productNamesByPath->put(
+                    $path,
+                    collect($productNamesByPath->get($path, []))
+                        ->push($row->name)
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all()
+                );
+            });
+        
+        $images = collect(Storage::disk('public')->files('products'))
             ->filter(function ($path) {
                 return in_array(
-                    strtolower(pathinfo($path, PATHINFO_EXTENSION)),
-                    ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-                    true
+                    strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif'], true
                 );
             })
-            ->map(function ($path) use ($usedPaths) {
+            ->map(function ($path) use ($usedPaths, $productNamesByPath) {
                 return [
                     'path' => $path,
                     'filename' => basename($path),
                     'url' => Storage::disk('public')->url($path),
                     'is_used' => in_array($path, $usedPaths, true),
+                    'product_names' => $productNamesByPath->get($path, []),
                 ];
             })
             ->filter(function ($image) use ($search, $status) {
-                if (
-                    $search !== ''
-                    && stripos($image['filename'], $search) === false
-                ) {
+                if ($search !== '' && stripos($image['filename'], $search) === false ) {
                     return false;
                 }
 
-                if (
-                    $status === 'unused'
-                    && $image['is_used']
-                ) {
+                if ($status === 'unused' && $image['is_used']){
                     return false;
                 }
 
-                if (
-                    $status === 'used'
-                    && ! $image['is_used']
-                ) {
+                if ($status === 'used' && ! $image['is_used']) {
                     return false;
                 }
 
@@ -74,7 +115,8 @@ class ProductGalleryController extends Controller
             })
             ->sortBy('filename')
             ->values();
-
+        
+        
         $page = max(1, (int) $request->input('page', 1));
         $perPage = 12;
 
@@ -116,10 +158,6 @@ class ProductGalleryController extends Controller
             ->route('admin.product-gallery.index', [
                 'status' => 'unused',
             ])
-            ->with(
-                'success',
-                count($validated['images'])
-                    . ' gambar berhasil diunggah.'
-            );
+            ->with('success',count($validated['images']) . ' gambar berhasil diunggah.');
     }
 }

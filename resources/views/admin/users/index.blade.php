@@ -97,7 +97,7 @@
 
         <div class="card-inner p-2">
             <div class="table-responsive">
-                <table class="table table-hover mb-2 datatable-init">
+                <table class="table table-hover mb-2 datatable-init text-nowrap">
                     <thead>
                         <tr>
                             <th>#</th>

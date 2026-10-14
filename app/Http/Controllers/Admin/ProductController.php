@@ -251,12 +251,12 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $availableGalleryPaths = collect($this->availableGalleryImages())->pluck('path')->all();
+        
         $rules = [
             'category_id' => ['required', 'exists:categories,id'],
             'sub_category_id' => [
-                'required',
-                Rule::exists('sub_categories', 'id')
-                    ->where('category_id', $request->input('category_id')),
+                'required', Rule::exists('sub_categories', 'id')->where('category_id', $request->input('category_id'))
             ],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
@@ -265,10 +265,7 @@ class ProductController extends Controller
             // Spesifikasi
             'specifications' => ['nullable', 'array'],
             'specifications.*.id' => [
-                'nullable',
-                'integer',
-                Rule::exists('product_specifications', 'id')
-                    ->where('product_id', $product->id),
+                'nullable', 'integer', Rule::exists('product_specifications', 'id')->where('product_id', $product->id)
             ],
             'specifications.*.specification_group' => [
                 'required', 'string', 'max:255',
@@ -286,10 +283,7 @@ class ProductController extends Controller
             // Varian yang sudah ada
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.id' => [
-                'required',
-                'integer',
-                Rule::exists('product_variants', 'id')
-                    ->where('product_id', $product->id),
+                'required', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)
             ],
             'variants.*.sku' => ['required', 'string', 'max:100'],
             'variants.*.barcode' => ['nullable', 'string', 'max:100'],
@@ -321,17 +315,15 @@ class ProductController extends Controller
             // Pengelolaan gambar lama
             'delete_images' => ['nullable', 'array'],
             'delete_images.*' => [
-                'integer',
-                'distinct',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
+                'integer', 'distinct', Rule::exists('product_images', 'id')->where('product_id', $product->id)
+            ],
+            'existing_image_paths' => ['nullable', 'array', 'max:12'],
+            'existing_image_paths.*' => [
+                'required', 'string', 'distinct', Rule::in($availableGalleryPaths)
             ],
 
             'primary_image_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
+                'nullable', 'integer', Rule::exists('product_images', 'id')->where('product_id', $product->id)
             ],
         ];
 
@@ -364,14 +356,8 @@ class ProductController extends Controller
 
         $deleteImageIds = array_map('intval', $data['delete_images'] ?? []);
 
-        if (
-            ! empty($data['primary_image_id']) &&
-            in_array(
-                (int) $data['primary_image_id'],
-                $deleteImageIds,
-                true
-            )
-        ) {
+        if (! empty($data['primary_image_id']) &&
+            in_array((int) $data['primary_image_id'], $deleteImageIds, true)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'primary_image_id' => 'Gambar utama tidak boleh dipilih untuk dihapus.',
             ]);
@@ -443,7 +429,7 @@ class ProductController extends Controller
                     ->whereNotIn('id', $savedSpecificationIds)
                     ->delete();
 
-                /*
+                /**
                  * 2. Simpan setiap varian dan nilai atributnya.
                  */
                 foreach ($data['variants'] as $key => $item) {
@@ -466,7 +452,8 @@ class ProductController extends Controller
                     $valueIds = $item['attribute_value_ids'] ?? [];
                     $values = AttributeValue::whereIn('id', $valueIds)->get();
 
-                    // Maksimal satu nilai untuk setiap atribut per varian.
+                    // Maksimal satu nilai untuk setiap atribut
+                    // per varian.
                     if ($values->groupBy('attribute_id')->contains(fn ($group) => $group->count() > 1)) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
                             "variants.$key.attribute_value_ids" =>
@@ -476,10 +463,12 @@ class ProductController extends Controller
 
                     $variant->attributeValues()->sync($valueIds);
 
-                    /*
+                    /**
                      * 3. Simpan inventaris.
-                     * Stok tidak boleh turun di bawah reserved_quantity.
-                     * Perubahan stok dicatat sebagai movement.
+                     * Stok tidak boleh turun di bawah reserved_quantity. 
+                     * 
+                     * Perubahan stok
+                     dicatat sebagai movement.
                      */
                     $inventory = $variant->inventory()
                         ->lockForUpdate()
@@ -538,8 +527,31 @@ class ProductController extends Controller
                 */
 
                 // Simpan path sebelum record database dihapus.
-                // File fisik baru akan dihapus setelah transaksi berhasil.
+                // File fisik baru akan dihapus setelah
+                // transaksi berhasil.
                 $imagesToDelete = $product->images()->whereIn('id', $data['delete_images'] ?? [])->get();
+                
+                
+                /**
+                 * Hubungkan gambar yang sudah diunggah melalui
+                 * Product Gallery.
+                 *
+                 * File tidak disalin atau diunggah ulang.
+                 */
+                foreach ($data['existing_image_paths'] ?? [] as $path) {
+                    // Cegah relasi ganda jika path sudah
+                    // dimiliki produk ini.
+                    if ($product->images()->where('path', $path)->exists()) {
+                        continue;
+                    }
+                
+                    $product->images()->create([
+                        'product_variant_id' => null,
+                        'path' => $path,
+                        'alt_text' => $data['image_alt_text'] ?? $product->name, 'sort_order' => (int) ($product->images()->max('sort_order') ?? -1) + 1,
+                        'is_primary' => false,
+                    ]);
+                }
 
                 foreach ($imagesToDelete as $image) {
                     $deletedImagePaths[] = $image->path;
@@ -559,7 +571,8 @@ class ProductController extends Controller
                     ]);
                 }
 
-                // Pilih gambar utama: pilihan admin, gambar utama lama yang masih ada,
+                // Pilih gambar utama: pilihan admin, gambar
+                // utama lama yang masih ada,
                 // atau gambar pertama yang tersisa.
                 $primaryImage = null;
 
@@ -586,16 +599,41 @@ class ProductController extends Controller
                 if ($primaryImage) {
                     $primaryImage->update(['is_primary' => true]);
 
-                    // Sinkronkan gambar utama dengan kolom katalog lama.
+                    // Sinkronkan gambar utama dengan kolom
+                    // katalog lama.
                     $product->update(['image' => $primaryImage->path]);
                 } else {
-                    $product->update(['image' => null]);
+                    // Pertahankan gambar legacy lokal jika
+                    // masih tersedia
+                    // dan tidak sedang dihapus.
+                    $legacyImage = $product->getOriginal('image');
+                    $legacyPath = null;
+                
+                    if (
+                        is_string($legacyImage)
+                        && trim($legacyImage) !== ''
+                        && ! filter_var($legacyImage, FILTER_VALIDATE_URL)
+                        && ! str_starts_with($legacyImage, '//')
+                    ) {
+                        $legacyPath = ltrim(trim($legacyImage), '/');
+                
+                        if (str_starts_with($legacyPath, 'storage/')) {
+                            $legacyPath = substr($legacyPath, strlen('storage/'));
+                        }
+                    }
+                
+                    if ($legacyPath && Storage::disk('public')->exists($legacyPath) && ! in_array($legacyPath, $deletedImagePaths, true)) {
+                        $product->update(['image' => $legacyPath]);
+                    } else {
+                        $product->update(['image' => null]);
+                    }
                 }
 
                 /**
                  * 5. Sinkronkan kolom katalog lama.
-                 * Ini diperlukan selama storefront masih membaca
-                 * products.price dan products.stock.
+                 * 
+                 * Ini diperlukan selama storefront masih
+                 * membaca products.price dan products.stock.
                  */
                 $defaultVariant = $product->variants()
                     ->where('is_default', true)
@@ -655,25 +693,242 @@ class ProductController extends Controller
     
         return collect(
             Storage::disk('public')->files('products')
-        )
-            ->filter(function ($path) {
-                return in_array(
-                    strtolower(pathinfo($path, PATHINFO_EXTENSION)),
-                    ['jpg', 'jpeg', 'png', 'webp'],
-                    true
-                );
-            })
-            ->reject(function ($path) use ($usedPaths) {
-                return in_array($path, $usedPaths, true);
-            })
-            ->map(function ($path) {
-                return [
-                    'path' => $path,
-                    'filename' => basename($path),
-                    'url' => Storage::disk('public')->url($path),
-                ];
-            })
-            ->values()
+        )->filter(function ($path) {
+            return in_array(
+                strtolower(pathinfo($path, PATHINFO_EXTENSION)),
+                ['jpg', 'jpeg', 'png', 'webp'],
+                true
+            );
+        })
+        ->reject(function ($path) use ($usedPaths) {
+            return in_array($path, $usedPaths, true);
+        })
+        ->map(function ($path) {
+            return [
+                'path' => $path,
+                'filename' => basename($path),
+                'url' => Storage::disk('public')->url($path),
+            ];
+        })
+        ->values()
+        ->all();
+    }
+    
+    public function updateImages(Request $request, Product $product)
+    {
+    // Hanya path galeri yang saat ini belum terhubung ke produk
+        // mana pun yang boleh dipilih.
+        $availablePaths = collect($this->availableGalleryImages())
+            ->pluck('path')
             ->all();
+    
+        $data = $request->validate([
+            'existing_image_paths' => ['nullable', 'array', 'max:10'],
+            'existing_image_paths.*' => [
+                'required',
+                'string',
+                'distinct',
+                Rule::in($availablePaths),
+            ],
+    
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+    
+            'image_alt_text' => ['nullable', 'string', 'max:255'],
+    
+            'delete_images' => ['nullable', 'array'],
+            'delete_images.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
+            ],
+    
+            'primary_image_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
+            ],
+        ]);
+    
+        $deleteIds = array_map(
+            'intval',
+            $data['delete_images'] ?? []
+        );
+    
+        if (
+            ! empty($data['primary_image_id']) &&
+            in_array((int) $data['primary_image_id'], $deleteIds, true)
+        ) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'primary_image_id' =>
+                    'Gambar utama tidak boleh dipilih untuk dihapus.',
+            ]);
+        }
+    
+        $selectedPaths = $data['existing_image_paths'] ?? [];
+        $newUploads = $request->file('images', []);
+    
+        // Hitung jumlah gambar yang tersisa setelah penghapusan,
+        // lalu pastikan total gambar tidak melebihi 10.
+        $remainingCount = $product->images()
+            ->whereNotIn('id', $deleteIds)
+            ->count();
+    
+        if ($remainingCount + count($selectedPaths) + count($newUploads) > 10) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'existing_image_paths' =>
+                    'Maksimal 10 gambar dapat dihubungkan ke satu produk.',
+            ]);
+        }
+    
+        $uploadedPaths = [];
+        $deletedPaths = [];
+    
+        try {
+            DB::transaction(function () use (
+                $product,
+                $data,
+                $selectedPaths,
+                $newUploads,
+                $deleteIds,
+                &$uploadedPaths,
+                &$deletedPaths
+            ) {
+                // 1. Hapus hubungan gambar yang dipilih.
+                $imagesToDelete = $product->images()
+                    ->whereIn('id', $deleteIds)
+                    ->get();
+    
+                foreach ($imagesToDelete as $image) {
+                    $deletedPaths[] = $image->path;
+                    $image->delete();
+                }
+    
+                // 2. Hubungkan gambar galeri yang sebelumnya belum digunakan.
+                foreach ($selectedPaths as $path) {
+                    // Pemeriksaan tambahan untuk mencegah duplikasi.
+                    if (
+                        $product->images()->where('path', $path)->exists()
+                    ) {
+                        continue;
+                    }
+    
+                    $product->images()->create([
+                        'product_variant_id' => null,
+                        'path' => $path,
+                        'alt_text' => $data['image_alt_text'] ?? $product->name,
+                        'sort_order' => (int) (
+                            $product->images()->max('sort_order') ?? -1
+                        ) + 1,
+                        'is_primary' => false,
+                    ]);
+                }
+    
+                // 3. Simpan unggahan baru.
+                foreach ($newUploads as $image) {
+                    $path = $image->store('products', 'public');
+                    $uploadedPaths[] = $path;
+    
+                    $product->images()->create([
+                        'product_variant_id' => null,
+                        'path' => $path,
+                        'alt_text' => $data['image_alt_text'] ?? $product->name,
+                        'sort_order' => (int) (
+                            $product->images()->max('sort_order') ?? -1
+                        ) + 1,
+                        'is_primary' => false,
+                    ]);
+                }
+    
+                // 4. Pilih gambar utama yang masih terhubung.
+                $primaryImage = null;
+    
+                if (! empty($data['primary_image_id'])) {
+                    $primaryImage = $product->images()
+                        ->whereKey($data['primary_image_id'])
+                        ->firstOrFail();
+                } else {
+                    $primaryImage = $product->images()
+                        ->where('is_primary', true)
+                        ->first();
+    
+                    if (! $primaryImage) {
+                        $primaryImage = $product->images()
+                            ->orderBy('sort_order')
+                            ->orderBy('id')
+                            ->first();
+                    }
+                }
+    
+                $product->images()->update(['is_primary' => false]);
+    
+                if ($primaryImage) {
+                    $primaryImage->update(['is_primary' => true]);
+    
+                    // Sinkronkan kolom gambar lama yang digunakan katalog.
+                    $product->update(['image' => $primaryImage->path]);
+                } else {
+                    // Jangan biarkan products.image menunjuk ke file
+                    // yang baru saja dihapus.
+                    $legacyImage = $product->getOriginal('image');
+                    $legacyPath = is_string($legacyImage)
+                        ? ltrim(trim($legacyImage), '/')
+                        : '';
+    
+                    if (str_starts_with($legacyPath, 'storage/')) {
+                        $legacyPath = substr($legacyPath, strlen('storage/'));
+                    }
+    
+                    $legacyWasDeleted = in_array(
+                        $legacyPath,
+                        $deletedPaths,
+                        true
+                    );
+    
+                    if (
+                        $legacyWasDeleted ||
+                        (
+                            $legacyPath !== '' &&
+                            ! Storage::disk('public')->exists($legacyPath)
+                        )
+                    ) {
+                        $product->update(['image' => null]);
+                    }
+                }
+            });
+        } catch (\Throwable $exception) {
+            // Hapus file yang baru diunggah jika transaksi gagal.
+            foreach ($uploadedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+    
+            throw $exception;
+        }
+    
+        // File lama baru dihapus setelah transaksi database berhasil.
+        foreach (array_unique($deletedPaths) as $path) {
+            // Jangan hapus file apabila masih direferensikan produk lain.
+            $stillUsed = DB::table('product_images')
+                ->where('path', $path)
+                ->exists();
+    
+            $legacyStillUsed = DB::table('products')
+                ->where('image', $path)
+                ->exists();
+    
+            if (! $stillUsed && ! $legacyStillUsed) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+    
+        return redirect()
+            ->route('admin.products.edit', $product)
+            ->with('success', 'Gambar produk berhasil diperbarui.');
     }
 }
