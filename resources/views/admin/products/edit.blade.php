@@ -24,7 +24,6 @@
     </div>
 </div>
 
-
 @if ($errors->any())
     <div class="alert alert-danger">
         <strong>Double-check the following input.:</strong>
@@ -134,46 +133,81 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($specificationRows as $index => $spec)
-                            @if (!empty($spec['id']))
-                                <input type="hidden" name="specifications[{{ $index }}][id]" value="{{ $spec['id'] }}">
-                            @endif
-                            <tr class="specification-item">
-                                <td>
-                                    <input type="checkbox" value="{{ $spec['id'] ?? '' }}" name="specifications[{{ $index }}][id]" class="spec-input">
-                                </td>
-                                <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_group]" value="{{ $spec['specification_group'] ?? '' }}">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_name]" value="{{ $spec['specification_name'] ?? '' }}">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_value]" value="{{ $spec['specification_value'] ?? '' }}">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][sort_order]" value="{{ $spec['sort_order'] ?? '' }}">
-                                    </div>
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-outline-danger remove-specification">
-                                        <em class="ni ni-trash"></em>
-                                    </button>
-                                </td>
-                            </tr>
-                        @endforeach
+                    @foreach ($specificationRows as $index => $spec)
+                        <tr class="specification-item">
+                            <td>
+                                @if (!empty($spec['id']))
+                                    <input
+                                        type="hidden"
+                                        name="specifications[{{ $index }}][id]"
+                                        value="{{ $spec['id'] }}"
+                                    >
+                                @endif
+                    
+                                <input
+                                    type="checkbox"
+                                    class="spec-input"
+                                    aria-label="Pilih spesifikasi untuk dihapus"
+                                >
+                            </td>
+                    
+                            <td>
+                                <input
+                                    class="form-control"
+                                    name="specifications[{{ $index }}][specification_group]"
+                                    value="{{ $spec['specification_group'] ?? '' }}"
+                                    maxlength="255"
+                                    required
+                                >
+                            </td>
+                    
+                            <td>
+                                <input
+                                    class="form-control"
+                                    name="specifications[{{ $index }}][specification_name]"
+                                    value="{{ $spec['specification_name'] ?? '' }}"
+                                    maxlength="255"
+                                    required
+                                >
+                            </td>
+                    
+                            <td>
+                                <input
+                                    class="form-control"
+                                    name="specifications[{{ $index }}][specification_value]"
+                                    value="{{ $spec['specification_value'] ?? '' }}"
+                                    maxlength="2000"
+                                    required
+                                >
+                            </td>
+                    
+                            <td>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    name="specifications[{{ $index }}][sort_order]"
+                                    value="{{ $spec['sort_order'] ?? 0 }}"
+                                    min="0"
+                                    step="1"
+                                >
+                            </td>
+                    
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-danger remove-specification"
+                                    aria-label="Hapus spesifikasi"
+                                >
+                                    <em class="ni ni-trash"></em>
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
                     </tbody>
                     <tfoot>
                         <tr>
                             <td>
-                                <input type="checkbox" value="spec_id[]" name="spec_id" id="check-all">
+                                <input type="checkbox" id="check-all">
                             </td>
                             <td colspan="5">
                                 <button type="button" id="btn-delete" class="btn btn-danger" disabled>
@@ -181,7 +215,7 @@
                                     Delete Selected
                                 </button>
                             </td>
-                        <tr>
+                        </tr>
                     </tfoot>
                 </table>
             </div>
@@ -249,8 +283,7 @@
                                 <label>Capital price</label>
                                 <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][cost_price]" value="{{ old("variants.$variantKey.cost_price", $variant->cost_price) }}">
                             </div>
-                        <dfiv>
-                    </div>
+                        </div>
                     </div>
 
                     <div class="row mb-3">
@@ -360,7 +393,46 @@
         
             @php
                 $productImages = $product->images;
+            
+                /*
+                 * Gambar lama dari products.image tetap didukung
+                 * selama migrasi ke product_images berlangsung.
+                 *
+                 * URL eksternal tidak digunakan sebagai fallback.
+                 */
+                $legacyImagePath = $product->image;
+                $legacyImageUrl = null;
+            
+                if (
+                    is_string($legacyImagePath) &&
+                    trim($legacyImagePath) !== '' &&
+                    ! filter_var($legacyImagePath, FILTER_VALIDATE_URL) &&
+                    ! str_starts_with($legacyImagePath, '//')
+                ) {
+                    $legacyImagePath = ltrim(trim($legacyImagePath), '/');
+            
+                    if (str_starts_with($legacyImagePath, 'storage/')) {
+                        $legacyImagePath = substr(
+                            $legacyImagePath,
+                            strlen('storage/')
+                        );
+                    }
+            
+                    if (Storage::disk('public')->exists($legacyImagePath)) {
+                        $legacyImageUrl = Storage::disk('public')
+                            ->url($legacyImagePath);
+                    }
+                }
+            
+                // Aset lokal yang sudah ada di repo, bukan URL eksternal.
+                $defaultImageUrl = asset('images/product/a.png');
+            
+                $primaryImage = $productImages->firstWhere(
+                    'is_primary',
+                    true
+                ) ?? $productImages->first();
             @endphp
+
             
             <h6>Available Gallery Images</h6>
         
@@ -386,13 +458,34 @@
                     </div>
                 </div>
             @else
-                <div class="alert alert-info" role="alert">
-                    There are no unlinked gallery images.
+                <div class="card card-bordered">
+                    <div class="card-inner">
+                        <img
+                            src="{{ $legacyImageUrl ?: $defaultImageUrl }}"
+                            alt="{{ $product->name }}"
+                            class="img-fluid img-responsive mb-3"
+                            style="max-width: 320px; max-height: 320px; object-fit: contain;"
+                        >
+            
+                        @if ($legacyImageUrl)
+                            <div class="alert alert-info" role="alert">
+                                Gambar ini berasal dari kolom lama
+                                products.image dan belum tercatat di
+                                product_images.
+                            </div>
+                        @else
+                            <div class="alert alert-secondary" role="alert">
+                                Belum ada gambar produk lokal yang terhubung.
+                                Gambar di atas hanya fallback tampilan;
+                                belum disimpan sebagai gambar produk.
+                            </div>
+                        @endif
+                    </div>
                 </div>
             @endif
 
             {{-- Gambar yang sudah terhubung --}}
-            <h6>Connected Images</h6>
+            <h5>Connected Images</h5>
         
             {{-- Gambar galeri yang belum terhubung --}}
             <hr>
@@ -469,16 +562,15 @@
             </div>
         
             <div class="form-actions mt-4">
-                <button type="submit" class="btn btn-primary">
-                    Save Images
-                </button>
-        
                 <a
                     href="{{ route('admin.products.edit', $product) }}"
                     class="btn btn-secondary"
                 >
                     Cancel
                 </a>
+                <button type="submit" class="btn btn-primary">
+                    Save Images
+                </button>
             </div>
         </form>
         
@@ -491,35 +583,63 @@
 <template id="specification-template">
     <tr class="specification-item">
         <td>
-            <input type="checkbox" value="">
+            <input
+                type="checkbox"
+                class="spec-input"
+                aria-label="Pilih spesifikasi untuk dihapus"
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_group" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_group"
+                maxlength="255"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_name" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_name"
+                maxlength="255"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_value" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_value"
+                maxlength="2000"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input type="number" min="0" class="form-control" data-field="sort_order" value="0">
-            </div>
+            <input
+                type="number"
+                class="form-control"
+                data-field="sort_order"
+                min="0"
+                step="1"
+                value="0"
+            >
         </td>
+
         <td>
-            <button type="button" class="btn btn-outline-danger remove-specification">
+            <button
+                type="button"
+                class="btn btn-outline-danger remove-specification"
+                aria-label="Hapus spesifikasi"
+            >
                 <em class="ni ni-trash"></em>
             </button>
         </td>
     </tr>
 </template>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -545,23 +665,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     category.addEventListener('change', filterSubCategories);
     filterSubCategories();
-
+    
     const container = document.getElementById('specifications-container');
+    const tbody = container.querySelector('tbody');
     const template = document.getElementById('specification-template');
-    let nextIndex = {{ count($specificationRows) }};
+    
+    const existingIndexes = @json(array_map(
+        'intval',
+        array_keys($specificationRows)
+    ));
+    
+    let nextIndex = existingIndexes.length
+        ? Math.max(...existingIndexes) + 1
+        : 0;
 
-    document.getElementById('add-specification')
-        .addEventListener('click', function () {
-            const fragment = template.content.cloneNode(true);
-            const row = fragment.querySelector('.specification-item');
+    document.getElementById('add-specification').addEventListener('click', function () {
+        const fragment = template.content.cloneNode(true);
+        const row = fragment.querySelector('.specification-item');
 
-            row.querySelectorAll('[data-field]').forEach(function (input) {
-                input.name = `specifications[${nextIndex}][${input.dataset.field}]`;
-            });
-
-            container.children[0].children[0].nextElementSibling.appendChild(fragment);
-            nextIndex++;
+        row.querySelectorAll('[data-field]').forEach(function (input) {
+            input.name =
+                `specifications[${nextIndex}][${input.dataset.field}]`;
         });
+
+        tbody.appendChild(fragment);
+        nextIndex++;
+    });
 
     container.addEventListener('click', function (event) {
         const button = event.target.closest('.remove-specification');
@@ -592,9 +721,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const deleteBtn = document.getElementById('btn-delete');
     
     function updateButtonStatus() {
-        const checkedBoxes = document.querySelectorAll('.spec-input:checked');
-        return checkedBoxes.length > 2 ? deleteBtn.disabled = false : deleteBtn.disabled = true
+        const checkedBoxes = document.querySelectorAll(
+            '.spec-input:checked'
+        );
+    
+        deleteBtn.disabled = checkedBoxes.length === 0;
     }
+    
     
     document.querySelector('#specifications-container table tbody').addEventListener('change', function(e) {
         if (e.target.classList.contains('spec-input')) {
