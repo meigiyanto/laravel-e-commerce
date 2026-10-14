@@ -160,7 +160,7 @@
 
                 {{-- Table --}}
                 <div class="table-responsive">
-                    <table class="table table-hover datatable-init">
+                    <table class="table table-hover datatable-init text-nowrap">
                         <thead>
                             <tr>
                                 <th></th>

@@ -31,7 +31,7 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-middle datatable-init">
+                    <table class="table table-middle table-striped datatable-init text-nowrap">
                         <thead>
                             <tr>
                                 <th>ID</th>

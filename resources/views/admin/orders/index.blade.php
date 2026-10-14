@@ -88,7 +88,7 @@
 
                 {{-- Table --}}
                 <div class="table-responsive">
-                    <table class="table table-middle datatable-init">
+                    <table class="table table-middle datatable-init text-nowrap">
                         <thead>
                             <tr>
                                 <th></th>
