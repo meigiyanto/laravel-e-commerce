@@ -239,113 +239,121 @@
             </div>
 
             <hr>
-            <h5>5. Spesifikasi Produk</h5>
-            <p class="text-soft">
-                Contoh: Material — Kulit sintetis; Warna — Hitam.
-            </p>
-
+            
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5>5. Spesifikasi Produk</h5>
+                    <p class="text-soft">
+                        Contoh: Material — Kulit sintetis; Warna — Hitam.
+                    </p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" id="add-specification">
+                        <em class="ni ni-plus"></em>
+                    </button>
+                </div>
+            </div>
+            
             <div id="specifications-container">
-                <table class="table table-hover table-striped nowrap">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Group</th>
-                            <th>Specification Name</th>
-                            <th>Value</th>
-                            <th>Order</th>
-                            <th>
-                                <button type="button" class="btn btn-outline-secondary" id="add-specification">
-                                    <em class="ni ni-plus"></em>
-                                </button>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (old('specifications', []) as $index => $spec)
-                        <tr class="specification-item">
-                            <td>
-                                @if (!empty($spec['id']))
+                <!-- <div class="table-responsive"> -->
+                    <table class="table table-hover table-striped nowrap datatable-init">
+                        <thead>
+                            <tr>
+                                <th class="no-sort" style="width: 5%;"></th>
+                                <th class="no-sort" style="width: 20%;">Grup</th>
+                                <th class="no-sort" style="width: 30%;">Nama Spesifikasi</th>
+                                <th class="no-sort" style="width: 30%;">Value</th>
+                                <th class="no-sort" style="width: 10%;">Urutan</th>
+                                <th class="no-sort" style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (old('specifications', []) as $index => $spec)
+                            <tr class="specification-item">
+                                <td>
+                                    @if (!empty($spec['id']))
+                                        <input
+                                            type="hidden"
+                                            name="specifications[{{ $index }}][id]"
+                                            value="{{ $spec['id'] }}"
+                                        >
+                                    @endif
+                        
                                     <input
-                                        type="hidden"
-                                        name="specifications[{{ $index }}][id]"
-                                        value="{{ $spec['id'] }}"
+                                        type="checkbox"
+                                        class="spec-input"
+                                        aria-label="Pilih spesifikasi untuk dihapus"
                                     >
-                                @endif
-                    
-                                <input
-                                    type="checkbox"
-                                    class="spec-input"
-                                    aria-label="Pilih spesifikasi untuk dihapus"
-                                >
-                            </td>
-                    
-                            <td>
-                                <input
-                                    class="form-control form-control-sm"
-                                    name="specifications[{{ $index }}][specification_group]"
-                                    value="{{ $spec['specification_group'] ?? '' }}"
-                                    maxlength="255"
-                                    required
-                                >
-                            </td>
-                    
-                            <td>
-                                <input
-                                    class="form-control form-control-sm"
-                                    name="specifications[{{ $index }}][specification_name]"
-                                    value="{{ $spec['specification_name'] ?? '' }}"
-                                    maxlength="255"
-                                    required
-                                >
-                            </td>
-                    
-                            <td>
-                                <input
-                                    class="form-control form-control-sm"
-                                    name="specifications[{{ $index }}][specification_value]"
-                                    value="{{ $spec['specification_value'] ?? '' }}"
-                                    maxlength="2000"
-                                    required
-                                >
-                            </td>
-                    
-                            <td>
-                                <input
-                                    type="number"
-                                    class="form-control form-control-sm"
-                                    name="specifications[{{ $index }}][sort_order]"
-                                    value="{{ $spec['sort_order'] ?? 0 }}"
-                                    min="0"
-                                    step="1"
-                                >
-                            </td>
-                    
-                            <td>
-                                <button
-                                    type="button"
-                                    class="btn btn-outline-danger remove-specification"
-                                    aria-label="Hapus spesifikasi"
-                                >
-                                    <em class="ni ni-trash"></em>
-                                </button>
-                            </td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td>
-                                <input type="checkbox" id="check-all">
-                            </td>
-                            <td colspan="5">
-                                <button type="button" id="btn-delete" class="btn btn-danger" disabled>
-                                    <em class="ni ni-trash"></em>
-                                    Delete Selected
-                                </button>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
+                                </td>
+                        
+                                <td>
+                                    <input
+                                        class="form-control form-control-sm"
+                                        name="specifications[{{ $index }}][specification_group]"
+                                        value="{{ $spec['specification_group'] ?? '' }}"
+                                        maxlength="255"
+                                        required
+                                    >
+                                </td>
+                        
+                                <td>
+                                    <input
+                                        class="form-control form-control-sm"
+                                        name="specifications[{{ $index }}][specification_name]"
+                                        value="{{ $spec['specification_name'] ?? '' }}"
+                                        maxlength="255"
+                                        required
+                                    >
+                                </td>
+                        
+                                <td>
+                                    <input
+                                        class="form-control form-control-sm"
+                                        name="specifications[{{ $index }}][specification_value]"
+                                        value="{{ $spec['specification_value'] ?? '' }}"
+                                        maxlength="2000"
+                                        required
+                                    >
+                                </td>
+                        
+                                <td>
+                                    <input
+                                        type="number"
+                                        class="form-control form-control-sm"
+                                        name="specifications[{{ $index }}][sort_order]"
+                                        value="{{ $spec['sort_order'] ?? 0 }}"
+                                        min="0"
+                                        step="1"
+                                    >
+                                </td>
+                        
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-danger remove-specification"
+                                        aria-label="Hapus spesifikasi"
+                                    >
+                                        <em class="ni ni-trash"></em>
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" id="check-all">
+                                </td>
+                                <td colspan="5">
+                                    <button type="button" id="btn-delete" class="btn btn-danger" disabled>
+                                        <em class="ni ni-trash"></em>
+                                        Delete Selected
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                <!-- </div> -->
             </div>
             
             <hr>
@@ -440,7 +448,11 @@
 </template>
 
 <script>
+ 
 document.addEventListener('DOMContentLoaded', function () {
+    /**
+     * Kategori & Sub Kategori
+     */
     const category = document.getElementById('category_id');
     const subCategory = document.getElementById('sub_category_id');
 
@@ -461,6 +473,9 @@ document.addEventListener('DOMContentLoaded', function () {
     category.addEventListener('change', filterSubCategories);
     filterSubCategories();
     
+    /**
+     * Produk Spesifikasi
+     */
     const container = document.getElementById('specifications-container');
     const template = document.getElementById('specification-template');
     const tbody = container.querySelector('tbody');
@@ -473,7 +488,8 @@ document.addEventListener('DOMContentLoaded', function () {
         row.querySelectorAll('[data-field]').forEach(function (input) {
             input.name = `specifications[${nextIndex}][${input.dataset.field}]`;
         });
-
+        
+        tbody.children[0].style.display = 'none';
         tbody.appendChild(fragment);
         nextIndex++;
     });
