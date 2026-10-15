@@ -147,6 +147,11 @@ class CartController extends Controller
                 'integer',
                 'min:1',
             ],
+            'product_variant_id' => [
+                'nullable',
+                'integer',
+                'exists:product_variants,id',
+            ],
         ]);
 
         $product = Product::findOrFail(
@@ -154,9 +159,13 @@ class CartController extends Controller
         );
 
         try {
+            
             $this->cartService->add(
                 $product,
-                $validated['quantity']
+                (int) $validated['quantity'],
+                isset($validated['product_variant_id'])
+                    ? (int) $validated['product_variant_id']
+                    : null
             );
         } catch (\RuntimeException $e) {
             if ($request->expectsJson()) {
@@ -193,7 +202,7 @@ class CartController extends Controller
      */
     public function update(
         Request $request,
-        Product $product
+        int $item
     ) {
         $validated = $request->validate([
             'quantity' => [
@@ -249,7 +258,7 @@ class CartController extends Controller
      */
     public function destroy(
         Request $request,
-        Product $product
+        int $item
     ) {
         $this->cartService->remove(
             $product->id

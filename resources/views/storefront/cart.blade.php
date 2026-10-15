@@ -104,7 +104,10 @@
                                     @php
                                         $product = $item->product;
                                         $quantity = $item->quantity;
+                                        $variant = $item->variant;
                                         $subtotal = $product->price * $quantity;
+                                        $price = $variant?->price ?? $product->price;
+                                        
                                         $image = $product->image ?? 'placeholder.png';
                                         $imageUrl = null;
                                         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -136,7 +139,6 @@
                                                                     <a href="{{ route('storefront.product', $product->slug) }}" class="d-block">
                                                                         <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="store-cart-image" loading="lazy">
                                                                     </a>
-                                                                    <!-- <p>{{ $imageUrl }}</p> -->
                                                                 @else
                                                                     <a href="{{ route('storefront.product', $product->slug) }}" class="d-block" aria-label="{{ $product->name }}">
                                                                         <div class="store-cart-placeholder">
@@ -148,6 +150,19 @@
                                                         </td>
                                                         <td>
                                                             <a href="{{ route('storefront.product', $product->slug) }}" class="store-cart-product-name">{{ $product->name }}</a>
+                                                            
+                                                            @if ($variant)
+                                                                <div class="small text-muted mt-1">
+                                                                    {{ $variant->name ?: $variant->sku }}
+                                                            
+                                                                    @if ($variant->attributeValues->isNotEmpty())
+                                                                        — {{ $variant->attributeValues
+                                                                            ->map(fn ($value) => $value->value)
+                                                                            ->implode(' / ') }}
+                                                                    @endif
+                                                                </div>
+                                                            @endif
+                                                            
                                                             @if ($product->category)
                                                                 <div class="small text-muted mt-1">
                                                                     {{ $product->category->name }}
@@ -165,7 +180,7 @@
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
                                                             {{-- Quantity --}}
-                                                            <form action="{{ route('cart.update', $product) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                            <form action="{{ route('cart.update', $item->id) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
                                                                 @csrf
                                                                 @method('PATCH')
 
@@ -195,7 +210,7 @@
                                                         </td>
                                                         <td>
                                                             {{-- Remove --}}
-                                                            <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
+                                                            <form action="{{ route('cart.destroy', $item->id) }}" method="POST" class="store-cart-remove-form">
 
                                                                 @csrf
                                                                 @method('DELETE')
@@ -256,19 +271,12 @@
                                             Continue Shopping
                                         </a>
                                     </div>
-                                                                                                      <div>
+                                    <div>
                                         <a href="{{ route('checkout.index') }}" class="store-checkout-button">
                                             Continue Checkout
                                         </a>
                                     </div>
-                                    <!--
-                                    <div>
-                                        <a href="{{ route('checkout.index') }}" class="store-checkout-button">
-                                                                                                              <span>Continue to Checkout</span>
-                                            <i class="bi bi-arrow-right me-2"></i>
-                                        </a>
-                                    </div>
-                                    -->
+
                                 </div>
                             @else
                                 <a href="{{ route('login') }}" class="store-checkout-button">

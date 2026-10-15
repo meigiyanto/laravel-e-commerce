@@ -6,6 +6,9 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
+use App\Models\ProductVariant;
+use App\Services\VariantInventoryService;
+use Illuminate\Validation\ValidationException;
 
 class CartService
 {
@@ -25,10 +28,12 @@ class CartService
     public function getUserCartWithItems(int $userId): Cart
     {
         $cart = $this->getUserCart($userId);
-
+        
         return $cart->load([
             'items.product.category',
             'items.product.subCategory',
+            'items.variant.inventory',
+            'items.variant.attributeValues.attribute',
         ]);
     }
 
@@ -54,27 +59,116 @@ class CartService
      * User:
      *   disimpan di database.
      */
-    public function add(Product $product, int $quantity = 1): void
-    {
+    public function add(
+        Product $product,
+        int $quantity = 1,
+        ?int $variantId = null
+    ): void {
         if ($quantity < 1) {
-            $quantity = 1;
-        }
-
-        if ($product->stock < 1) {
-            throw new \RuntimeException('Produk sedang habis.');
-        }
-
-        if (auth()->check()) {
-            $this->addToUserCart(
-                auth()->id(),
-                $product,
-                $quantity
+            throw new \RuntimeException(
+                'Jumlah produk minimal 1.'
             );
-
-            return;
         }
-
-        $this->addToGuestCart($product, $quantity);
+    
+        DB::transaction(function () use (
+            $product,
+            $quantity,
+            $variantId
+        ) {
+            $resolved = app(VariantInventoryService::class)
+                ->resolve($product, $variantId);
+    
+            $variant = $resolved['variant'];
+            $inventory = $resolved['inventory'];
+    
+            if ($variant->status !== 'active') {
+                throw new \RuntimeException(
+                    'Varian ini tidak tersedia.'
+                );
+            }
+    
+            $available = (int) $inventory->quantity
+                - (int) $inventory->reserved_quantity;
+    
+            if ($available < 1) {
+                throw new \RuntimeException(
+                    'Varian ini sedang habis.'
+                );
+            }
+    
+            if (auth()->check()) {
+                $cart = $this->getUserCart(auth()->id());
+    
+                $item = CartItem::query()
+                    ->where('cart_id', $cart->id)
+                    ->where('product_variant_id', $variant->id)
+                    ->lockForUpdate()
+                    ->first();
+    
+                // Item lama tanpa variant_id hanya dapat dipetakan
+                // otomatis jika produk ini memiliki varian tersebut.
+                if (! $item && $variant->is_default) {
+                    $item = CartItem::query()
+                        ->where('cart_id', $cart->id)
+                        ->where('product_id', $product->id)
+                        ->whereNull('product_variant_id')
+                        ->lockForUpdate()
+                        ->first();
+    
+                    if ($item) {
+                        $item->update([
+                            'product_variant_id' => $variant->id,
+                        ]);
+                    }
+                }
+    
+                $newQuantity = $quantity + ($item?->quantity ?? 0);
+    
+                if ($newQuantity > $available) {
+                    throw new \RuntimeException(
+                        'Jumlah melebihi stok varian yang tersedia.'
+                    );
+                }
+    
+                if ($item) {
+                    $item->update([
+                        'quantity' => $newQuantity,
+                    ]);
+                } else {
+                    CartItem::create([
+                        'cart_id' => $cart->id,
+                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
+                        'quantity' => $quantity,
+                    ]);
+                }
+    
+                return;
+            }
+    
+            $cart = $this->getGuestCart();
+            $key = 'variant_'.$variant->id;
+    
+            $currentQuantity = (int) (
+                $cart[$key]['quantity'] ?? 0
+            );
+    
+            $newQuantity = $currentQuantity + $quantity;
+    
+            if ($newQuantity > $available) {
+                throw new \RuntimeException(
+                    'Jumlah melebihi stok varian yang tersedia.'
+                );
+            }
+    
+            $cart[$key] = [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => $newQuantity,
+            ];
+    
+            session()->put('cart', $cart);
+        });
     }
 
     /**

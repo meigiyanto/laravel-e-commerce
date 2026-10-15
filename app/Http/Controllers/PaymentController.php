@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiErrorException;
+use App\Services\VariantInventoryService;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use Throwable;
@@ -643,17 +644,26 @@ class PaymentController extends Controller
 
         $order->load('items');
 
+        $stockService = app(VariantInventoryService::class);
+        
         foreach ($order->items as $item) {
-            $product = Product::whereKey($item->product_id)
+            $product = Product::query()
+                ->whereKey($item->product_id)
                 ->lockForUpdate()
                 ->first();
-
-            if ($product) {
-                $product->increment(
-                    'stock',
-                    $item->quantity
-                );
+        
+            if (! $product) {
+                continue;
             }
+        
+            $stockService->restoreForOrder(
+                $product,
+                $item->product_variant_id
+                    ? (int) $item->product_variant_id
+                    : null,
+                (int) $item->quantity,
+                $order
+            );
         }
     }
 

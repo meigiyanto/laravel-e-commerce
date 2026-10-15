@@ -8,6 +8,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use App\Services\VariantInventoryService;
 
 class OrderController extends Controller
 {
@@ -216,14 +217,29 @@ class OrderController extends Controller
                     ->whereIn('id', $productIds)
                     ->lockForUpdate()
                     ->get();
-
+                
+                $items = $lockedOrder->items()->get();
+                
+                $stockService = app(VariantInventoryService::class);
+                
                 foreach ($items as $item) {
-                    Product::query()
+                    $product = Product::query()
                         ->whereKey($item->product_id)
-                        ->increment(
-                            'stock',
-                            $item->quantity
-                        );
+                        ->lockForUpdate()
+                        ->first();
+                
+                    if (! $product) {
+                        continue;
+                    }
+                
+                    $stockService->restoreForOrder(
+                        $product,
+                        $item->product_variant_id
+                            ? (int) $item->product_variant_id
+                            : null,
+                        (int) $item->quantity,
+                        $lockedOrder
+                    );
                 }
             }
 

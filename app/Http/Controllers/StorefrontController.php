@@ -78,6 +78,8 @@ class StorefrontController extends Controller
             'subCategory',
             'specifications',
             'reviews.user',
+            'variants.inventory',
+            'variants.attributeValues.attribute'
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')

@@ -3,6 +3,15 @@
 @section('title', config('app.name') . ' - Shop')
 
 @section('content')
+@php
+    $purchasableVariants = $product->variants
+        ->where('status', 'active')
+        ->sortByDesc('is_default')
+        ->values();
+
+    $selectedVariant = $purchasableVariants->first(fn ($variant) => $variant->is_default) ?? $purchasableVariants->first();
+    $selectedAvailable = $selectedVariant?->inventory ? $selectedVariant->inventory->available_quantity : (int) $product->stock;
+@endphp
 {{-- =========================================================
      BREADCRUMB
 ========================================================= --}}
@@ -87,7 +96,11 @@
             <div class="row g-3 g-md-4">
                 @foreach ($products as $product)
                     <div class="col-6 col-md-4 col-lg-3">
-                        <x-store-product-card :product="$product"/>
+                        <x-store-product-card 
+                            :product="$product" 
+                            :purchasable-variants="$purchasableVariants"
+                            :selectedAvailable="$selectedAvailable"
+                        />
                     </div>
                 @endforeach
             </div>
@@ -118,4 +131,53 @@
     </div>
 </section>
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const variantSelect = document.getElementById('product_variant_id');
+    const quantityInput = document.getElementById('quantity');
+    const priceElement = document.getElementById('selected-variant-price');
+    const stockElement = document.getElementById('selected-variant-stock');
+    const submitButton = document.getElementById('add-to-cart-submit');
+
+    if (!variantSelect) {
+        return;
+    }
+
+    function formatRupiah(value) {
+        return 'Rp ' + new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: 0
+        }).format(Number(value || 0));
+    }
+
+    function updateVariant() {
+        const option = variantSelect.selectedOptions[0];
+
+        if (!option) {
+            return;
+        }
+
+        const price = Number(option.dataset.price || 0);
+        const stock = Number(option.dataset.stock || 0);
+
+        priceElement.textContent = formatRupiah(price);
+        quantityInput.max = Math.max(1, stock);
+
+        if (Number(quantityInput.value) > stock) {
+            quantityInput.value = Math.max(1, stock);
+        }
+
+        quantityInput.disabled = stock < 1;
+        submitButton.disabled = stock < 1;
+
+        stockElement.textContent = stock > 0
+            ? 'Stok tersedia — ' + stock + ' unit'
+            : 'Stok varian ini habis';
+    }
+
+    variantSelect.addEventListener('change', updateVariant);
+    updateVariant();
+});
+</script>
+@endpush
 @endsection

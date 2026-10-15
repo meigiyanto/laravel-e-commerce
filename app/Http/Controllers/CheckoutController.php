@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use App\Services\VariantInventoryService;
 
 class CheckoutController extends Controller
 {
@@ -26,8 +27,12 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Your cart still empty.');
         }
 
-        $subtotal = $cart->items->sum(fn ($item) => $item->product->price * $item->quantity);
+        $subtotal = $cart->items->sum(function ($item) { 
+            $price = $item->variant?->price ?? $item->product->price;
 
+            return $price * $item->quantity;
+        });
+        
         $shippingCost = 0;
 
         $total = $subtotal + $shippingCost;
@@ -72,7 +77,7 @@ class CheckoutController extends Controller
                 'in:stripe,midtrans,cod',
             ],
         ]);
-
+        
         $order = DB::transaction(function () use ($validated) {
 
             $cart = Cart::where('user_id', auth()->id())
@@ -83,7 +88,10 @@ class CheckoutController extends Controller
                 abort(404, 'Cart not founs.');
             }
 
-            $cart->load('items.product');
+            $cart->load([
+                'items.product',
+                'items.variant.inventory',
+            ]);
 
             if ($cart->items->isEmpty()) {
                 abort(422, 'Your cart still empty.');
@@ -102,31 +110,37 @@ class CheckoutController extends Controller
                 ->get()
                 ->keyBy('id');
 
+            $stockRows = [];
             $subtotal = 0;
 
             foreach ($cart->items as $cartItem) {
-
-                $product = $products->get(
-                    $cartItem->product_id
-                );
-
+                $product = $products->get($cartItem->product_id);
+            
                 if (! $product) {
                     throw ValidationException::withMessages([
-                        'stock' => 'One of the products in your cart is no longer available. Please check your cart.',
+                        'stock' => 'Produk di keranjang tidak lagi tersedia.',
                     ]);
                 }
-
-                if ($cartItem->quantity > $product->stock) {
+            
+                $resolved = app(VariantInventoryService::class)
+                    ->resolve($product);
+            
+                $variant = $resolved['variant'];
+                $inventory = $resolved['inventory'];
+                $available = (int) $inventory->quantity
+                    - (int) $inventory->reserved_quantity;
+            
+                if (
+                    $variant->status !== 'active'
+                    || $cartItem->quantity > $available
+                ) {
                     throw ValidationException::withMessages([
-                        'stock' => "Product stock {$product->name} is not enough. Please update your cart.",
+                        'stock' => "Stok produk {$product->name} tidak mencukupi.",
                     ]);
                 }
 
-                /*
-                 * Harga diambil dari database.
-                 * Bukan dari request browser.
-                 */
-                $subtotal += $product->price * $cartItem->quantity;
+                $stockRows[$product->id] = $resolved;
+                $subtotal += (float) $variant->price * $cartItem->quantity;
             }
 
             $shippingCost = 0;
@@ -180,19 +194,34 @@ class CheckoutController extends Controller
                 'gross_amount' => $order->total,
             ]);
 
+            $stockService = app(VariantInventoryService::class);
+            
             foreach ($cart->items as $cartItem) {
-                $product = $products->get($cartItem->product_id);
-                $itemSubtotal = $product->price * $cartItem->quantity;
-
+                $resolved = $stockRows[$cartItem->product_id];
+            
+                $product = $resolved['product'];
+                $variant = $resolved['variant'];
+                $inventory = $resolved['inventory'];
+            
+                $itemSubtotal = (float) $variant->price
+                    * $cartItem->quantity;
+            
                 $order->items()->create([
                     'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
                     'product_name' => $product->name,
-                    'price' => $product->price,
+                    'price' => $variant->price,
                     'quantity' => $cartItem->quantity,
                     'subtotal' => $itemSubtotal,
                 ]);
-
-                $product->decrement('stock', $cartItem->quantity);
+            
+                $stockService->deductForOrder(
+                    $product,
+                    $variant,
+                    $inventory,
+                    (int) $cartItem->quantity,
+                    $order
+                );
             }
 
             $cart->items()->delete();
