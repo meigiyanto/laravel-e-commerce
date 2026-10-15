@@ -3,196 +3,164 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Category;
-use App\Models\SubCategory;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::with(['category', 'subCategory'])->latest()->get();
+        $products = Product::with(['category', 'subCategory'])
+            ->latest()
+            ->get();
 
         return view('admin.products.index', compact('products'));
     }
 
     public function create()
     {
-        $categories = Category::with('subCategories')
-            ->orderBy('name')
-            ->get();
-
-        $attributes = Attribute::with([
-            'values' => function ($query) {
-                $query->orderBy('sort_order');
-            },
-        ])->orderBy('sort_order')->get();
-
-        $availableGalleryImages = $this->availableGalleryImages();
+        [$categories, $attributes] = $this->formOptions();
 
         return view('admin.products.create', compact(
             'categories',
-            'attributes',
-            'availableGalleryImages'
+            'attributes'
         ));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'category_id' => [
-                'required',
-                'exists:categories,id',
-            ],
+        $data = $request->validate([
+            'category_id' => ['required', 'exists:categories,id'],
             'sub_category_id' => [
                 'required',
                 Rule::exists('sub_categories', 'id')
-                    ->where('category_id', $request->category_id),
+                    ->where('category_id', $request->input('category_id')),
             ],
             'name' => ['required', 'string', 'max:255'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:255',
-                'unique:products,slug',
-            ],
+            'slug' => ['nullable', 'string', 'max:255', 'unique:products,slug'],
             'description' => ['nullable', 'string'],
 
-            'sku' => [
-                'required',
-                'string',
-                'max:100',
-                'unique:product_variants,sku',
-            ],
-            'barcode' => [
-                'nullable',
-                'string',
-                'max:100',
-                'unique:product_variants,barcode',
-            ],
+            'sku' => ['required', 'string', 'max:100', 'unique:product_variants,sku'],
+            'barcode' => ['nullable', 'string', 'max:100', 'unique:product_variants,barcode'],
             'variant_name' => ['nullable', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
-            'compare_at_price' => [
-                'nullable',
-                'numeric',
-                'gte:price',
-            ],
+            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'weight' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
 
             'quantity' => ['required', 'integer', 'min:0'],
             'reserved_quantity' => [
-                'required',
-                'integer',
-                'min:0',
-                'lte:quantity',
+                'required', 'integer', 'min:0', 'lte:quantity',
             ],
             'reorder_level' => ['required', 'integer', 'min:0'],
 
             'attribute_value_ids' => ['nullable', 'array'],
             'attribute_value_ids.*' => [
-                'integer',
-                'distinct',
-                'exists:attribute_values,id',
+                'integer', 'distinct', 'exists:attribute_values,id',
             ],
+
+            'specifications' => ['nullable', 'array'],
+            'specifications.*.specification_group' => ['required', 'string', 'max:255'],
+            'specifications.*.specification_name' => ['required', 'string', 'max:255'],
+            'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
+            'specifications.*.sort_order' => ['nullable', 'integer', 'min:0'],
+
             'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => [
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $slug = Str::slug($validated['slug'] ?: $validated['name']);
-
-        // Pastikan slug otomatis juga unik.
-        $baseSlug = $slug;
-        $counter = 1;
-
-        while (Product::where('slug', $slug)->exists()) {
-            $slug = $baseSlug . '-' . $counter++;
+        if (
+            filled($data['compare_at_price'] ?? null)
+            && (float) $data['compare_at_price'] < (float) $data['price']
+        ) {
+            throw ValidationException::withMessages([
+                'compare_at_price' => 'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
+            ]);
         }
 
+        $valueIds = $data['attribute_value_ids'] ?? [];
+        $this->validateAttributeValues($valueIds);
+
+        $slug = $this->uniqueSlug($data['slug'] ?: $data['name']);
         $uploadedPaths = [];
 
         try {
             $product = DB::transaction(function () use (
                 $request,
-                $validated,
+                $data,
                 $slug,
+                $valueIds,
                 &$uploadedPaths
             ) {
                 $product = Product::create([
-                    'category_id' => $validated['category_id'],
-                    'sub_category_id' => $validated['sub_category_id'],
-                    'name' => $validated['name'],
+                    'category_id' => $data['category_id'],
+                    'sub_category_id' => $data['sub_category_id'],
+                    'name' => $data['name'],
                     'slug' => $slug,
-                    'description' => $validated['description'] ?? null,
-
-                    'price' => $validated['price'],
-                    'stock' => $validated['quantity'],
+                    'description' => $data['description'] ?? null,
+                    'price' => $data['price'],
+                    'stock' => $data['quantity'],
                     'image' => null,
                 ]);
 
+                // Produk sederhana juga menggunakan satu varian default internal.
                 $variant = $product->variants()->create([
-                    'sku' => $validated['sku'],
-                    'barcode' => $validated['barcode'] ?? null,
-                    'name' => $validated['variant_name'] ?: $validated['name'],
-                    'price' => $validated['price'],
-                    'compare_at_price' => $validated['compare_at_price'] ?? null,
-                    'cost_price' => $validated['cost_price'] ?? null,
-                    'weight' => $validated['weight'] ?? null,
+                    'sku' => $data['sku'],
+                    'barcode' => $data['barcode'] ?? null,
+                    'name' => $data['variant_name'] ?: $product->name,
+                    'price' => $data['price'],
+                    'compare_at_price' => $data['compare_at_price'] ?? null,
+                    'cost_price' => $data['cost_price'] ?? null,
+                    'weight' => $data['weight'] ?? null,
                     'is_default' => true,
-                    'status' => $validated['status'],
+                    'status' => $data['status'],
                 ]);
 
-                $valueIds = $validated['attribute_value_ids'] ?? [];
-
-                if ($valueIds !== []) {
-                    $validCount = AttributeValue::whereIn('id', $valueIds)->count();
-
-                    if ($validCount !== count($valueIds)) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'attribute_value_ids' => 'The selected attribute value is invalid.',
-                        ]);
-                    }
-
-                    $variant->attributeValues()->sync($valueIds);
-                }
+                $variant->attributeValues()->sync($valueIds);
 
                 $variant->inventory()->create([
-                    'quantity' => $validated['quantity'],
-                    'reserved_quantity' => $validated['reserved_quantity'],
-                    'reorder_level' => $validated['reorder_level'],
+                    'quantity' => (int) $data['quantity'],
+                    'reserved_quantity' => (int) $data['reserved_quantity'],
+                    'reorder_level' => (int) $data['reorder_level'],
                 ]);
 
-                if ($validated['quantity'] > 0) {
+                if ((int) $data['quantity'] > 0) {
                     $variant->inventoryMovements()->create([
                         'type' => 'opening_stock',
-                        'quantity' => $validated['quantity'],
-                        'note' => 'Initial stock when the product is made.',
+                        'quantity' => (int) $data['quantity'],
+                        'note' => 'Stok awal saat produk dibuat.',
                         'created_by' => auth()->id(),
                     ]);
                 }
 
-                foreach ($request->file('images', []) as $index => $image) {
-                    $path = $image->store('products', 'public');
+                foreach ($data['specifications'] ?? [] as $index => $spec) {
+                    $product->specifications()->create([
+                        'specification_group' => $spec['specification_group'],
+                        'specification_name' => $spec['specification_name'],
+                        'specification_value' => $spec['specification_value'],
+                        'sort_order' => $spec['sort_order'] ?? $index,
+                    ]);
+                }
+
+                foreach ($request->file('images', []) as $index => $file) {
+                    $path = $file->store('products', 'public');
                     $uploadedPaths[] = $path;
 
                     $product->images()->create([
                         'product_variant_id' => null,
                         'path' => $path,
-                        'alt_text' => $validated['image_alt_text'] ?? $product->name,
+                        'alt_text' => $data['image_alt_text'] ?? $product->name,
                         'sort_order' => $index,
                         'is_primary' => $index === 0,
                     ]);
@@ -214,12 +182,7 @@ class ProductController extends Controller
 
         return redirect()
             ->route('admin.products.index')
-            ->with('success', 'Product and inventory added successfully.');
-    }
-
-    public function show(Product $product)
-    {
-        return redirect()->route('admin.products.edit', $product);
+            ->with('success', 'Produk berhasil dibuat.');
     }
 
     public function edit(Product $product)
@@ -231,162 +194,136 @@ class ProductController extends Controller
             'images',
         ]);
 
-        $categories = Category::with('subCategories')
-            ->orderBy('name')
-            ->get();
+        [$categories, $attributes] = $this->formOptions();
 
-        $attributes = Attribute::with([
-            'values' => fn ($query) => $query->orderBy('sort_order'),
-        ])->orderBy('sort_order')->get();
-        
-        $availableGalleryImages = $this->availableGalleryImages();
-        
         return view('admin.products.edit', compact(
             'product',
             'categories',
-            'attributes',
-            'availableGalleryImages'
+            'attributes'
         ));
     }
 
     public function update(Request $request, Product $product)
     {
-        $availableGalleryPaths = collect($this->availableGalleryImages())->pluck('path')->all();
+        foreach ($request->input('variants', []) as $key => $input) {
+            $variantId = filter_var(
+                $input['id'] ?? null,
+                FILTER_VALIDATE_INT
+            );
         
-        $rules = [
+            $rules["variants.$key.sku"][] = Rule::unique(
+                'product_variants',
+                'sku'
+            )->ignore($variantId);
+        
+            $rules["variants.$key.barcode"][] = Rule::unique(
+                'product_variants',
+                'barcode'
+            )->ignore($variantId);
+        }
+        
+        $data = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'sub_category_id' => [
-                'required', Rule::exists('sub_categories', 'id')->where('category_id', $request->input('category_id'))
+                'required',
+                Rule::exists('sub_categories', 'id')
+                    ->where('category_id', $request->input('category_id')),
             ],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
 
-            // Spesifikasi
             'specifications' => ['nullable', 'array'],
             'specifications.*.id' => [
-                'nullable', 'integer', Rule::exists('product_specifications', 'id')->where('product_id', $product->id)
+                'nullable', 'integer',
+                Rule::exists('product_specifications', 'id')
+                    ->where('product_id', $product->id),
             ],
-            'specifications.*.specification_group' => [
-                'required', 'string', 'max:255',
-            ],
-            'specifications.*.specification_name' => [
-                'required', 'string', 'max:255',
-            ],
-            'specifications.*.specification_value' => [
-                'required', 'string', 'max:2000',
-            ],
-            'specifications.*.sort_order' => [
-                'nullable', 'integer', 'min:0',
-            ],
+            'specifications.*.specification_group' => ['required', 'string', 'max:255'],
+            'specifications.*.specification_name' => ['required', 'string', 'max:255'],
+            'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
+            'specifications.*.sort_order' => ['nullable', 'integer', 'min:0'],
 
-            // Varian yang sudah ada
-            'variants' => ['required', 'array', 'min:1'],
+            // Boleh tidak dikirim apabila produk lama belum memiliki varian.
+            'variants' => ['nullable', 'array'],
             'variants.*.id' => [
-                'required', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)
+                'required', 'integer',
+                Rule::exists('product_variants', 'id')
+                    ->where('product_id', $product->id),
             ],
             'variants.*.sku' => ['required', 'string', 'max:100'],
             'variants.*.barcode' => ['nullable', 'string', 'max:100'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
-            'variants.*.compare_at_price' => [
-                'nullable', 'numeric', 'min:0',
-            ],
+            'variants.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.weight' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.status' => [
-                'required', Rule::in(['active', 'inactive']),
-            ],
+            'variants.*.status' => ['required', Rule::in(['active', 'inactive'])],
             'variants.*.quantity' => ['required', 'integer', 'min:0'],
-            'variants.*.reorder_level' => [
-                'required', 'integer', 'min:0',
-            ],
+            'variants.*.reorder_level' => ['required', 'integer', 'min:0'],
             'variants.*.attribute_value_ids' => ['nullable', 'array'],
             'variants.*.attribute_value_ids.*' => [
                 'integer', 'distinct', 'exists:attribute_values,id',
             ],
 
-            // Gambar baru; gambar lama tidak dihapus
             'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => [
-                'image', 'mimes:jpg,jpeg,png,webp', 'max:5120',
-            ],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
-            // Pengelolaan gambar lama
             'delete_images' => ['nullable', 'array'],
             'delete_images.*' => [
-                'integer', 'distinct', Rule::exists('product_images', 'id')->where('product_id', $product->id)
+                'integer', 'distinct',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
             ],
-            'existing_image_paths' => ['nullable', 'array', 'max:12'],
-            'existing_image_paths.*' => [
-                'required', 'string', 'distinct', Rule::in($availableGalleryPaths)
-            ],
-
             'primary_image_id' => [
-                'nullable', 'integer', Rule::exists('product_images', 'id')->where('product_id', $product->id)
+                'nullable', 'integer',
+                Rule::exists('product_images', 'id')
+                    ->where('product_id', $product->id),
             ],
-        ];
+        ]);
 
-        // SKU dan barcode harus unik, kecuali milik varian yang sama.
-        foreach ($request->input('variants', []) as $key => $input) {
-            $variantId = filter_var($input['id'] ?? null, FILTER_VALIDATE_INT);
+        $this->validateVariantPrices($data['variants'] ?? []);
+        $this->validateAttributeValues(
+            collect($data['variants'] ?? [])
+                ->flatMap(fn ($variant) => $variant['attribute_value_ids'] ?? [])
+                ->unique()
+                ->values()
+                ->all()
+        );
 
-            $rules["variants.$key.sku"][] = Rule::unique('product_variants', 'sku')->ignore($variantId);
+        $deleteIds = array_map('intval', $data['delete_images'] ?? []);
 
-            if (filled($input['barcode'] ?? null)) {
-                $rules["variants.$key.barcode"][] = Rule::unique('product_variants', 'barcode')->ignore($variantId);
-            }
-        }
-
-        $data = $request->validate($rules);
-
-        foreach ($data['variants'] as $key => $variant) {
-            $compareAtPrice = $variant['compare_at_price'] ?? null;
-
-            if (
-                $compareAtPrice !== null &&
-                $compareAtPrice !== '' &&
-                (float) $compareAtPrice < (float) $variant['price']
-            ) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    "variants.$key.compare_at_price" =>'Harga sebelum diskon harus sama dengan atau lebih besar daripada harga jual.',
-                ]);
-            }
-        }
-
-        $deleteImageIds = array_map('intval', $data['delete_images'] ?? []);
-
-        if (! empty($data['primary_image_id']) &&
-            in_array((int) $data['primary_image_id'], $deleteImageIds, true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'primary_image_id' => 'Gambar utama tidak boleh dipilih untuk dihapus.',
+        if (
+            filled($data['primary_image_id'] ?? null)
+            && in_array((int) $data['primary_image_id'], $deleteIds, true)
+        ) {
+            throw ValidationException::withMessages([
+                'primary_image_id' => 'Gambar utama tidak boleh sekaligus dihapus.',
             ]);
         }
-        // Membuat slug unik, termasuk ketika slug dibuat otomatis.
-        $baseSlug = Str::slug($data['slug'] ?: $data['name']);
-        $slug = $baseSlug;
-        $suffix = 1;
 
-        while (Product::where('slug', $slug)
-                ->where('id', '!=', $product->id)
-                ->exists())
-        {
-            $slug = $baseSlug . '-' . $suffix++;
-        }
+        $slug = $this->uniqueSlug(
+            $data['slug'] ?: $data['name'],
+            $product->id
+        );
 
         $uploadedPaths = [];
-        $uploadedPaths = [];
-        $deletedImagePaths = [];
+        $deletedPaths = [];
 
         try {
             DB::transaction(function () use (
                 $request,
-                $data,
                 $product,
+                $data,
                 $slug,
+                $deleteIds,
                 &$uploadedPaths,
-                &$deletedImagePaths
+                &$deletedPaths
             ) {
+                $product = Product::whereKey($product->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
                 $product->update([
                     'category_id' => $data['category_id'],
                     'sub_category_id' => $data['sub_category_id'],
@@ -395,48 +332,81 @@ class ProductController extends Controller
                     'description' => $data['description'] ?? null,
                 ]);
 
-                /*
-                 * 1. Simpan spesifikasi.
-                 * ID yang dikirim harus milik produk ini.
-                 * Baris tanpa ID akan dibuat sebagai spesifikasi baru.
-                 * Baris lama yang tidak dikirim akan dihapus.
-                 */
+                // Simpan spesifikasi yang dikirim. ID harus milik produk ini.
                 $savedSpecificationIds = [];
 
-                foreach ($data['specifications'] ?? [] as $item) {
+                foreach ($data['specifications'] ?? [] as $index => $spec) {
                     $attributes = [
-                        'specification_group' => $item['specification_group'],
-                        'specification_name' => $item['specification_name'],
-                        'specification_value' => $item['specification_value'],
-                        'sort_order' => $item['sort_order'] ?? 0,
+                        'specification_group' => $spec['specification_group'],
+                        'specification_name' => $spec['specification_name'],
+                        'specification_value' => $spec['specification_value'],
+                        'sort_order' => $spec['sort_order'] ?? $index,
                     ];
 
-                    if (! empty($item['id'])) {
-                        $specification = $product->specifications()
-                            ->whereKey($item['id'])
+                    if (! empty($spec['id'])) {
+                        $record = $product->specifications()
+                            ->whereKey($spec['id'])
                             ->firstOrFail();
-
-                        $specification->update($attributes);
+                        $record->update($attributes);
                     } else {
-                        $specification = $product->specifications()
-                            ->create($attributes);
+                        $record = $product->specifications()->create($attributes);
                     }
 
-                    $savedSpecificationIds[] = $specification->id;
+                    $savedSpecificationIds[] = $record->id;
                 }
 
                 $product->specifications()
-                    ->whereNotIn('id', $savedSpecificationIds)
+                    ->whereNotIn('id', $savedSpecificationIds ?: [0])
                     ->delete();
 
-                /**
-                 * 2. Simpan setiap varian dan nilai atributnya.
-                 */
-                foreach ($data['variants'] as $key => $item) {
+                $variants = $data['variants'] ?? [];
+
+                // Perbaikan inti: data lama tanpa varian dimigrasikan satu kali.
+                if ($product->variants()->doesntExist()) {
+                    $legacyPrice = (float) $product->price;
+                    $legacyStock = max(0, (int) $product->stock);
+
+                    $variant = $product->variants()->create([
+                        'sku' => $this->uniqueLegacySku($product),
+                        'name' => $product->name,
+                        'price' => $legacyPrice,
+                        'is_default' => true,
+                        'status' => 'active',
+                    ]);
+
+                    $variant->inventory()->create([
+                        'quantity' => $legacyStock,
+                        'reserved_quantity' => 0,
+                        'reorder_level' => 0,
+                    ]);
+
+                    if ($legacyStock > 0) {
+                        $variant->inventoryMovements()->create([
+                            'type' => 'opening_stock',
+                            'quantity' => $legacyStock,
+                            'note' => 'Migrasi stok lama ke inventaris varian.',
+                            'created_by' => auth()->id(),
+                        ]);
+                    }
+
+                    $variants = [];
+                }
+
+                foreach ($variants as $key => $item) {
                     $variant = $product->variants()
                         ->whereKey($item['id'])
                         ->lockForUpdate()
                         ->firstOrFail();
+
+                    if (
+                        filled($item['compare_at_price'] ?? null)
+                        && (float) $item['compare_at_price'] < (float) $item['price']
+                    ) {
+                        throw ValidationException::withMessages([
+                            "variants.$key.compare_at_price" =>
+                                'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
+                        ]);
+                    }
 
                     $variant->update([
                         'sku' => $item['sku'],
@@ -452,10 +422,11 @@ class ProductController extends Controller
                     $valueIds = $item['attribute_value_ids'] ?? [];
                     $values = AttributeValue::whereIn('id', $valueIds)->get();
 
-                    // Maksimal satu nilai untuk setiap atribut
-                    // per varian.
-                    if ($values->groupBy('attribute_id')->contains(fn ($group) => $group->count() > 1)) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
+                    if (
+                        $values->groupBy('attribute_id')
+                            ->contains(fn ($group) => $group->count() > 1)
+                    ) {
+                        throw ValidationException::withMessages([
                             "variants.$key.attribute_value_ids" =>
                                 'Pilih maksimal satu nilai untuk setiap atribut.',
                         ]);
@@ -463,13 +434,6 @@ class ProductController extends Controller
 
                     $variant->attributeValues()->sync($valueIds);
 
-                    /**
-                     * 3. Simpan inventaris.
-                     * Stok tidak boleh turun di bawah reserved_quantity. 
-                     * 
-                     * Perubahan stok
-                     dicatat sebagai movement.
-                     */
                     $inventory = $variant->inventory()
                         ->lockForUpdate()
                         ->first();
@@ -478,19 +442,17 @@ class ProductController extends Controller
                     $reserved = (int) ($inventory?->reserved_quantity ?? 0);
 
                     if ($quantity < $reserved) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
+                        throw ValidationException::withMessages([
                             "variants.$key.quantity" =>
-                                'Stok tidak boleh lebih kecil daripada stok yang direservasi.',
+                                "Stok tidak boleh kurang dari stok yang direservasi ({$reserved}).",
                         ]);
                     }
-
-                    $reorderLevel = (int) $item['reorder_level'];
 
                     if (! $inventory) {
                         $inventory = $variant->inventory()->create([
                             'quantity' => $quantity,
                             'reserved_quantity' => 0,
-                            'reorder_level' => $reorderLevel,
+                            'reorder_level' => (int) $item['reorder_level'],
                         ]);
 
                         if ($quantity > 0) {
@@ -506,7 +468,7 @@ class ProductController extends Controller
 
                         $inventory->update([
                             'quantity' => $quantity,
-                            'reorder_level' => $reorderLevel,
+                            'reorder_level' => (int) $item['reorder_level'],
                         ]);
 
                         if ($difference !== 0) {
@@ -520,126 +482,58 @@ class ProductController extends Controller
                     }
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | 4. Hapus gambar yang dipilih dan tambahkan gambar baru
-                |--------------------------------------------------------------------------
-                */
-
-                // Simpan path sebelum record database dihapus.
-                // File fisik baru akan dihapus setelah
-                // transaksi berhasil.
-                $imagesToDelete = $product->images()->whereIn('id', $data['delete_images'] ?? [])->get();
-                
-                
-                /**
-                 * Hubungkan gambar yang sudah diunggah melalui
-                 * Product Gallery.
-                 *
-                 * File tidak disalin atau diunggah ulang.
-                 */
-                foreach ($data['existing_image_paths'] ?? [] as $path) {
-                    // Cegah relasi ganda jika path sudah
-                    // dimiliki produk ini.
-                    if ($product->images()->where('path', $path)->exists()) {
-                        continue;
-                    }
-                
-                    $product->images()->create([
-                        'product_variant_id' => null,
-                        'path' => $path,
-                        'alt_text' => $data['image_alt_text'] ?? $product->name, 'sort_order' => (int) ($product->images()->max('sort_order') ?? -1) + 1,
-                        'is_primary' => false,
-                    ]);
-                }
+                // Hapus record gambar dalam transaksi; file dihapus setelah commit.
+                $imagesToDelete = $product->images()
+                    ->whereIn('id', $deleteIds)
+                    ->get();
 
                 foreach ($imagesToDelete as $image) {
-                    $deletedImagePaths[] = $image->path;
+                    $deletedPaths[] = $image->path;
                     $image->delete();
                 }
 
-                foreach ($request->file('images', []) as $image) {
-                    $path = $image->store('products', 'public');
+                foreach ($request->file('images', []) as $file) {
+                    $path = $file->store('products', 'public');
                     $uploadedPaths[] = $path;
 
                     $product->images()->create([
                         'product_variant_id' => null,
                         'path' => $path,
                         'alt_text' => $data['image_alt_text'] ?? $product->name,
-                        'sort_order' => (int) $product->images()->max('sort_order') + 1,
+                        'sort_order' => (int) ($product->images()->max('sort_order') ?? -1) + 1,
                         'is_primary' => false,
                     ]);
                 }
 
-                // Pilih gambar utama: pilihan admin, gambar
-                // utama lama yang masih ada,
-                // atau gambar pertama yang tersisa.
-                $primaryImage = null;
+                // Pertahankan gambar utama jika masih ada; jika tidak, pilih gambar pertama.
+                $primary = null;
 
                 if (! empty($data['primary_image_id'])) {
-                    $primaryImage = $product->images()
+                    $primary = $product->images()
                         ->whereKey($data['primary_image_id'])
                         ->firstOrFail();
                 } else {
-                    $primaryImage = $product->images()
+                    $primary = $product->images()
                         ->where('is_primary', true)
-                        ->first();
-
-                    if (! $primaryImage) {
-                        $primaryImage = $product->images()
-                            ->orderBy('sort_order')
-                            ->orderBy('id')
-                            ->first();
-                    }
+                        ->first()
+                        ?? $product->images()->orderBy('sort_order')->first();
                 }
 
-                // Pastikan hanya satu gambar utama.
                 $product->images()->update(['is_primary' => false]);
 
-                if ($primaryImage) {
-                    $primaryImage->update(['is_primary' => true]);
-
-                    // Sinkronkan gambar utama dengan kolom
-                    // katalog lama.
-                    $product->update(['image' => $primaryImage->path]);
-                } else {
-                    // Pertahankan gambar legacy lokal jika
-                    // masih tersedia
-                    // dan tidak sedang dihapus.
-                    $legacyImage = $product->getOriginal('image');
-                    $legacyPath = null;
-                
-                    if (
-                        is_string($legacyImage)
-                        && trim($legacyImage) !== ''
-                        && ! filter_var($legacyImage, FILTER_VALIDATE_URL)
-                        && ! str_starts_with($legacyImage, '//')
-                    ) {
-                        $legacyPath = ltrim(trim($legacyImage), '/');
-                
-                        if (str_starts_with($legacyPath, 'storage/')) {
-                            $legacyPath = substr($legacyPath, strlen('storage/'));
-                        }
-                    }
-                
-                    if ($legacyPath && Storage::disk('public')->exists($legacyPath) && ! in_array($legacyPath, $deletedImagePaths, true)) {
-                        $product->update(['image' => $legacyPath]);
-                    } else {
-                        $product->update(['image' => null]);
-                    }
+                if ($primary) {
+                    $primary->update(['is_primary' => true]);
+                    $product->update(['image' => $primary->path]);
+                } elseif (in_array($product->getOriginal('image'), $deletedPaths, true)) {
+                    $product->update(['image' => null]);
                 }
 
-                /**
-                 * 5. Sinkronkan kolom katalog lama.
-                 * 
-                 * Ini diperlukan selama storefront masih
-                 * membaca products.price dan products.stock.
-                 */
+                // Kolom legacy tetap dibutuhkan oleh katalog/cart/checkout lama.
                 $defaultVariant = $product->variants()
                     ->where('is_default', true)
                     ->with('inventory')
                     ->first()
-                    ?? $product->variants()->with('inventory')->first();
+                    ?? $product->variants()->with('inventory')->orderBy('id')->first();
 
                 if ($defaultVariant) {
                     $product->update([
@@ -656,13 +550,16 @@ class ProductController extends Controller
             throw $exception;
         }
 
-        foreach (array_unique($deletedImagePaths) as $path) {
-            Storage::disk('public')->delete($path);
+        foreach (array_unique($deletedPaths) as $path) {
+            // Hindari menghapus file yang masih dipakai produk lain.
+            if (! DB::table('product_images')->where('path', $path)->exists()) {
+                Storage::disk('public')->delete($path);
+            }
         }
 
         return redirect()
             ->route('admin.products.edit', $product)
-            ->with('success', 'Produk, spesifikasi, varian, dan stok berhasil diperbarui.');
+            ->with('success', 'Produk berhasil diperbarui.');
     }
 
     public function destroy(Product $product)
@@ -670,265 +567,96 @@ class ProductController extends Controller
         if ($product->orderItems()->exists()) {
             return redirect()
                 ->route('admin.products.index')
-                ->with('error', 'Product tidak dapat dihapus karena sudah digunakan dalam order.');
+                ->with('error', 'Produk tidak dapat dihapus karena sudah digunakan dalam pesanan.');
         }
 
-        $product->delete();
+        $paths = $product->images()->pluck('path')->all();
 
-        return redirect()->route('admin.products.index')->with('success', 'Product berhasil dihapus.');
-    }
-    
-    
-    private function availableGalleryImages(): array
-    {
-        $usedPaths = DB::table('products')
-            ->whereNotNull('image')
-            ->pluck('image')
-            ->merge(
-                DB::table('product_images')->pluck('path')
-            )
-            ->filter()
-            ->unique()
-            ->all();
-    
-        return collect(
-            Storage::disk('public')->files('products')
-        )->filter(function ($path) {
-            return in_array(
-                strtolower(pathinfo($path, PATHINFO_EXTENSION)),
-                ['jpg', 'jpeg', 'png', 'webp'],
-                true
-            );
-        })
-        ->reject(function ($path) use ($usedPaths) {
-            return in_array($path, $usedPaths, true);
-        })
-        ->map(function ($path) {
-            return [
-                'path' => $path,
-                'filename' => basename($path),
-                'url' => Storage::disk('public')->url($path),
-            ];
-        })
-        ->values()
-        ->all();
-    }
-    
-    public function updateImages(Request $request, Product $product)
-    {
-    // Hanya path galeri yang saat ini belum terhubung ke produk
-        // mana pun yang boleh dipilih.
-        $availablePaths = collect($this->availableGalleryImages())
-            ->pluck('path')
-            ->all();
-    
-        $data = $request->validate([
-            'existing_image_paths' => ['nullable', 'array', 'max:10'],
-            'existing_image_paths.*' => [
-                'required',
-                'string',
-                'distinct',
-                Rule::in($availablePaths),
-            ],
-    
-            'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => [
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-    
-            'image_alt_text' => ['nullable', 'string', 'max:255'],
-    
-            'delete_images' => ['nullable', 'array'],
-            'delete_images.*' => [
-                'integer',
-                'distinct',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
-            ],
-    
-            'primary_image_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
-            ],
-        ]);
-    
-        $deleteIds = array_map(
-            'intval',
-            $data['delete_images'] ?? []
-        );
-    
-        if (
-            ! empty($data['primary_image_id']) &&
-            in_array((int) $data['primary_image_id'], $deleteIds, true)
-        ) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'primary_image_id' =>
-                    'Gambar utama tidak boleh dipilih untuk dihapus.',
-            ]);
-        }
-    
-        $selectedPaths = $data['existing_image_paths'] ?? [];
-        $newUploads = $request->file('images', []);
-    
-        // Hitung jumlah gambar yang tersisa setelah penghapusan,
-        // lalu pastikan total gambar tidak melebihi 10.
-        $remainingCount = $product->images()
-            ->whereNotIn('id', $deleteIds)
-            ->count();
-    
-        if ($remainingCount + count($selectedPaths) + count($newUploads) > 10) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'existing_image_paths' =>
-                    'Maksimal 10 gambar dapat dihubungkan ke satu produk.',
-            ]);
-        }
-    
-        $uploadedPaths = [];
-        $deletedPaths = [];
-    
-        try {
-            DB::transaction(function () use (
-                $product,
-                $data,
-                $selectedPaths,
-                $newUploads,
-                $deleteIds,
-                &$uploadedPaths,
-                &$deletedPaths
-            ) {
-                // 1. Hapus hubungan gambar yang dipilih.
-                $imagesToDelete = $product->images()
-                    ->whereIn('id', $deleteIds)
-                    ->get();
-    
-                foreach ($imagesToDelete as $image) {
-                    $deletedPaths[] = $image->path;
-                    $image->delete();
-                }
-    
-                // 2. Hubungkan gambar galeri yang sebelumnya belum digunakan.
-                foreach ($selectedPaths as $path) {
-                    // Pemeriksaan tambahan untuk mencegah duplikasi.
-                    if (
-                        $product->images()->where('path', $path)->exists()
-                    ) {
-                        continue;
-                    }
-    
-                    $product->images()->create([
-                        'product_variant_id' => null,
-                        'path' => $path,
-                        'alt_text' => $data['image_alt_text'] ?? $product->name,
-                        'sort_order' => (int) (
-                            $product->images()->max('sort_order') ?? -1
-                        ) + 1,
-                        'is_primary' => false,
-                    ]);
-                }
-    
-                // 3. Simpan unggahan baru.
-                foreach ($newUploads as $image) {
-                    $path = $image->store('products', 'public');
-                    $uploadedPaths[] = $path;
-    
-                    $product->images()->create([
-                        'product_variant_id' => null,
-                        'path' => $path,
-                        'alt_text' => $data['image_alt_text'] ?? $product->name,
-                        'sort_order' => (int) (
-                            $product->images()->max('sort_order') ?? -1
-                        ) + 1,
-                        'is_primary' => false,
-                    ]);
-                }
-    
-                // 4. Pilih gambar utama yang masih terhubung.
-                $primaryImage = null;
-    
-                if (! empty($data['primary_image_id'])) {
-                    $primaryImage = $product->images()
-                        ->whereKey($data['primary_image_id'])
-                        ->firstOrFail();
-                } else {
-                    $primaryImage = $product->images()
-                        ->where('is_primary', true)
-                        ->first();
-    
-                    if (! $primaryImage) {
-                        $primaryImage = $product->images()
-                            ->orderBy('sort_order')
-                            ->orderBy('id')
-                            ->first();
-                    }
-                }
-    
-                $product->images()->update(['is_primary' => false]);
-    
-                if ($primaryImage) {
-                    $primaryImage->update(['is_primary' => true]);
-    
-                    // Sinkronkan kolom gambar lama yang digunakan katalog.
-                    $product->update(['image' => $primaryImage->path]);
-                } else {
-                    // Jangan biarkan products.image menunjuk ke file
-                    // yang baru saja dihapus.
-                    $legacyImage = $product->getOriginal('image');
-                    $legacyPath = is_string($legacyImage)
-                        ? ltrim(trim($legacyImage), '/')
-                        : '';
-    
-                    if (str_starts_with($legacyPath, 'storage/')) {
-                        $legacyPath = substr($legacyPath, strlen('storage/'));
-                    }
-    
-                    $legacyWasDeleted = in_array(
-                        $legacyPath,
-                        $deletedPaths,
-                        true
-                    );
-    
-                    if (
-                        $legacyWasDeleted ||
-                        (
-                            $legacyPath !== '' &&
-                            ! Storage::disk('public')->exists($legacyPath)
-                        )
-                    ) {
-                        $product->update(['image' => null]);
-                    }
-                }
-            });
-        } catch (\Throwable $exception) {
-            // Hapus file yang baru diunggah jika transaksi gagal.
-            foreach ($uploadedPaths as $path) {
-                Storage::disk('public')->delete($path);
-            }
-    
-            throw $exception;
-        }
-    
-        // File lama baru dihapus setelah transaksi database berhasil.
-        foreach (array_unique($deletedPaths) as $path) {
-            // Jangan hapus file apabila masih direferensikan produk lain.
-            $stillUsed = DB::table('product_images')
-                ->where('path', $path)
-                ->exists();
-    
-            $legacyStillUsed = DB::table('products')
-                ->where('image', $path)
-                ->exists();
-    
-            if (! $stillUsed && ! $legacyStillUsed) {
+        DB::transaction(function () use ($product) {
+            $product->delete();
+        });
+
+        foreach (array_unique($paths) as $path) {
+            if (! DB::table('product_images')->where('path', $path)->exists()) {
                 Storage::disk('public')->delete($path);
             }
         }
-    
+
         return redirect()
-            ->route('admin.products.edit', $product)
-            ->with('success', 'Gambar produk berhasil diperbarui.');
+            ->route('admin.products.index')
+            ->with('success', 'Produk berhasil dihapus.');
+    }
+
+    private function formOptions(): array
+    {
+        $categories = Category::with('subCategories')
+            ->orderBy('name')
+            ->get();
+
+        $attributes = Attribute::with([
+            'values' => fn ($query) => $query->orderBy('sort_order'),
+        ])->orderBy('sort_order')->get();
+
+        return [$categories, $attributes];
+    }
+
+    private function uniqueSlug(string $value, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($value) ?: 'product';
+        $slug = $base;
+        $suffix = 1;
+
+        while (
+            Product::where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $base . '-' . $suffix++;
+        }
+
+        return $slug;
+    }
+
+    private function uniqueLegacySku(Product $product): string
+    {
+        $base = 'LEGACY-' . $product->id;
+        $sku = $base;
+        $suffix = 1;
+
+        while (ProductVariant::where('sku', $sku)->exists()) {
+            $sku = $base . '-' . $suffix++;
+        }
+
+        return $sku;
+    }
+
+    private function validateAttributeValues(array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        $uniqueIds = array_unique(array_map('intval', $ids));
+
+        if (AttributeValue::whereIn('id', $uniqueIds)->count() !== count($uniqueIds)) {
+            throw ValidationException::withMessages([
+                'attribute_value_ids' => 'Salah satu nilai atribut yang dipilih tidak valid.',
+            ]);
+        }
+    }
+
+    private function validateVariantPrices(array $variants): void
+    {
+        foreach ($variants as $key => $variant) {
+            if (
+                filled($variant['compare_at_price'] ?? null)
+                && (float) $variant['compare_at_price'] < (float) ($variant['price'] ?? 0)
+            ) {
+                throw ValidationException::withMessages([
+                    "variants.$key.compare_at_price" =>
+                        'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
+                ]);
+            }
+        }
     }
 }

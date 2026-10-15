@@ -1,4 +1,4 @@
-    <header class="store-main-header sticky-top">
+    <header class="store-main-header">
         <div class="container">
             <div class="store-header-inner d-flex flex-wrap align-items-center gap-3">
                 {{-- Logo --}}

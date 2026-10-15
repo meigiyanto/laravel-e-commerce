@@ -53,9 +53,6 @@
                                 <td>{{ $product->stock }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-info" title="Show">
-                                            <em class="ni ni-eye"></em>
-                                        </a>
                                         <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary" title="Edit">
                                             <em class="ni ni-edit"></em>
                                         </a>
