@@ -121,15 +121,9 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const variantSelect = document.getElementById('product_variant_id');
-    const quantityInput = document.getElementById('quantity');
-    const priceElement = document.getElementById('selected-variant-price');
-    const stockElement = document.getElementById('selected-variant-stock');
-    const submitButton = document.getElementById('add-to-cart-submit');
-
-    if (!variantSelect) {
-        return;
-    }
+    const cards = document.querySelectorAll(
+        '.store-product-card'
+    );
 
     function formatRupiah(value) {
         return 'Rp ' + new Intl.NumberFormat('id-ID', {
@@ -137,33 +131,79 @@ document.addEventListener('DOMContentLoaded', function () {
         }).format(Number(value || 0));
     }
 
-    function updateVariant() {
-        const option = variantSelect.selectedOptions[0];
+    cards.forEach(function (card) {
+        const form = card.querySelector('.js-product-cart-form');
+        const variantSelect = card.querySelector('.js-variant-select');
+        const priceElement = card.querySelector('.js-variant-price');
+        const stockElement = card.querySelector('.js-variant-stock');
+        const quantityInput = card.querySelector('.js-quantity-input');
+        const submitButton = card.querySelector('.js-add-to-cart');
 
-        if (!option) {
+        if (!form || !priceElement || !stockElement ||
+            !quantityInput || !submitButton) {
             return;
         }
 
-        const price = Number(option.dataset.price || 0);
-        const stock = Number(option.dataset.stock || 0);
+        function updateVariant() {
+            const option = variantSelect?.selectedOptions[0];
 
-        priceElement.textContent = formatRupiah(price);
-        quantityInput.max = Math.max(1, stock);
+            // Produk tanpa varian tetap menggunakan stok produk.
+            const price = option
+                ? Number(option.dataset.price || 0)
+                : null;
 
-        if (Number(quantityInput.value) > stock) {
-            quantityInput.value = Math.max(1, stock);
+            const stock = option
+                ? Number(option.dataset.stock || 0)
+                : Number(quantityInput.max || 0);
+
+            if (price !== null) {
+                priceElement.textContent = formatRupiah(price);
+            }
+
+            quantityInput.max = Math.max(1, stock);
+
+            if (stock > 0) {
+                const currentQuantity = Number(quantityInput.value || 1);
+
+                quantityInput.value = Math.min(
+                    Math.max(1, currentQuantity),
+                    stock
+                );
+            } else {
+                quantityInput.value = 1;
+            }
+
+            quantityInput.disabled = stock < 1;
+            submitButton.disabled = stock < 1;
+
+            stockElement.classList.toggle('is-available', stock > 0);
+            stockElement.classList.toggle('is-empty', stock < 1);
+
+            stockElement.innerHTML = stock > 0
+                ? '<i class="bi bi-check-circle-fill" aria-hidden="true"></i>' +
+                  '<span>' + stock + ' unit tersedia</span>'
+                : '<i class="bi bi-x-circle-fill" aria-hidden="true"></i>' +
+                  '<span>Stok habis</span>';
+
+            submitButton.innerHTML = stock > 0
+                ? '<i class="bi bi-cart-plus" aria-hidden="true"></i><span>Tambah</span>'
+                : '<i class="bi bi-cart-x" aria-hidden="true"></i><span>Habis</span>';
         }
 
-        quantityInput.disabled = stock < 1;
-        submitButton.disabled = stock < 1;
+        variantSelect?.addEventListener('change', updateVariant);
 
-        stockElement.textContent = stock > 0
-            ? 'Stok tersedia — ' + stock + ' unit'
-            : 'Stok varian ini habis';
-    }
+        quantityInput.addEventListener('change', function () {
+            const max = Number(quantityInput.max || 1);
+            const quantity = Number(quantityInput.value || 1);
 
-    variantSelect.addEventListener('change', updateVariant);
-    updateVariant();
+            quantityInput.value = Math.min(
+                Math.max(1, quantity),
+                Math.max(1, max)
+            );
+        });
+
+        updateVariant();
+    });
 });
 </script>
 @endpush

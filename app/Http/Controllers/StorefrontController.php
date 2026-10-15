@@ -41,7 +41,7 @@ class StorefrontController extends Controller
             'category',
             'subCategory',
             'variants.inventory',
-    '        variants.attributeValues.attribute',
+            'variants.attributeValues.attribute',
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews');

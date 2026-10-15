@@ -263,7 +263,7 @@ class ProductController extends Controller
                 Rule::exists('product_images', 'id')
                     ->where('product_id', $product->id),
             ],
-        ]
+        ];
         
         foreach ($request->input('variants', []) as $key => $input) {
             $variantId = filter_var(
@@ -275,14 +275,15 @@ class ProductController extends Controller
                 'product_variants',
                 'sku'
             )->ignore($variantId ?: null);
-    
-            $validationRules["variants.$key.barcode"][] = Rule::unique(
-                'product_variants',
-                'barcode'
-            )->ignore($variantId ?: null);
+        
+            if (filled($input['barcode'] ?? null)) {
+                $validationRules["variants.$key.barcode"][] = Rule::unique(
+                    'product_variants',
+                    'barcode'
+                )->ignore($variantId ?: null);
+            }
         }
 
-        
         $data = $request->validate($validationRules);
 
         $this->validateVariantPrices($data['variants'] ?? []);
