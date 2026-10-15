@@ -52,6 +52,7 @@ class ProductController extends Controller
             'sku' => ['required', 'string', 'max:100', 'unique:product_variants,sku'],
             'barcode' => ['nullable', 'string', 'max:100', 'unique:product_variants,barcode'],
             'variant_name' => ['nullable', 'string', 'max:255'],
+            // 'variants.*.id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
             'price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
@@ -229,11 +230,7 @@ class ProductController extends Controller
 
             // Boleh tidak dikirim apabila produk lama belum memiliki varian.
             'variants' => ['nullable', 'array'],
-            'variants.*.id' => [
-                'required', 'integer',
-                Rule::exists('product_variants', 'id')
-                    ->where('product_id', $product->id),
-            ],
+            'variants.*.id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
             'variants.*.sku' => ['required', 'string', 'max:100'],
             'variants.*.barcode' => ['nullable', 'string', 'max:100'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
@@ -395,12 +392,43 @@ class ProductController extends Controller
 
                     $variants = [];
                 }
-
+                
                 foreach ($variants as $key => $item) {
-                    $variant = $product->variants()
-                        ->whereKey($item['id'])
-                        ->lockForUpdate()
-                        ->firstOrFail();
+                    $isNewVariant = blank($item['id'] ?? null);
+                
+                    if ($isNewVariant) {
+                        $variant = $product->variants()->create([
+                            'sku' => $item['sku'],
+                            'barcode' => $item['barcode'] ?? null,
+                            'name' => filled($item['name'] ?? null)
+                                ? $item['name']
+                                : $product->name,
+                            'price' => $item['price'],
+                            'compare_at_price' => $item['compare_at_price'] ?? null,
+                            'cost_price' => $item['cost_price'] ?? null,
+                            'weight' => $item['weight'] ?? null,
+                            'is_default' => false,
+                            'status' => $item['status'],
+                        ]);
+                    } else {
+                        $variant = $product->variants()
+                            ->whereKey($item['id'])
+                            ->lockForUpdate()
+                            ->firstOrFail();
+                
+                        $variant->update([
+                            'sku' => $item['sku'],
+                            'barcode' => $item['barcode'] ?? null,
+                            'name' => filled($item['name'] ?? null)
+                                ? $item['name']
+                                : $product->name,
+                            'price' => $item['price'],
+                            'compare_at_price' => $item['compare_at_price'] ?? null,
+                            'cost_price' => $item['cost_price'] ?? null,
+                            'weight' => $item['weight'] ?? null,
+                            'status' => $item['status'],
+                        ]);
+                    }
 
                     if (
                         filled($item['compare_at_price'] ?? null)

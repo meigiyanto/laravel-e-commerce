@@ -418,16 +418,183 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="control-label">Batas stok minimum *</label>
-                                    <input class="form-control" type="number" min="0"
-                                           name="variants[{{ $key }}][reorder_level]"
-                                           value="{{ old("variants.$key.reorder_level", $inventory?->reorder_level ?? 0) }}"
+                                    <input class="form-control" type="number" min="0" name="variants[{{ $key }}][reorder_level]" value="{{ old("variants.$key.reorder_level", $inventory?->reorder_level ?? 0) }}" required>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+            
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-primary" id="add-product-variant">
+                    <em class="icon ni ni-plus"></em>
+                    Tambah Varian
+                </button>
+                <p class="text-soft mt-2">
+                    Setiap varian mempunyai SKU, harga, atribut, dan stok sendiri.
+                    Stok awal varian baru dimulai dari angka yang Anda masukkan.
+                </p>
+            </div>
+
+            <div id="new-product-variants"></div>
+
+            <template id="new-product-variant-template">
+                <div class="card card-bordered mb-4 new-product-variant">
+                    <div class="card-inner">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Varian Baru</h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-new-variant">
+                                Hapus
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Nama varian *</label>
+                                    <input class="form-control"
+                                           data-field="name"
+                                           required
+                                           maxlength="255"
+                                           placeholder="Contoh: Red">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>SKU *</label>
+                                    <input class="form-control"
+                                           data-field="sku"
+                                           required
+                                           maxlength="100"
+                                           placeholder="Contoh: HANDBAG-RED">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Barcode</label>
+                                    <input class="form-control"
+                                           data-field="barcode"
+                                           maxlength="100">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga jual *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="price"
+                                           min="0"
+                                           step="0.01"
+                                           required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga sebelum diskon</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="compare_at_price"
+                                           min="0"
+                                           step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga modal</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="cost_price"
+                                           min="0"
+                                           step="0.01">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group">
+                                    <label>Berat (kg)</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="weight"
+                                           min="0"
+                                           step="0.001">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group">
+                                    <label>Status *</label>
+                                    <select class="form-control"
+                                            data-field="status"
+                                            required>
+                                        <option value="active">Aktif</option>
+                                        <option value="inactive">Nonaktif</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6>Atribut varian</h6>
+
+                        @foreach ($attributes as $attribute)
+                            <div class="form-group">
+                                <label>{{ $attribute->name }}</label>
+                                <select class="form-control variant-attribute"
+                                        data-attribute-select="1"
+                                        data-attribute-id="{{ $attribute->id }}">
+                                    <option value="">Tidak dipilih</option>
+                                    @foreach ($attribute->values as $value)
+                                        <option value="{{ $value->id }}">
+                                            {{ $value->value }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+
+                        <h6>Inventaris</h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Stok awal *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="quantity"
+                                           min="0"
+                                           step="1"
+                                           value="0"
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Batas stok minimum *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="reorder_level"
+                                           min="0"
+                                           step="1"
+                                           value="0"
                                            required>
                                 </div>
                             </div>
                         </div>
                     </div>
-                @endforeach
-            @endif
+                </div>
+            </template>
+
 
             <hr>
             <h5>4. Gambar Produk</h5>
@@ -697,6 +864,42 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!select.value) {
             select.disabled = true;
             select.dataset.empty = '1';
+        }
+    });
+
+    const addVariantButton = document.getElementById('add-product-variant');
+    const newVariantsContainer = document.getElementById('new-product-variants');
+    const newVariantTemplate = document.getElementById('new-product-variant-template');
+
+    let nextNewVariantIndex = 0;
+
+    addVariantButton.addEventListener('click', function () {
+        const fragment = newVariantTemplate.content.cloneNode(true);
+        const variantCard = fragment.querySelector('.new-product-variant');
+        const variantKey = `new_${nextNewVariantIndex++}`;
+
+        variantCard.querySelectorAll('[data-field]').forEach(function (input) {
+            input.name = `variants[${variantKey}][${input.dataset.field}]`;
+        });
+
+        variantCard.querySelectorAll('[data-attribute-select]').forEach(function (select) {
+            select.name = `variants[${variantKey}][attribute_value_ids][]`;
+
+            select.disabled = !select.value;
+
+            select.addEventListener('change', function () {
+                this.disabled = !this.value;
+            });
+        });
+
+        newVariantsContainer.appendChild(fragment);
+    });
+
+    newVariantsContainer.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('.remove-new-variant');
+
+        if (removeButton) {
+            removeButton.closest('.new-product-variant').remove();
         }
     });
 
