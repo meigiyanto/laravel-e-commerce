@@ -53,13 +53,20 @@
                             <span class="nk-menu-text">Sub Categories</span>
                         </a>
                     </li>
+                    <li class="nk-menu-item {{ request()->routeIs('admin.attributes.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.attributes.index') }}" class="nk-menu-link">
+                            <span class="nk-menu-icon">
+                                <em class="icon ni ni-list"></em>
+                            </span>
+                            <span class="nk-menu-text">Product Attributes</span>
+                        </a>
+                    </li>
                     <li class="nk-menu-item {{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
                         <a href="{{ route('admin.inventory.index') }}" class="nk-menu-link">
                             <span class="nk-menu-icon"><em class="icon ni ni-truck"></em></span>
                             <span class="nk-menu-text">Inventory</span>
                         </a>
                     </li>
-
                     <li class="nk-menu-heading">
                         <h6 class="overline-title text-primary-alt">Sales</h6>
                     </li>
