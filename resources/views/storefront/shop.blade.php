@@ -3,15 +3,6 @@
 @section('title', config('app.name') . ' - Shop')
 
 @section('content')
-@php
-    $purchasableVariants = $product->variants
-        ->where('status', 'active')
-        ->sortByDesc('is_default')
-        ->values();
-
-    $selectedVariant = $purchasableVariants->first(fn ($variant) => $variant->is_default) ?? $purchasableVariants->first();
-    $selectedAvailable = $selectedVariant?->inventory ? $selectedVariant->inventory->available_quantity : (int) $product->stock;
-@endphp
 {{-- =========================================================
      BREADCRUMB
 ========================================================= --}}
@@ -96,11 +87,7 @@
             <div class="row g-3 g-md-4">
                 @foreach ($products as $product)
                     <div class="col-6 col-md-4 col-lg-3">
-                        <x-store-product-card 
-                            :product="$product" 
-                            :purchasable-variants="$purchasableVariants"
-                            :selectedAvailable="$selectedAvailable"
-                        />
+                        <x-store-product-card :product="$product" />
                     </div>
                 @endforeach
             </div>

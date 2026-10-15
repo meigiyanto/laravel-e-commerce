@@ -11,8 +11,7 @@ class StorefrontController extends Controller
 {
     public function __construct(
         private readonly ProductFilter $productFilter
-    ) {
-    }
+    ) {}
 
     public function home()
     {
@@ -41,6 +40,8 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
+            'variants.inventory',
+    '        variants.attributeValues.attribute',
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews');

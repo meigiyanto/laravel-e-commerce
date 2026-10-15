@@ -7,6 +7,19 @@
 ])
 
 @php
+    $purchasableVariants = $product->variants
+        ->where('status', 'active')
+        ->sortByDesc('is_default')
+        ->values();
+
+    $selectedVariant = $purchasableVariants->first(
+        fn ($variant) => $variant->is_default
+    ) ?? $purchasableVariants->first();
+
+    $selectedAvailable = $selectedVariant?->inventory
+        ? $selectedVariant->inventory->available_quantity
+        : (int) $product->stock;
+
     $rating = (float) ($product->reviews_avg_rating ?? 0);
     $reviewCount = (int) ($product->reviews_count ?? 0);
 @endphp
