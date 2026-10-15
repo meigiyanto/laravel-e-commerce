@@ -311,7 +311,7 @@
 
                             <div class="col-md-4">
                                 <div class="form-group">
-                                    <labe class="control-label"l>Harga sebelum diskon</label>
+                                    <labe class="control-label">Harga sebelum diskon</label>
                                     <input class="form-control" type="number"
                                            min="0" step="0.01"
                                            name="variants[{{ $key }}][compare_at_price]"
@@ -373,7 +373,7 @@
                                 <label for="attribute-{{ $key }}-{{ $attribute->id }}" class="control-label">
                                     {{ $attribute->name }}
                                 </label>
-                                <select class="form-control"
+                                <select class="form-control variant-attribute"
                                         id="attribute-{{ $key }}-{{ $attribute->id }}"
                                         name="variants[{{ $key }}][attribute_value_ids][]">
                                     <option value="">Tidak dipilih</option>

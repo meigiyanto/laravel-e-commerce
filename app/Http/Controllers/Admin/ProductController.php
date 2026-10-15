@@ -205,24 +205,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        foreach ($request->input('variants', []) as $key => $input) {
-            $variantId = filter_var(
-                $input['id'] ?? null,
-                FILTER_VALIDATE_INT
-            );
-        
-            $rules["variants.$key.sku"][] = Rule::unique(
-                'product_variants',
-                'sku'
-            )->ignore($variantId);
-        
-            $rules["variants.$key.barcode"][] = Rule::unique(
-                'product_variants',
-                'barcode'
-            )->ignore($variantId);
-        }
-        
-        $data = $request->validate([
+        $validationRules = [
             'category_id' => ['required', 'exists:categories,id'],
             'sub_category_id' => [
                 'required',
@@ -280,7 +263,27 @@ class ProductController extends Controller
                 Rule::exists('product_images', 'id')
                     ->where('product_id', $product->id),
             ],
-        ]);
+        ]
+        
+        foreach ($request->input('variants', []) as $key => $input) {
+            $variantId = filter_var(
+                $input['id'] ?? null,
+                FILTER_VALIDATE_INT
+            );
+    
+            $validationRules["variants.$key.sku"][] = Rule::unique(
+                'product_variants',
+                'sku'
+            )->ignore($variantId ?: null);
+    
+            $validationRules["variants.$key.barcode"][] = Rule::unique(
+                'product_variants',
+                'barcode'
+            )->ignore($variantId ?: null);
+        }
+
+        
+        $data = $request->validate($validationRules);
 
         $this->validateVariantPrices($data['variants'] ?? []);
         $this->validateAttributeValues(
