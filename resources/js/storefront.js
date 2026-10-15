@@ -1,26 +1,127 @@
 import * as bootstrap from 'bootstrap';
 
+
 /**
  * =========================================================
- * STICKY TOP NAVBAR & BACK TO TOP
+ * COMPARE TABLE HORIZONTAL NAVIGATION
  * =========================================================
  */
-
 document.addEventListener('DOMContentLoaded', function () {
-    // const mobileTopbar = document.querySelector('.store-mobile-topbar');
-    const backToTop = document.querySelector('.store-back-to-top');
+    document.querySelectorAll('.store-compare').forEach(function (compare) {
+        const scroller = compare.querySelector('[data-compare-scroll]');
+        const buttons = compare.querySelectorAll('[data-compare-direction]');
+        const controls = compare.querySelector('.store-compare-controls');
+        const hint = compare.querySelector('.store-compare-hint');
 
-    if (!backToTop) {
-        return;
-    }
+        if (!scroller || !buttons.length) {
+            return;
+        }
+
+        function updateCompareControls() {
+            const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+            const canScroll = maxScroll > 1;
+
+            if (controls) {
+                controls.hidden = !canScroll;
+            }
+
+            if (hint) {
+                hint.hidden = !canScroll;
+            }
+
+            buttons.forEach(function (button) {
+                const direction = button.dataset.compareDirection;
+
+                button.disabled = !canScroll || (
+                    direction === 'left'
+                        ? scroller.scrollLeft <= 1
+                        : scroller.scrollLeft >= maxScroll - 1
+                );
+            });
+        }
+
+        buttons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                const direction = button.dataset.compareDirection;
+                const distance = Math.max(
+                    180,
+                    Math.round(scroller.clientWidth * 0.75)
+                );
+
+                scroller.scrollBy({
+                    left: direction === 'left' ? -distance : distance,
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        scroller.addEventListener('scroll', updateCompareControls, {
+            passive: true
+        });
+
+        if ('ResizeObserver' in window) {
+            const resizeObserver = new ResizeObserver(updateCompareControls);
+            resizeObserver.observe(scroller);
+        } else {
+            window.addEventListener('resize', updateCompareControls);
+        }
+
+        updateCompareControls();
+    });
+});
+
+/**
+ * =========================================================
+ * MOBILE TOPBAR & BACK TO TOP
+ * =========================================================
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const mobileTopbar = document.querySelector(
+        '.store-mobile-topbar'
+    );
+
+    const backToTop = document.querySelector(
+        '.store-back-to-top'
+    );
+
+    const mobileBreakpoint = window.matchMedia(
+        '(max-width: 575.98px)'
+    );
 
     const mobileScrollThreshold = 120;
     const backToTopThreshold = 300;
+    const directionThreshold = 6;
+
     let ticking = false;
+    let lastScrollY = Math.max(
+        0,
+        window.scrollY || window.pageYOffset || 0
+    );
 
     function updateScrollUI() {
-        const scrollY = window.scrollY || window.pageYOffset || 0;
+        const scrollY = Math.max(
+            0,
+            window.scrollY || window.pageYOffset || 0
+        );
 
+        // Mobile topbar
+        if (mobileTopbar) {
+            if (!mobileBreakpoint.matches) {
+                mobileTopbar.classList.remove('is-hidden');
+            } else if (scrollY <= mobileScrollThreshold) {
+                mobileTopbar.classList.remove('is-hidden');
+            } else {
+                const difference = scrollY - lastScrollY;
+
+                if (difference > directionThreshold) {
+                    mobileTopbar.classList.add('is-hidden');
+                } else if (difference < -directionThreshold) {
+                    mobileTopbar.classList.remove('is-hidden');
+                }
+            }
+        }
+
+        // Back to Top tetap independen dari mobile topbar.
         if (backToTop) {
             backToTop.classList.toggle(
                 'is-visible',
@@ -28,6 +129,7 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         }
 
+        lastScrollY = scrollY;
         ticking = false;
     }
 
@@ -36,8 +138,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        window.requestAnimationFrame(updateScrollUI);
         ticking = true;
+        window.requestAnimationFrame(updateScrollUI);
     }
 
     window.addEventListener(
@@ -51,16 +153,18 @@ document.addEventListener('DOMContentLoaded', function () {
         requestScrollUpdate
     );
 
+    mobileBreakpoint.addEventListener(
+        'change',
+        requestScrollUpdate
+    );
+
     if (backToTop) {
-        backToTop.addEventListener(
-            'click',
-            function () {
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth',
-                });
-            }
-        );
+        backToTop.addEventListener('click', function () {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth',
+            });
+        });
     }
 
     updateScrollUI();

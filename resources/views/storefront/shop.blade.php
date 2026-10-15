@@ -70,9 +70,7 @@
                         product
                     </span>
                 @else
-                    <span class="small text-muted">
-                        Product not found
-                    </span>
+                    <span class="small text-muted">Product not found</span>
                 @endif
             </div>
         </div>
@@ -106,7 +104,7 @@
             <div class="shop-empty-state">
                 <div class="shop-empty-icon"><i class="bi bi-search"></i></div>
 
-                <h2 class="h5 fw-bold mb-2">Product not found<h2>
+                <h2 class="h5 fw-bold mb-2">Product not found</h2>
                 <p class="text-muted mb-4">No products match the selected filters.</p>
                 <a
                     href="{{ route('storefront.shop') }}"

@@ -116,7 +116,6 @@
                 Spesifikasi adalah karakteristik produk, bukan SKU atau stok.
             </p>
             
-            
             <div id="specifications-container">
                 <table class="table table-hover table-striped nowrap">
                     <thead>
