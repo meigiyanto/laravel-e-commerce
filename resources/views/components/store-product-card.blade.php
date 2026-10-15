@@ -187,8 +187,8 @@
                     type="submit"
                     class="store-add-cart add-to-cart-button"
                 >
-                    <i class="bi bi-cart-plus"></i>
-                    Add to cart
+                    <i class="bi bi-cart-plus" aria-hidden="true"></i>
+                    Tambah ke keranjang
                 </button>
 
             </form>
@@ -200,8 +200,8 @@
                 class="store-add-cart store-add-cart-disabled"
                 disabled
             >
-                <i class="bi bi-cart-x"></i>
-                Stok Habis
+                <i class="bi bi-cart-x" aria-hidden="true"></i>
+                Stok habis
             </button>
 
         @endif
