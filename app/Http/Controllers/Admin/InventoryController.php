@@ -7,6 +7,8 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Inventory;
+use App\Models\ProductVariant;
 
 class InventoryController extends Controller
 {

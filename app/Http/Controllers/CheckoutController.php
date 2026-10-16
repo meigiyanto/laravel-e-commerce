@@ -122,7 +122,6 @@ class CheckoutController extends Controller
             $requiredByVariant = [];
             $subtotal = 0;
             
-            /*
             foreach ($cart->items as $cartItem) {
                 $product = $products->get($cartItem->product_id);
             
@@ -170,6 +169,23 @@ class CheckoutController extends Controller
                 )->exists()
             );
 
+            $stockService = app(VariantInventoryService::class);
+            
+            foreach ($requiredByVariant as $variantId => $requiredQuantity) {
+                $row = collect($stockRows)->first(
+                    fn ($item) => (int) $item['variant']->id === $variantId
+                );
+            
+                $available = (int) $row['inventory']->quantity
+                    - (int) $row['inventory']->reserved_quantity;
+            
+                if ($requiredQuantity > $available) {
+                    throw ValidationException::withMessages([
+                        'stock' => "Stok varian {$row['variant']->name} tidak mencukupi.",
+                    ]);
+                }
+            }
+
             $order = Order::create([
                 'user_id' => auth()->id(),
                 'order_number' => $orderNumber,
@@ -199,76 +215,6 @@ class CheckoutController extends Controller
                 'transaction_status' => 'pending',
                 'gross_amount' => $order->total,
             ]);
-            */
-            
-            $stockService = app(VariantInventoryService::class);
-            
-            foreach ($cartItems as $cartItem) {
-                $product = $products->get($cartItem->product_id);
-            
-                if (! $product) {
-                    throw ValidationException::withMessages([
-                        'stock' => 'Produk di keranjang tidak lagi tersedia.',
-                    ]);
-                }
-            
-                $resolved = $stockService->resolve(
-                    $product,
-                    $cartItem->product_variant_id
-                        ? (int) $cartItem->product_variant_id
-                        : null
-                );
-            
-                $variant = $resolved['variant'];
-                $inventory = $resolved['inventory'];
-            
-                if ($variant->status !== 'active') {
-                    throw ValidationException::withMessages([
-                        'stock' => "Varian {$variant->name} tidak tersedia.",
-                    ]);
-                }
-            
-                /*
-                 * Item keranjang lama yang belum mempunyai variant_id
-                 * dipetakan ke varian default hasil resolusi.
-                 */
-                if (! $cartItem->product_variant_id) {
-                    $cartItem->update([
-                        'product_variant_id' => $variant->id,
-                    ]);
-                }
-            
-                $variantId = (int) $variant->id;
-            
-                $stockRows[$cartItem->id] = [
-                    'product' => $resolved['product'],
-                    'variant' => $variant,
-                    'inventory' => $inventory,
-                    'quantity' => (int) $cartItem->quantity,
-                ];
-            
-                $requiredByVariant[$variantId] =
-                    ($requiredByVariant[$variantId] ?? 0)
-                    + (int) $cartItem->quantity;
-            
-                $subtotal += (float) $variant->price
-                    * (int) $cartItem->quantity;
-            }
-            
-            foreach ($requiredByVariant as $variantId => $requiredQuantity) {
-                $row = collect($stockRows)->first(
-                    fn ($item) => (int) $item['variant']->id === $variantId
-                );
-            
-                $available = (int) $row['inventory']->quantity
-                    - (int) $row['inventory']->reserved_quantity;
-            
-                if ($requiredQuantity > $available) {
-                    throw ValidationException::withMessages([
-                        'stock' => "Stok varian {$row['variant']->name} tidak mencukupi.",
-                    ]);
-                }
-            }
 
             foreach ($cartItems as $cartItem) {
                 $resolved = $stockRows[$cartItem->id];
@@ -289,9 +235,6 @@ class CheckoutController extends Controller
                 ]);
             }
             
-            /*
-             * Kurangi stok satu kali per varian dengan jumlah gabungan.
-             */
             $rowsByVariant = collect($stockRows)->groupBy(
                 fn ($item) => (int) $item['variant']->id
             );
