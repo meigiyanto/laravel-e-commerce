@@ -43,7 +43,7 @@ class OrderCancellationRequestController extends Controller
         $validated = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
             'admin_note' => ['nullable', 'string', 'max:2000'],
-            'reason_details' => ['required_if:reason_code,other', 'string' 'max:1500'],
+            'reason_details' => ['required_if:reason_code', 'nullable', 'other', 'string', 'max:1500'],
         ]);
 
         $result = DB::transaction(function () use ($cancellationRequest, $validated) {
