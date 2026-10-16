@@ -329,25 +329,6 @@
                             </div>
                         @endif
 
-                        @if ($canCancelOrder)
-                            <form
-                                method="POST"
-                                action="{{ route('orders.cancel', $order) }}"
-                                class="store-order-detail-cancel-form"
-                            >
-                                @csrf
-                        
-                                <button
-                                    type="submit"
-                                    class="store-order-cancel-button"
-                                    onclick="return confirm('Batalkan pesanan #{{ $order->order_number }}? Tindakan ini tidak dapat dibatalkan.')"
-                                >
-                                    <i class="bi bi-x-circle"></i>
-                                    Cancel Order
-                                </button>
-                            </form>
-                        @endif
-                        
                         @php($pendingCancellationRequest = $order->cancellationRequests->firstWhere('status', 'pending'))
                         
                         @if($pendingCancellationRequest)

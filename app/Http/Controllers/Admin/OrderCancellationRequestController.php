@@ -43,6 +43,7 @@ class OrderCancellationRequestController extends Controller
         $validated = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
             'admin_note' => ['nullable', 'string', 'max:2000'],
+            'reason_details' => ['required_if:reason_code,other', 'string' 'max:1500'],
         ]);
 
         $result = DB::transaction(function () use ($cancellationRequest, $validated) {
@@ -60,16 +61,16 @@ class OrderCancellationRequestController extends Controller
                 if ($order->status !== 'pending') {
                     return 'order_not_pending';
                 }
+                
+                if ($payment && $payment->status === 'succeeded') {
+                    return 'payment_succeeded';
+                }
 
                 // Do not approve while Stripe/Midtrans may still complete payment.
                 if ($payment && ! (
                     $payment->payment_method === 'cod' && $payment->status === 'pending'
                 ) && ! in_array($payment->status, ['failed', 'expired', 'canceled'], true)) {
                     return 'payment_not_safe';
-                }
-
-                if ($payment && $payment->status === 'succeeded') {
-                    return 'payment_succeeded';
                 }
 
                 $items = $order->items()->orderBy('id')->get();
