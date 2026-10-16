@@ -535,7 +535,6 @@ class MidtransNotificationTest extends TestCase
         );
     }
 
-
     public function test_midtrans_confirm_does_not_downgrade_expired_payment(): void
     {
         $user = User::factory()->create();
@@ -732,5 +731,4 @@ class MidtransNotificationTest extends TestCase
             'expired'
         );
     }
-
 }
