@@ -12,10 +12,10 @@ use Illuminate\Validation\ValidationException;
 class VariantInventoryService
 {
     /**
-     * Ambil inventaris varian yang akan digunakan.
+     * Resolusi varian dan inventaris di dalam transaksi.
      *
-     * Jika $variantId null, gunakan varian default.
-     * Stok legacy dimigrasikan hanya ketika inventory belum ada.
+     * products.stock hanya digunakan untuk backfill awal jika
+     * belum ada inventaris untuk varian mana pun dari produk.
      */
     public function resolve(
         Product $product,
@@ -26,28 +26,14 @@ class VariantInventoryService
             ->lockForUpdate()
             ->firstOrFail();
 
-        $variantQuery = ProductVariant::query()
-            ->where('product_id', $lockedProduct->id);
-
-        if ($variantId !== null) {
-            $variantQuery->whereKey($variantId);
-        } else {
-            $variantQuery
-                ->orderByDesc('is_default')
-                ->orderBy('id');
-        }
-
-        $variant = $variantQuery
+        $variants = ProductVariant::query()
+            ->where('product_id', $lockedProduct->id)
+            ->orderByDesc('is_default')
+            ->orderBy('id')
             ->lockForUpdate()
-            ->first();
+            ->get();
 
-        if (! $variant && $variantId !== null) {
-            throw ValidationException::withMessages([
-                'stock' => 'Varian produk tidak ditemukan.',
-            ]);
-        }
-
-        if (! $variant) {
+        if ($variants->isEmpty()) {
             $baseSku = 'LEGACY-'.$lockedProduct->id;
             $sku = $baseSku;
             $suffix = 1;
@@ -64,39 +50,87 @@ class VariantInventoryService
                 'is_default' => true,
                 'status' => 'active',
             ]);
+
+            $variants = collect([$variant]);
+        }
+
+        $variant = $variantId !== null
+            ? $variants->firstWhere('id', $variantId)
+            : $variants->first();
+
+        if (! $variant) {
+            throw ValidationException::withMessages([
+                'stock' => 'Varian tidak ditemukan untuk produk ini.',
+            ]);
+        }
+
+        /*
+         * Produk yang belum memiliki inventaris sama sekali
+         * masih mungkin menggunakan stok legacy.
+         *
+         * Alokasikan stok legacy hanya ke varian default,
+         * bukan ke setiap varian.
+         */
+        $variantIds = $variants->pluck('id');
+
+        $hasAnyInventory = Inventory::query()
+            ->whereIn('product_variant_id', $variantIds)
+            ->exists();
+
+        if (! $hasAnyInventory) {
+            $legacyVariant = $variants->firstWhere(
+                'is_default',
+                true
+            ) ?? $variants->first();
+
+            $legacyStock = max(
+                0,
+                (int) $lockedProduct->stock
+            );
+
+            foreach ($variants as $candidate) {
+                $initialQuantity = $candidate->is($legacyVariant)
+                    ? $legacyStock
+                    : 0;
+
+                $inventory = Inventory::create([
+                    'product_variant_id' => $candidate->id,
+                    'quantity' => $initialQuantity,
+                    'reserved_quantity' => 0,
+                    'reorder_level' => 0,
+                ]);
+
+                if ($initialQuantity > 0) {
+                    $candidate->inventoryMovements()->create([
+                        'type' => 'opening_stock',
+                        'quantity' => $initialQuantity,
+                        'note' => 'Backfill stok legacy ke varian default.',
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+            }
+        } else {
+            /*
+             * Jika inventaris sudah mulai digunakan, varian
+             * yang belum memiliki baris inventaris dimulai
+             * dari nol, bukan menyalin ulang products.stock.
+             */
+            foreach ($variants as $candidate) {
+                Inventory::firstOrCreate(
+                    ['product_variant_id' => $candidate->id],
+                    [
+                        'quantity' => 0,
+                        'reserved_quantity' => 0,
+                        'reorder_level' => 0,
+                    ]
+                );
+            }
         }
 
         $inventory = Inventory::query()
             ->where('product_variant_id', $variant->id)
             ->lockForUpdate()
-            ->first();
-
-        if (! $inventory) {
-            // Migrasi stok produk lama tepat satu kali.
-            $legacyStock = max(0, (int) $lockedProduct->stock);
-
-            $inventory = Inventory::create([
-                'product_variant_id' => $variant->id,
-                'quantity' => $legacyStock,
-                'reserved_quantity' => 0,
-                'reorder_level' => 0,
-            ]);
-
-            if ($legacyStock > 0) {
-                $variant->inventoryMovements()->create([
-                    'type' => 'opening_stock',
-                    'quantity' => $legacyStock,
-                    'note' => 'Migrasi stok legacy ke inventaris varian.',
-                    'created_by' => auth()->id(),
-                ]);
-            }
-        }
-
-        // Kolom lama hanya salinan kompatibilitas.
-        $lockedProduct->update([
-            'stock' => (int) $inventory->quantity,
-            'price' => $variant->price,
-        ]);
+            ->firstOrFail();
 
         return [
             'product' => $lockedProduct,
@@ -106,9 +140,9 @@ class VariantInventoryService
     }
 
     /**
-     * Kurangi stok ketika order dibuat.
-     * reserved_quantity tidak ditambah karena pola aplikasi
-     * saat ini langsung mengurangi quantity saat checkout.
+     * Kurangi stok saat order dibuat.
+     * Pola saat ini mengurangi quantity langsung;
+     * reserved_quantity tidak dinaikkan.
      */
     public function deductForOrder(
         Product $product,
@@ -117,8 +151,13 @@ class VariantInventoryService
         int $quantity,
         Order $order
     ): void {
-        $available = (int) $inventory->quantity
-            - (int) $inventory->reserved_quantity;
+        $lockedInventory = Inventory::query()
+            ->whereKey($inventory->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $available = (int) $lockedInventory->quantity
+            - (int) $lockedInventory->reserved_quantity;
 
         if ($quantity < 1 || $quantity > $available) {
             throw ValidationException::withMessages([
@@ -126,8 +165,8 @@ class VariantInventoryService
             ]);
         }
 
-        $inventory->update([
-            'quantity' => (int) $inventory->quantity - $quantity,
+        $lockedInventory->update([
+            'quantity' => (int) $lockedInventory->quantity - $quantity,
         ]);
 
         $variant->inventoryMovements()->create([
@@ -139,14 +178,14 @@ class VariantInventoryService
             'created_by' => auth()->id(),
         ]);
 
-        $product->update([
-            'stock' => (int) $inventory->quantity,
-        ]);
+        $this->syncLegacyStock($product);
     }
 
     /**
-     * Kembalikan stok saat order berhasil dibatalkan.
-     * Panggil hanya pada transisi status menuju canceled.
+     * Kembalikan stok pada transisi order menuju canceled.
+     *
+     * Pemanggil wajib mengunci order dan hanya memanggil
+     * method ini satu kali pada transisi yang sah.
      */
     public function restoreForOrder(
         Product $product,
@@ -154,6 +193,10 @@ class VariantInventoryService
         int $quantity,
         Order $order
     ): void {
+        if ($quantity < 1) {
+            return;
+        }
+
         $resolved = $this->resolve($product, $variantId);
 
         $lockedProduct = $resolved['product'];
@@ -173,8 +216,23 @@ class VariantInventoryService
             'created_by' => auth()->id(),
         ]);
 
-        $lockedProduct->update([
-            'stock' => (int) $inventory->quantity,
+        $this->syncLegacyStock($lockedProduct);
+    }
+
+    /**
+     * Kolom legacy mencerminkan total quantity seluruh varian.
+     * Nilai ini untuk kompatibilitas, bukan validasi pembelian.
+     */
+    private function syncLegacyStock(Product $product): void
+    {
+        $totalQuantity = Inventory::query()
+            ->whereHas('variant', function ($query) use ($product) {
+                $query->where('product_id', $product->id);
+            })
+            ->sum('quantity');
+
+        $product->update([
+            'stock' => (int) $totalQuantity,
         ]);
     }
 }

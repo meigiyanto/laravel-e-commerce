@@ -97,22 +97,32 @@ class CheckoutController extends Controller
                 abort(422, 'Your cart still empty.');
             }
 
-            $productIds = $cart->items
+            $cartItems = $cart->items()
+                ->lockForUpdate()
+                ->with(['product', 'variant'])
+                ->get();
+            
+            if ($cartItems->isEmpty()) {
+                abort(422, 'Keranjang masih kosong.');
+            }
+            
+            $productIds = $cartItems
                 ->pluck('product_id')
                 ->unique()
                 ->values();
-
-            $products = Product::whereIn(
-                'id',
-                $productIds
-            )
+            
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
-
+            
             $stockRows = [];
+            $requiredByVariant = [];
             $subtotal = 0;
-
+            
+            /*
             foreach ($cart->items as $cartItem) {
                 $product = $products->get($cartItem->product_id);
             
@@ -144,10 +154,6 @@ class CheckoutController extends Controller
             }
 
             $shippingCost = 0;
-
-            /*
-             * Total authoritative.
-             */
             $total = $subtotal + $shippingCost;
 
             do {
@@ -193,18 +199,85 @@ class CheckoutController extends Controller
                 'transaction_status' => 'pending',
                 'gross_amount' => $order->total,
             ]);
-
+            */
+            
             $stockService = app(VariantInventoryService::class);
             
-            foreach ($cart->items as $cartItem) {
-                $resolved = $stockRows[$cartItem->product_id];
+            foreach ($cartItems as $cartItem) {
+                $product = $products->get($cartItem->product_id);
             
-                $product = $resolved['product'];
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Produk di keranjang tidak lagi tersedia.',
+                    ]);
+                }
+            
+                $resolved = $stockService->resolve(
+                    $product,
+                    $cartItem->product_variant_id
+                        ? (int) $cartItem->product_variant_id
+                        : null
+                );
+            
                 $variant = $resolved['variant'];
                 $inventory = $resolved['inventory'];
             
+                if ($variant->status !== 'active') {
+                    throw ValidationException::withMessages([
+                        'stock' => "Varian {$variant->name} tidak tersedia.",
+                    ]);
+                }
+            
+                /*
+                 * Item keranjang lama yang belum mempunyai variant_id
+                 * dipetakan ke varian default hasil resolusi.
+                 */
+                if (! $cartItem->product_variant_id) {
+                    $cartItem->update([
+                        'product_variant_id' => $variant->id,
+                    ]);
+                }
+            
+                $variantId = (int) $variant->id;
+            
+                $stockRows[$cartItem->id] = [
+                    'product' => $resolved['product'],
+                    'variant' => $variant,
+                    'inventory' => $inventory,
+                    'quantity' => (int) $cartItem->quantity,
+                ];
+            
+                $requiredByVariant[$variantId] =
+                    ($requiredByVariant[$variantId] ?? 0)
+                    + (int) $cartItem->quantity;
+            
+                $subtotal += (float) $variant->price
+                    * (int) $cartItem->quantity;
+            }
+            
+            foreach ($requiredByVariant as $variantId => $requiredQuantity) {
+                $row = collect($stockRows)->first(
+                    fn ($item) => (int) $item['variant']->id === $variantId
+                );
+            
+                $available = (int) $row['inventory']->quantity
+                    - (int) $row['inventory']->reserved_quantity;
+            
+                if ($requiredQuantity > $available) {
+                    throw ValidationException::withMessages([
+                        'stock' => "Stok varian {$row['variant']->name} tidak mencukupi.",
+                    ]);
+                }
+            }
+
+            foreach ($cartItems as $cartItem) {
+                $resolved = $stockRows[$cartItem->id];
+            
+                $product = $resolved['product'];
+                $variant = $resolved['variant'];
+            
                 $itemSubtotal = (float) $variant->price
-                    * $cartItem->quantity;
+                    * (int) $cartItem->quantity;
             
                 $order->items()->create([
                     'product_id' => $product->id,
@@ -214,16 +287,31 @@ class CheckoutController extends Controller
                     'quantity' => $cartItem->quantity,
                     'subtotal' => $itemSubtotal,
                 ]);
+            }
+            
+            /*
+             * Kurangi stok satu kali per varian dengan jumlah gabungan.
+             */
+            $rowsByVariant = collect($stockRows)->groupBy(
+                fn ($item) => (int) $item['variant']->id
+            );
+            
+            foreach ($rowsByVariant as $variantRows) {
+                $first = $variantRows->first();
+            
+                $totalQuantity = $variantRows->sum(
+                    fn ($item) => (int) $item['quantity']
+                );
             
                 $stockService->deductForOrder(
-                    $product,
-                    $variant,
-                    $inventory,
-                    (int) $cartItem->quantity,
+                    $first['product'],
+                    $first['variant'],
+                    $first['inventory'],
+                    $totalQuantity,
                     $order
                 );
             }
-
+            
             $cart->items()->delete();
 
             return $order;
