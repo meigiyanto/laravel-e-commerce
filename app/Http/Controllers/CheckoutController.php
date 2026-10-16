@@ -79,113 +79,153 @@ class CheckoutController extends Controller
         ]);
         
         $order = DB::transaction(function () use ($validated) {
-
             $cart = Cart::where('user_id', auth()->id())
                 ->lockForUpdate()
                 ->first();
-
+        
             if (! $cart) {
-                abort(404, 'Cart not founs.');
+                abort(404, 'Cart not found.');
             }
-
-            $cart->load([
-                'items.product',
-                'items.variant.inventory',
-            ]);
-
-            if ($cart->items->isEmpty()) {
-                abort(422, 'Your cart still empty.');
-            }
-
+        
             $cartItems = $cart->items()
+                ->orderBy('id')
                 ->lockForUpdate()
                 ->with(['product', 'variant'])
                 ->get();
-            
+        
             if ($cartItems->isEmpty()) {
                 abort(422, 'Keranjang masih kosong.');
             }
-            
+        
+            // Kunci semua produk dalam urutan ID yang konsisten.
             $productIds = $cartItems
                 ->pluck('product_id')
                 ->unique()
+                ->sort()
                 ->values();
-            
+        
             $products = Product::query()
                 ->whereIn('id', $productIds)
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
-            
+        
+            $stockService = app(VariantInventoryService::class);
+        
+            // Semua data stok diindeks menggunakan ID item keranjang.
             $stockRows = [];
             $requiredByVariant = [];
             $subtotal = 0;
-            
-            foreach ($cart->items as $cartItem) {
+        
+            /*
+             * 1. Resolusi varian dan penghitungan subtotal.
+             * Belum membuat order atau mengurangi stok.
+             */
+            foreach ($cartItems as $cartItem) {
                 $product = $products->get($cartItem->product_id);
-            
+        
                 if (! $product) {
                     throw ValidationException::withMessages([
                         'stock' => 'Produk di keranjang tidak lagi tersedia.',
                     ]);
                 }
-            
-                $resolved = app(VariantInventoryService::class)
-                    ->resolve($product);
-            
-                $variant = $resolved['variant'];
-                $inventory = $resolved['inventory'];
-                $available = (int) $inventory->quantity
-                    - (int) $inventory->reserved_quantity;
-            
-                if (
-                    $variant->status !== 'active'
-                    || $cartItem->quantity > $available
-                ) {
+        
+                if ((int) $cartItem->quantity < 1) {
                     throw ValidationException::withMessages([
-                        'stock' => "Stok produk {$product->name} tidak mencukupi.",
+                        'stock' => 'Jumlah produk di keranjang tidak valid.',
                     ]);
                 }
-
-                $stockRows[$product->id] = $resolved;
-                $subtotal += (float) $variant->price * $cartItem->quantity;
-            }
-
-            $shippingCost = 0;
-            $total = $subtotal + $shippingCost;
-
-            do {
-                $orderNumber =
-                    'ORD-'.
-                    now()->format('YmdHis').
-                    '-'.
-                    strtoupper(Str::random(5));
-
-            } while (
-                Order::where(
-                    'order_number',
-                    $orderNumber
-                )->exists()
-            );
-
-            $stockService = app(VariantInventoryService::class);
-            
-            foreach ($requiredByVariant as $variantId => $requiredQuantity) {
-                $row = collect($stockRows)->first(
-                    fn ($item) => (int) $item['variant']->id === $variantId
+        
+                $requestedVariantId = $cartItem->product_variant_id
+                    ? (int) $cartItem->product_variant_id
+                    : null;
+        
+                $resolved = $stockService->resolve(
+                    $product,
+                    $requestedVariantId
                 );
-            
+        
+                $product = $resolved['product'];
+                $variant = $resolved['variant'];
+                $inventory = $resolved['inventory'];
+        
+                if ($variant->status !== 'active') {
+                    throw ValidationException::withMessages([
+                        'stock' => "Varian {$variant->name} tidak tersedia.",
+                    ]);
+                }
+        
+                // Simpan varian default yang berhasil di-resolve
+                // jika item keranjang lama belum memiliki variant ID.
+                if (! $cartItem->product_variant_id) {
+                    $cartItem->update([
+                        'product_variant_id' => $variant->id,
+                    ]);
+                }
+        
+                $quantity = (int) $cartItem->quantity;
+                $variantId = (int) $variant->id;
+        
+                $stockRows[$cartItem->id] = [
+                    'product' => $product,
+                    'variant' => $variant,
+                    'inventory' => $inventory,
+                    'quantity' => $quantity,
+                ];
+        
+                // Gabungkan semua item yang menggunakan varian sama.
+                $requiredByVariant[$variantId] =
+                    ($requiredByVariant[$variantId] ?? 0) + $quantity;
+        
+                $subtotal += (float) $variant->price * $quantity;
+            }
+        
+            /*
+             * 2. Validasi total kebutuhan setiap varian.
+             * Mencegah beberapa baris keranjang melampaui stok
+             * meskipun masing-masing baris secara individual terlihat cukup.
+             */
+            $rowsByVariant = collect($stockRows)->groupBy(
+                fn ($row) => (int) $row['variant']->id
+            );
+        
+            foreach ($requiredByVariant as $variantId => $requiredQuantity) {
+                $rows = $rowsByVariant->get($variantId);
+                $row = $rows?->first();
+        
+                if (! $row) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Data varian keranjang tidak valid.',
+                    ]);
+                }
+        
                 $available = (int) $row['inventory']->quantity
                     - (int) $row['inventory']->reserved_quantity;
-            
+        
                 if ($requiredQuantity > $available) {
                     throw ValidationException::withMessages([
                         'stock' => "Stok varian {$row['variant']->name} tidak mencukupi.",
                     ]);
                 }
             }
-
+        
+            /*
+             * 3. Hitung total dan buat order serta payment
+             * hanya setelah semua varian dan stok tervalidasi.
+             */
+            $shippingCost = 0;
+            $total = $subtotal + $shippingCost;
+        
+            do {
+                $orderNumber = 'ORD-'
+                    . now()->format('YmdHis')
+                    . '-'
+                    . strtoupper(Str::random(5));
+            } while (
+                Order::where('order_number', $orderNumber)->exists()
+            );
+        
             $order = Order::create([
                 'user_id' => auth()->id(),
                 'order_number' => $orderNumber,
@@ -198,16 +238,14 @@ class CheckoutController extends Controller
                 'shipping_cost' => $shippingCost,
                 'total' => $total,
             ]);
-
+        
             Payment::create([
                 'order_id' => $order->id,
                 'provider' => $validated['payment_method'],
                 'currency' => 'IDR',
                 'status' => 'pending',
                 'payment_method' => $validated['payment_method'],
-                'payment_type' => match (
-                    $validated['payment_method']
-                ) {
+                'payment_type' => match ($validated['payment_method']) {
                     'stripe' => 'card',
                     'midtrans' => 'midtrans_snap',
                     'cod' => 'cash_on_delivery',
@@ -215,37 +253,40 @@ class CheckoutController extends Controller
                 'transaction_status' => 'pending',
                 'gross_amount' => $order->total,
             ]);
-
+        
+            /*
+             * 4. Buat item order dari varian yang sudah divalidasi.
+             */
             foreach ($cartItems as $cartItem) {
                 $resolved = $stockRows[$cartItem->id];
-            
+        
                 $product = $resolved['product'];
                 $variant = $resolved['variant'];
-            
-                $itemSubtotal = (float) $variant->price
-                    * (int) $cartItem->quantity;
-            
+                $quantity = $resolved['quantity'];
+        
+                $itemSubtotal = (float) $variant->price * $quantity;
+        
                 $order->items()->create([
                     'product_id' => $product->id,
                     'product_variant_id' => $variant->id,
                     'product_name' => $product->name,
                     'price' => $variant->price,
-                    'quantity' => $cartItem->quantity,
+                    'quantity' => $quantity,
                     'subtotal' => $itemSubtotal,
                 ]);
             }
-            
-            $rowsByVariant = collect($stockRows)->groupBy(
-                fn ($item) => (int) $item['variant']->id
-            );
-            
+        
+            /*
+             * 5. Kurangi stok sekali untuk setiap varian,
+             * dengan jumlah gabungan seluruh baris keranjang.
+             */
             foreach ($rowsByVariant as $variantRows) {
                 $first = $variantRows->first();
-            
+        
                 $totalQuantity = $variantRows->sum(
-                    fn ($item) => (int) $item['quantity']
+                    fn ($row) => (int) $row['quantity']
                 );
-            
+        
                 $stockService->deductForOrder(
                     $first['product'],
                     $first['variant'],
@@ -254,9 +295,10 @@ class CheckoutController extends Controller
                     $order
                 );
             }
-            
+        
+            // 6. Kosongkan keranjang setelah order dan stok diproses.
             $cart->items()->delete();
-
+        
             return $order;
         });
 
