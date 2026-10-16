@@ -33,23 +33,21 @@
                         <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
                             <div class="icon-status icon-status-info">
                                 <em class="icon ni ni-bell"></em>
-                                {{--
                                 @if($pendingCancellationNotifications > 0)
                                     <span class="badge bg-danger">{{ $pendingCancellationNotifications > 99 ? '99+' : $pendingCancellationNotifications }}</span>
                                 @endif
-                                --}}
                             </div>
                         </a>
                         
                         <div class="dropdown-menu dropdown-menu-xl dropdown-menu-end">
-                            @if($pendingCancellationNotifications > 0)
-                                <div class="dropdown-head">
-                                    <span class="sub-title nk-dropdown-title">Notifications</span>
-                                    <a href="#">Mark All as Read</a>
-                                </div>
-                                <div class="dropdown-body">
-                                    <div class="nk-notification">
-                                        <div class="nk-notification-item dropdown-inner">
+                            <div class="dropdown-head">
+                                <span class="sub-title nk-dropdown-title">Notifications</span>
+                                <a href="#">Mark All as Read</a>
+                            </div>
+                            <div class="dropdown-body">
+                                <div class="nk-notification">
+                                    <div class="nk-notification-item dropdown-inner">
+                                        @if($pendingCancellationNotifications > 0)
                                             <div class="nk-notification-icon">
                                                 <em class="icon icon-circle bg-warning-dim ni ni-curve-down-right"></em>
                                             </div>
@@ -61,13 +59,13 @@
                                                     2 hrs ago
                                                 </div>
                                             </div>
-                                        </div>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="dropdown-foot center">
-                                    <a href="{{ route('admin.order-cancellation-requests.index') }}">Lihat Semua</a>
-                                </div>
-                            @endif
+                            </div>
+                            <div class="dropdown-foot center">
+                                <a href="{{ route('admin.order-cancellation-requests.index') }}">Lihat Semua</a>
+                            </div>
                         </div>
                     </li>
 
