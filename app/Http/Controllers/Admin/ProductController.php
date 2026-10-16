@@ -198,6 +198,53 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $submittedIds = collect(
+            is_array($request->input('variants', []))
+                ? $request->input('variants', [])
+                : []
+        )
+            ->pluck('id')
+            ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        
+        $submittedVariantIds = $product->variants()
+            ->whereIn('id', $submittedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+            
+        $variantsInput = $request->input('variants', []);
+
+        $seenSkus = [];
+        $seenBarcodes = [];
+        
+        foreach ($variantsInput as $key => $variant) {
+            $sku = trim((string) ($variant['sku'] ?? ''));
+        
+            if ($sku !== '') {
+                if (in_array($sku, $seenSkus, true)) {
+                    throw ValidationException::withMessages([
+                        "variants.$key.sku" => 'SKU tidak boleh sama antarvarian.',
+                    ]);
+                }
+        
+                $seenSkus[] = $sku;
+            }
+        
+            $barcode = trim((string) ($variant['barcode'] ?? ''));
+        
+            if ($barcode !== '') {
+                if (in_array($barcode, $seenBarcodes, true)) {
+                    throw ValidationException::withMessages([
+                        "variants.$key.barcode" => 'Barcode tidak boleh sama antarvarian.',
+                    ]);
+                }
+        
+                $seenBarcodes[] = $barcode;
+            }
+        }
+
         $validationRules = [
             'category_id' => ['required', 'exists:categories,id'],
             'sub_category_id' => [
@@ -223,7 +270,7 @@ class ProductController extends Controller
             // Boleh tidak dikirim apabila produk lama belum memiliki varian.
             'variants' => ['nullable', 'array'],
             'variants.*.id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
-            'variants.*.sku' => ['required', 'string', 'max:100'],
+            'variants.*.sku' => [ 'required', 'string', 'max:100', 'distinct'],
             'variants.*.barcode' => ['nullable', 'string', 'max:100'],
             'variants.*.name' => ['nullable', 'string', 'max:255'],
             'variants.*.price' => ['required', 'numeric', 'min:0'],
@@ -255,21 +302,36 @@ class ProductController extends Controller
         ];
         
         foreach ($request->input('variants', []) as $key => $input) {
-            $variantId = filter_var(
-                $input['id'] ?? null,
-                FILTER_VALIDATE_INT
-            );
-    
-            $validationRules["variants.$key.sku"][] = Rule::unique(
-                'product_variants',
-                'sku'
-            )->ignore($variantId ?: null);
+            $validationRules["variants.$key.sku"][] =
+                function ($attribute, $value, $fail) use ($submittedVariantIds) {
+                    $query = ProductVariant::query()
+                        ->where('sku', $value);
+        
+                    if ($submittedVariantIds !== []) {
+                        $query->whereNotIn('id', $submittedVariantIds);
+                    }
+        
+                    if ($query->exists()) {
+                        $fail('SKU sudah digunakan oleh varian lain.');
+                    }
+                };
         
             if (filled($input['barcode'] ?? null)) {
-                $validationRules["variants.$key.barcode"][] = Rule::unique(
-                    'product_variants',
-                    'barcode'
-                )->ignore($variantId ?: null);
+                $validationRules["variants.$key.barcode"][] = 'distinct';
+        
+                $validationRules["variants.$key.barcode"][] =
+                    function ($attribute, $value, $fail) use ($submittedVariantIds) {
+                        $query = ProductVariant::query()
+                            ->where('barcode', $value);
+        
+                        if ($submittedVariantIds !== []) {
+                            $query->whereNotIn('id', $submittedVariantIds);
+                        }
+        
+                        if ($query->exists()) {
+                            $fail('Barcode sudah digunakan oleh varian lain.');
+                        }
+                    };
             }
         }
 
@@ -381,8 +443,40 @@ class ProductController extends Controller
                             'created_by' => auth()->id(),
                         ]);
                     }
-
-                    $variants = [];
+                }
+                
+                // Kosongkan SKU lama melalui SKU sementara agar pertukaran SKU aman.
+                $variantIdsForUpdate = collect($variants)
+                    ->pluck('id')
+                    ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+                
+                $variantsToUpdate = $product->variants()
+                    ->whereIn('id', $variantIdsForUpdate)
+                    ->lockForUpdate()
+                    ->get();
+                
+                foreach ($variantsToUpdate as $variantToUpdate) {
+                    $temporarySku = '__TMP__'
+                        . $product->id
+                        . '_'
+                        . $variantToUpdate->id;
+                
+                    while (
+                        ProductVariant::query()
+                            ->where('sku', $temporarySku)
+                            ->where('id', '!=', $variantToUpdate->id)
+                            ->exists()
+                    ) {
+                        $temporarySku .= '_';
+                    }
+                
+                    $variantToUpdate->update([
+                        'sku' => $temporarySku,
+                    ]);
                 }
                 
                 foreach ($variants as $key => $item) {
