@@ -1,5 +1,148 @@
-import * as bootstrap from 'bootstrap';
+/**
+ * PRODUCT QUICK VIEW
+ * 
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('storeProductQuickView');
+    const el = (id) => document.getElementById(id);
+    const placeholder = modalElement?.dataset.placeholder || '/storage/products/placeholder.png';
 
+    const formatRupiah = (value) => 'Rp ' + new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 0
+    }).format(Number(value || 0));
+
+    const setText = (id, value) => { el(id).textContent = value ?? ''; }
+
+    function makeElement(tag, className, text) {
+        const node = document.createElement(tag);
+
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+
+        return node;
+    }
+
+    function renderVariants(variants) {
+        const container = el('storeQuickViewVariants');
+        container.replaceChildren();
+
+        const activeVariants = variants.filter(variant => variant.status === 'active');
+        setText('storeQuickViewVariantCount', activeVariants.length + ' varian');
+
+        if (!activeVariants.length) {
+            container.append(makeElement('p', 'store-quick-view-empty', 'Belum ada varian aktif untuk produk ini.'));
+            return;
+        }
+
+        activeVariants.forEach(function (variant) {
+            const card = makeElement('article', 'store-quick-view-variant');
+            const top = makeElement('div', 'store-quick-view-variant-top');
+            const name = makeElement('h4', 'store-quick-view-variant-name', variant.name || 'Varian');
+
+            const stock = Number(variant.stock || 0);
+            const stockNode = makeElement('span', stock > 0 ? 'store-quick-view-stock is-available' : 'store-quick-view-stock is-empty', stock > 0 ? stock + ' tersedia' : 'Stok habis');
+
+            top.append(name, stockNode);
+            card.append(top);
+
+            if (variant.attributes?.length) {
+                const attributes = makeElement('div', 'store-quick-view-attributes');
+
+                variant.attributes.forEach(function (attribute) {
+                    const row = makeElement('div', 'store-quick-view-attribute');
+                    row.append(makeElement('span', '', attribute.name || 'Atribut'));
+                    
+                    const valueWrap = makeElement('strong', 'store-quick-view-attribute-value');
+
+                    if (attribute.hex_color) {
+                        const swatch = makeElement('span', 'store-quick-view-color-swatch');
+
+                        swatch.style.backgroundColor = attribute.hex_color;
+                        swatch.setAttribute('aria-hidden', 'true');
+                        valueWrap.append(swatch);
+                    }
+
+                    valueWrap.append(document.createTextNode(attribute.value || '-'));
+                    row.append(valueWrap);
+                    attributes.append(row);
+                });
+
+                card.append(attributes);
+            }
+
+            const meta = makeElement('div', 'store-quick-view-variant-meta');
+            meta.append(
+                makeElement('span', '', 'SKU: ' + (variant.sku || '-')),
+                makeElement('strong', '', formatRupiah(variant.price))
+            );
+
+            if (variant.compare_at_price && Number(variant.compare_at_price) > Number(variant.price)) {
+                meta.append(makeElement('del', 'store-quick-view-old-price', formatRupiah(variant.compare_at_price)));
+            }
+
+            card.append(meta);
+            container.append(card);
+        });
+    }
+
+    function renderSpecifications(specifications) {
+        const container = el('storeQuickViewSpecifications');
+        container.replaceChildren();
+
+        if (!specifications.length) {
+            container.append(makeElement('p', 'store-quick-view-empty', 'Belum ada spesifikasi tambahan.'));
+            return;
+        }
+        
+        specifications.forEach(function (specification) {
+            const row = makeElement('div', 'store-quick-view-spec-row');
+
+            row.append(
+                makeElement('span', 'store-quick-view-spec-name', specification.name || 'Spesifikasi'),
+                makeElement('strong', 'store-quick-view-spec-value', specification.value || '-')
+            );
+
+            container.append(row);
+        });
+    }
+
+    if (!modalElement) {
+        return;
+    }
+
+    modalElement.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        if (!button) return;
+        
+        const variants = JSON.parse(button.dataset.productVariants || '[]');
+        const productBaseUrl = modalElement?.dataset.productBaseUrl || '/shop';
+        
+        setText('storeQuickViewName', button.dataset.productName);
+        setText('storeQuickViewCategory', button.dataset.productCategory);
+        setText('storeQuickViewDescription', button.dataset.productDescription);
+        setText('storeQuickViewPrice', formatRupiah(button.dataset.productPrice));
+
+        const rating = Number(button.dataset.productRating || 0);
+        const reviewCount = Number(button.dataset.productReviews || 0);
+
+        setText('storeQuickViewRating', rating.toFixed(1));
+        setText('storeQuickViewReviews', reviewCount > 0 ? '(' + reviewCount + ' ulasan)' : '(Belum ada ulasan)')
+
+        const image = el('storeQuickViewImage');
+        image.src = button.dataset.productImage || placeholder;
+        image.alt = button.dataset.productName || 'Gambar produk';
+        image.onerror = function () {
+            this.onerror = null;
+            this.src = placeholder;
+        };
+
+        el('storeQuickViewDetailLink').href = productBaseUrl.replace(/\/+$/, '') + '/' + encodeURIComponent(button.dataset.productSlug || '');
+        
+        renderVariants(variants);
+        renderSpecifications(JSON.parse(button.dataset.productSpecifications || '[]'));
+    });
+});
 
 /**
  * =========================================================

@@ -40,11 +40,7 @@ class ProductController extends Controller
     {
         $data = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
-            'sub_category_id' => [
-                'required',
-                Rule::exists('sub_categories', 'id')
-                    ->where('category_id', $request->input('category_id')),
-            ],
+            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('category_id', $request->input('category_id'))],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:products,slug'],
             'description' => ['nullable', 'string'],
@@ -52,7 +48,7 @@ class ProductController extends Controller
             'sku' => ['required', 'string', 'max:100', 'unique:product_variants,sku'],
             'barcode' => ['nullable', 'string', 'max:100', 'unique:product_variants,barcode'],
             'variant_name' => ['nullable', 'string', 'max:255'],
-            // 'variants.*.id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
+            
             'price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
@@ -60,15 +56,11 @@ class ProductController extends Controller
             'status' => ['required', Rule::in(['active', 'inactive'])],
 
             'quantity' => ['required', 'integer', 'min:0'],
-            'reserved_quantity' => [
-                'required', 'integer', 'min:0', 'lte:quantity',
-            ],
+            'reserved_quantity' => ['required', 'integer', 'min:0', 'lte:quantity'],
             'reorder_level' => ['required', 'integer', 'min:0'],
 
             'attribute_value_ids' => ['nullable', 'array'],
-            'attribute_value_ids.*' => [
-                'integer', 'distinct', 'exists:attribute_values,id',
-            ],
+            'attribute_value_ids.*' => ['integer', 'distinct', 'exists:attribute_values,id'],
 
             'specifications' => ['nullable', 'array'],
             'specifications.*.specification_group' => ['required', 'string', 'max:255'],

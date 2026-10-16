@@ -40,6 +40,7 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
+            'specifications',
             'variants.inventory',
             'variants.attributeValues.attribute',
         ])
@@ -63,13 +64,7 @@ class StorefrontController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view(
-            'storefront.shop',
-            compact(
-                'products',
-                'categories'
-            )
-        );
+        return view('storefront.shop', compact('products', 'categories'));
     }
 
     public function product(string $slug)

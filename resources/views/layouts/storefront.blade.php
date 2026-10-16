@@ -45,6 +45,9 @@
         <i class="bi bi-arrow-up" aria-hidden="true"></i>
     </button>
     @include('layouts.partials.storefront.navbar-mobile-bottom')
+    @include('layouts.partials.storefront.product-quick-view-modal', [
+        'placeholder' => asset('storage/products/placeholder.png')
+    ])
     @stack('scripts')
 </body>
 </html>

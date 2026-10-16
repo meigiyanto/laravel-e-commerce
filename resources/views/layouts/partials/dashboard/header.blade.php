@@ -5,13 +5,7 @@
                 <a href="#" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu" aria-label="Buka navigasi admin"><em class="icon ni ni-menu"></em></a>
             </div>
 
-            <div class="nk-header-brand d-xl-none">
-                {{--
-                <a href="{{ route('admin.dashboard') }}" class="logo-link">
-                    <img class="logo-light logo-img" src="{{ asset('/images/logo.png') }}" alt="logo">
-                    <img class="logo-dark logo-img" src="{{ asset('/images/logo-dark.png') }}" alt="logo-dark">
-                </a>
-                --}}
+            <div class="nk-header-brand">
                 <a href="{{ route('storefront.home') }}" title="Visit Store">
                     <span class="nk-menu-icon"><em class="icon ni ni-home"></em></span>
                 </a>

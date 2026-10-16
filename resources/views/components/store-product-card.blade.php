@@ -39,49 +39,80 @@
         {{-- Product actions --}}
         @auth
             <div class="store-product-actions">
+                
+                {{-- Product actions --}}
                 <button
-                    type="submit"
-                    class="store-product-action"
-                    title="Detail Produk"
-                    aria-label="Lihat detail untuk produk {{ $product->name }}"
+                    type="button"
+                    class="store-product-action js-product-quick-view"
+                    title="Lihat detail produk"
+                    aria-label="Lihat detail {{ $product->name }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#storeProductQuickView"
+                    data-product-id="{{ $product->id }}"
+                    data-product-name="{{ $product->name }}"
+                    data-product-image="{{ $product->image_url ?? '' }}"
+                    data-product-category="{{ $product->category?->name ?? 'Produk' }}"
+                    data-product-description="{{ $product->description ?? '' }}"
+                    data-product-rating="{{ number_format((float) ($product->reviews_avg_rating ?? 0), 1) }}"
+                    data-product-reviews="{{ (int) ($product->reviews_count ?? 0) }}"
+                    data-product-price="{{ $product->price }}"
+                    data-product-stock="{{ $product->stock }}"
+                    data-product-variants="{{ $product->variants->map(fn ($variant) => [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'sku' => $variant->sku,
+                        'price' => (float) $variant->price,
+                        'compare_at_price' => $variant->compare_at_price,
+                        'status' => $variant->status,
+                        'stock' => (int) ($variant->inventory?->available_quantity ?? 0),
+                        'attributes' => $variant->attributeValues->map(fn ($value) => [
+                            'name' => $value->attribute?->name,
+                            'value' => $value->value,
+                            'hex_color' => $value->hex_color,
+                        ])->values(),
+                    ])->values()->toJson() }}"
+                    data-product-slug="{{ $product->slug }}"
+                    data-product-specifications="{{ $product->specifications->map(fn ($specification) => [
+                        'name' => $specification->name,
+                        'value' => $specification->value,
+                    ])->values()->toJson() }}"
                 >
-                    <i class="bi bi-bar-eye"></i>
+                    <i class="bi bi-eye" aria-hidden="true"></i>
                 </button>
-
-                <form
-                    action="{{ route('wishlist.store', $product) }}"
-                    class="wishlist-form"
-                    method="POST"
-                >
-                    @csrf
-
-                    <button
-                        type="submit"
-                        class="store-product-action"
-                        title="Add to wishlist"
-                        aria-label="Tambah {{ $product->name }} ke wishlist"
+    
+                @auth
+                    <form
+                        action="{{ route('wishlist.store', $product) }}"
+                        class="wishlist-form"
+                        method="POST"
                     >
-                        <i class="bi bi-heart"></i>
-                    </button>
-                </form>
-
-                <form
-                    action="{{ route('compare.store', $product) }}"
-                    class="compare-form"
-                    method="POST"
-                >
-                    @csrf
-
-                    <button
-                        type="submit"
-                        class="store-product-action"
-                        title="Bandingkan produk"
-                        aria-label="Bandingkan {{ $product->name }}"
+                        @csrf
+                        <button
+                            type="submit"
+                            class="store-product-action"
+                            title="Tambah ke wishlist"
+                            aria-label="Tambah {{ $product->name }} ke wishlist"
+                        >
+                            <i class="bi bi-heart" aria-hidden="true"></i>
+                        </button>
+                    </form>
+    
+                    <form
+                        action="{{ route('compare.store', $product) }}"
+                        class="compare-form"
+                        method="POST"
                     >
-                        <i class="bi bi-bar-chart"></i>
-                    </button>
-                </form>
-
+                        @csrf
+                        <button
+                            type="submit"
+                            class="store-product-action"
+                            title="Bandingkan produk"
+                            aria-label="Bandingkan {{ $product->name }}"
+                        >
+                            <i class="bi bi-bar-chart" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                @endauth
             </div>
         @endauth
 

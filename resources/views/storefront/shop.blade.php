@@ -147,7 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
         function updateVariant() {
             const option = variantSelect?.selectedOptions[0];
 
-            // Produk tanpa varian tetap menggunakan stok produk.
             const price = option
                 ? Number(option.dataset.price || 0)
                 : null;
