@@ -1,5 +1,5 @@
 {{-- Quick View Product Modal --}}
-<div class="modal fade store-quick-view-modal" id="storeProductQuickView" tabindex="-1" aria-labelledby="storeQuickViewTitle" aria-hidden="true" data-placeholder="{{ $placeholder }}" data-product-base-url="{{ url('/shop') }}">
+<div class="modal fade store-quick-view-modal" id="storeProductQuickView" tabindex="-1" aria-labelledby="storeQuickViewTitle" data-bs-backdrop="static" aria-hidden="true" data-placeholder="{{ $placeholder }}" data-product-base-url="{{ url('/shop') }}">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
@@ -37,7 +37,7 @@
                 </section>
                 <section class="store-quick-view-section">
                     <h3>Spesifikasi produk</h3>
-                    <div id="storeQuickViewSpecifications"></div>
+                    <div class="mt-2" id="storeQuickViewSpecifications"></div>
                 </section>
             </div>
             <div class="modal-footer">

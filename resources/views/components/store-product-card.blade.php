@@ -72,9 +72,11 @@
                         ])->values(),
                     ])->values()->toJson() }}"
                     data-product-slug="{{ $product->slug }}"
+                    data-product-url="{{ route('storefront.product', $product->slug) }}"
                     data-product-specifications="{{ $product->specifications->map(fn ($specification) => [
-                        'name' => $specification->name,
-                        'value' => $specification->value,
+                        'group' => $specification->specification_group,
+                        'name' => $specification->specification_name,
+                        'value' => $specification->specification_value,
                     ])->values()->toJson() }}"
                 >
                     <i class="bi bi-eye" aria-hidden="true"></i>

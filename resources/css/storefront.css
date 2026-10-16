@@ -5865,7 +5865,7 @@ body.store-mobile-drawer-open {
 .store-quick-view-category {
     display: inline-block;
     margin-bottom: .45rem;
-    color: var(--store-muted);
+    color: var(--store-primary);
     font-size: .78rem;
     font-weight: 700;
 }
@@ -5902,7 +5902,6 @@ body.store-mobile-drawer-open {
 .store-quick-view-description {
     margin: 0;
     color: var(--store-muted);
-    font-size: .86rem;
     line-height: 1.75;
     overflow-wrap: anywhere;
     white-space: pre-line;

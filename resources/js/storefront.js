@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', function () {
         maximumFractionDigits: 0
     }).format(Number(value || 0));
 
-    const setText = (id, value) => { el(id).textContent = value ?? ''; }
+    const setText = (id, value) => {
+        const node = el(id);
+    
+        if (node) {
+            node.textContent = value ?? '';
+        }
+    }
 
     function makeElement(tag, className, text) {
         const node = document.createElement(tag);
@@ -88,22 +94,49 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderSpecifications(specifications) {
         const container = el('storeQuickViewSpecifications');
         container.replaceChildren();
-
+        
         if (!specifications.length) {
             container.append(makeElement('p', 'store-quick-view-empty', 'Belum ada spesifikasi tambahan.'));
             return;
         }
         
+        const table = makeElement('table', 'table table-striped table-bordered text-nowrap');
+        const thead = makeElement('thead');
+        const tbody = makeElement('tbody');
+        
+        const headerRow = makeElement('tr');
+        headerRow.append(
+            makeElement('th', '', 'Fitur / Spesifikasi'),
+            makeElement('th', '', 'Keterangan')
+        );
+        thead.append(headerRow);
+        
+        
         specifications.forEach(function (specification) {
-            const row = makeElement('div', 'store-quick-view-spec-row');
-
+            // Pindahkan pembuatan baris (tr) ke DALAM loop agar setiap spesifikasi punya baris sendiri
+            const row = makeElement('tr');        
+        
+            // Kolom Nama Spesifikasi
             row.append(
-                makeElement('span', 'store-quick-view-spec-name', specification.name || 'Spesifikasi'),
-                makeElement('strong', 'store-quick-view-spec-value', specification.value || '-')
+                makeElement('th', 'store-quick-view-spec-name', specification.name || 'Spesifikasi')
             );
-
-            container.append(row);
+            
+            // Kolom Nilai Spesifikasi
+            row.append(
+                makeElement('td', 'store-quick-view-spec-value', specification.value || '-')
+            );
+            
+            // Masukkan baris ke dalam tbody
+            tbody.append(row);
         });
+        
+        table.append(thead);
+        table.append(tbody);
+        
+        console.log(table);
+        
+        container.append(table);
+
     }
 
     if (!modalElement) {
@@ -112,11 +145,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     modalElement.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-
         if (!button) return;
         
         const variants = JSON.parse(button.dataset.productVariants || '[]');
-        const productBaseUrl = modalElement?.dataset.productBaseUrl || '/shop';
         
         setText('storeQuickViewName', button.dataset.productName);
         setText('storeQuickViewCategory', button.dataset.productCategory);
@@ -137,7 +168,11 @@ document.addEventListener('DOMContentLoaded', function () {
             this.src = placeholder;
         };
 
-        el('storeQuickViewDetailLink').href = productBaseUrl.replace(/\/+$/, '') + '/' + encodeURIComponent(button.dataset.productSlug || '');
+        const detailLink = el('storeQuickViewDetailLink');
+
+        if (detailLink) {
+            detailLink.href = button.dataset.productUrl || '#';
+        }
         
         renderVariants(variants);
         renderSpecifications(JSON.parse(button.dataset.productSpecifications || '[]'));

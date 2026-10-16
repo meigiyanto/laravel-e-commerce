@@ -22,8 +22,10 @@ class StorefrontController extends Controller
         $latestProducts = Product::with([
             'category',
             'subCategory',
-        ])
-            ->withAvg('reviews', 'rating')
+            'specifications',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
+        ])->withAvg('reviews', 'rating')
             ->withCount('reviews')
             ->latest()
             ->take(8)
@@ -94,13 +96,7 @@ class StorefrontController extends Controller
             ->take(4)
             ->get();
 
-        return view(
-            'storefront.product',
-            compact(
-                'product',
-                'relatedProducts'
-            )
-        );
+        return view('storefront.product', compact('product','relatedProducts'));
     }
 
     public function category(
