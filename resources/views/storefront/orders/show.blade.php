@@ -372,7 +372,6 @@
                             </form>
                         @endif
 
-
                         @if ($order->status === 'completed' && $order->payment && $order->payment->status === 'succeeded')
 
                             <form
