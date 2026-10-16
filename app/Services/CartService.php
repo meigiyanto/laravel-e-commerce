@@ -356,9 +356,16 @@ class CartService
                 $query->where('user_id', auth()->id());
             })->sum('quantity');
         }
-
-        return collect($this->getGuestCart())
-            ->sum();
+    
+        return collect($this->getGuestCart())->sum(function ($item) {
+            // Format cart guest baru: item berisi data varian dan quantity.
+            if (is_array($item)) {
+                return (int) ($item['quantity'] ?? 0);
+            }
+    
+            // Kompatibilitas dengan format lama: product_id => quantity.
+            return (int) $item;
+        });
     }
 
     /**

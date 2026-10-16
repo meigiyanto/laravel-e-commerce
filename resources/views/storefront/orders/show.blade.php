@@ -33,14 +33,11 @@
     </div>
 </div>
 
-
 <section class="store-section store-order-detail-section">
-
     <div class="container">
 
         {{-- HEADER --}}
         <div class="store-order-detail-header">
-
             <div>
 
                 <a
@@ -103,21 +100,17 @@
 
         {{-- STATUS TIMELINE --}}
         <div class="store-order-status-card">
-
             <div class="store-order-status-card-header">
-
                 <div>
                     <h2>
                         Order Status
                     </h2>
-
                     <p>
                         Current status of your order.
                     </p>
                 </div>
 
                 <i class="bi bi-truck"></i>
-
             </div>
 
 
@@ -358,6 +351,25 @@
                                 <span>Payment</span>
                                 <strong>{{ ucfirst($order->payment->status) }}</strong>
                             </div>
+                        @endif
+
+                        @if ($canCancelOrder)
+                            <form
+                                method="POST"
+                                action="{{ route('orders.cancel', $order) }}"
+                                class="store-order-detail-cancel-form"
+                            >
+                                @csrf
+                        
+                                <button
+                                    type="submit"
+                                    class="store-order-cancel-button"
+                                    onclick="return confirm('Batalkan pesanan #{{ $order->order_number }}? Tindakan ini tidak dapat dibatalkan.')"
+                                >
+                                    <i class="bi bi-x-circle"></i>
+                                    Cancel Order
+                                </button>
+                            </form>
                         @endif
 
 

@@ -1,0 +1,105 @@
+--- a/tests/Feature/AdminOrderStatusConsistencyTest.php
++++ b/tests/Feature/AdminOrderStatusConsistencyTest.php
+@@ -5,6 +5,8 @@
+ use App\Models\Order;
+ use App\Models\OrderItem;
+ use App\Models\Product;
++use App\Models\ProductVariant;
++use App\Models\Inventory;
+ use App\Models\User;
+ use Illuminate\Foundation\Testing\RefreshDatabase;
+ use Tests\TestCase;
+@@ -153,4 +155,93 @@
+             $product->fresh()->stock
+         );
+     }
++    public function test_fulfillment_status_transitions_do_not_deduct_variant_stock_again(): void
++    {
++        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
++        $admin = User::factory()->create(['role' => 'admin']);
++
++        foreach (['processing', 'shipped', 'completed'] as $status) {
++            $this->actingAs($admin)->patch(
++                route('admin.orders.status', $order),
++                ['status' => $status]
++            );
++            $this->assertSame($status, $order->fresh()->status);
++            $this->assertSame(8, $inventory->fresh()->quantity);
++            $this->assertSame(8, $product->fresh()->stock);
++        }
++
++        $this->assertDatabaseMissing('inventory_movements', [
++            'product_variant_id' => $variant->id,
++            'type' => 'return',
++            'reference_type' => Order::class,
++            'reference_id' => $order->id,
++        ]);
++    }
++
++    public function test_canceling_processing_order_restores_variant_stock_only_once(): void
++    {
++        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('processing');
++        $admin = User::factory()->create(['role' => 'admin']);
++
++        $this->actingAs($admin)->patch(
++            route('admin.orders.status', $order),
++            ['status' => 'canceled']
++        );
++
++        $this->assertSame('canceled', $order->fresh()->status);
++        $this->assertSame(10, $inventory->fresh()->quantity);
++        $this->assertSame(10, $product->fresh()->stock);
++
++        $this->actingAs($admin)->patch(
++            route('admin.orders.status', $order),
++            ['status' => 'canceled']
++        );
++
++        $this->assertSame(10, $inventory->fresh()->quantity);
++        $this->assertSame(10, $product->fresh()->stock);
++        $this->assertDatabaseCount('inventory_movements', 1);
++        $this->assertDatabaseHas('inventory_movements', [
++            'product_variant_id' => $variant->id,
++            'type' => 'return',
++            'quantity' => 2,
++            'reference_type' => Order::class,
++            'reference_id' => $order->id,
++        ]);
++    }
++
++    private function createOrderWithVariantStock(string $status): array
++    {
++        $user = User::factory()->create();
++        $product = Product::factory()->create(['stock' => 8]);
++        $variant = ProductVariant::create([
++            'product_id' => $product->id,
++            'sku' => 'TEST-STATUS-'.uniqid(),
++            'name' => 'Test variant',
++            'price' => 100000,
++            'is_default' => true,
++            'status' => 'active',
++        ]);
++        $inventory = Inventory::create([
++            'product_variant_id' => $variant->id,
++            'quantity' => 8,
++            'reserved_quantity' => 0,
++            'reorder_level' => 0,
++        ]);
++        $order = Order::factory()->create([
++            'user_id' => $user->id,
++            'status' => $status,
++            'total' => 200000,
++        ]);
++        OrderItem::create([
++            'order_id' => $order->id,
++            'product_id' => $product->id,
++            'product_variant_id' => $variant->id,
++            'product_name' => $product->name,
++            'price' => 100000,
++            'quantity' => 2,
++            'subtotal' => 200000,
++        ]);
++
++        return [$order, $product, $variant, $inventory];
++    }
+ }
