@@ -93,6 +93,13 @@
                         </a>
                     </li>
                     
+                    <li class="nk-menu-item {{ request()->routeIs('admin.order-cancellation-requests.*') ? 'active' : '' }}">
+                        <a href="{{ route('admin.order-cancellation-requests.index') }}" class="nk-menu-link">
+                            <span class="nk-menu-icon"><em class="icon ni ni-bell"></em></span>
+                            <span class="nk-menu-text">Cancellation Requests</span>
+                        </a>
+                    </li>
+                    
                     @if (auth()->user()?->isAdmin())
                         <li class="nk-menu-heading">
                             <h6 class="overline-title text-primary-alt">Administration</h6>

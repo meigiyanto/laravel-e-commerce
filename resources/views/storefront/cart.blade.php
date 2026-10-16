@@ -3,7 +3,6 @@
 @section('title', config('app.name') . ' - Shopping Cart')
 
 @section('content')
-
 {{-- =========================================================
     BREADCRUMB
 ========================================================= --}}
@@ -26,7 +25,6 @@
     </div>
 </div>
 
-
 {{-- =========================================================
     CART
 ========================================================= --}}
@@ -42,7 +40,6 @@
             </div>
         </div>
 
-
         {{-- Flash messages --}}
         @if (session('success'))
             <div class="alert alert-success mb-4" role="alert">
@@ -57,7 +54,6 @@
                 {{ session('error') }}
             </div>
         @endif
-
 
         @if ($cart->items->isEmpty())
             {{-- =================================================
@@ -96,7 +92,6 @@
                                     </span>
                                 </div>
                             </div>
-
 
                             {{-- Items --}}
                             <div class="store-cart-items">
@@ -230,7 +225,6 @@
                     </div>
                 </div>
 
-
                 {{-- =================================================
                     SUMMARY
                 ================================================== --}}
@@ -252,31 +246,30 @@
                                 <strong class="cart-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
                             </div>
 
-
                             <div class="d-flex justify-content-between mb-3">
                                 <span class="text-muted">Shipping</span>
                                 <span class="small">Calculated at checkout</span>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between align-items-center mb-4">
-
                                 <span class="fw-semibold">Total</span>
                                 <strong class="fs-5 cart-grand-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
                             </div>
 
                             @auth
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div>
                                     <div>
                                         <a href="{{ route('storefront.shop') }}" class="store-go-back-button">
-                                            Continue Shopping
+                                            <i class="bi bi-arrow-left"></i>    
+                                            Belanja Kembali
                                         </a>
                                     </div>
-                                    <div>
+                                    <div class="mt-1">
                                         <a href="{{ route('checkout.index') }}" class="store-checkout-button">
-                                            Continue Checkout
+                                            Lanjutkan ke Checkout
+                                            <i class="bi bi-arrow-right"></i>
                                         </a>
                                     </div>
-
                                 </div>
                             @else
                                 <a href="{{ route('login') }}" class="store-checkout-button">
@@ -294,5 +287,4 @@
         @endif
     </div>
 </section>
-
 @endsection

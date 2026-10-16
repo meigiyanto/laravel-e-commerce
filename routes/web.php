@@ -17,6 +17,8 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\ProductGalleryController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\AttributeValueController;
+use App\Http\Controllers\OrderCancellationRequestController as CustomerOrderCancellationRequestController;
+use App\Http\Controllers\Admin\OrderCancellationRequestController as AdminOrderCancellationRequestController;
 
 /**
  * Store Front
@@ -52,10 +54,17 @@ Route::post('/payment/midtrans/notification', [MidtransPaymentController::class,
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
-|-----------------------------------------------------------| Authenticated User Routes
-|-----------------------------------------------------------*/
+|-----------------------------------------------------------| 
+| Authenticated User Routes
+|-----------------------------------------------------------
+*/
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Cancel Orders
+    Route::post('/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
+    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
+
     // Refund
     Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
 
@@ -89,7 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Customer orders
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     
     // Account profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -102,11 +111,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 /*
-|-----------------------------------------------------------| Admin and Staff Operational Routes
+|-----------------------------------------------------------
+| Admin and Staff Operational Routes
 |----------------------------------------------------------
-|
-| Admin and staff share the operational dashboard. User/account
-| administration remains restricted to administrators below.
+| Admin and staff share the operational dashboard. 
+| User/account administration remains restricted to 
+| administrators below.
+|----------------------------------------------------------
 */
 
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
@@ -137,11 +148,13 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    
+    Route::get('/order-cancellation-requests', [AdminOrderCancellationRequestController::class, 'index'])->name('order-cancellation-requests.index');
+    Route::get('/order-cancellation-requests/{cancellationRequest}', [AdminOrderCancellationRequestController::class, 'show'])->name('order-cancellation-requests.show');
+    Route::post('/order-cancellation-requests/{cancellationRequest}/decision', [AdminOrderCancellationRequestController::class, 'decide'])->name('order-cancellation-requests.decide');
 
     // Catalog management
-    Route::resource('sub-categories', SubCategoryController::class)
-        ->parameters(['sub-categories' => 'subCategory'])
-        ->except(['show']);
+    Route::resource('sub-categories', SubCategoryController::class)->parameters(['sub-categories' => 'subCategory'])->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::patch('/products/{product}/images', [ProductController::class, 'updateImages'])->name('products.images.update');
     Route::resource('products', ProductController::class)->except(['show']);

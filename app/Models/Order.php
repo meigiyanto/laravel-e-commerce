@@ -55,4 +55,9 @@ class Order extends Model
     {
         return $this->hasMany(Refund::class);
     }
+    
+    public function cancellationRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\OrderCancellationRequest::class);
+    }
 }

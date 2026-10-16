@@ -37,6 +37,7 @@ class OrderController extends Controller
         $order->load([
             'items.product',
             'payment',
+            'cancellationRequests'
         ]);
 
         /*

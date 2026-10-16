@@ -3,7 +3,6 @@
 @section('title', config('app.name') . ' - My Orders')
 
 @section('content')
-
 <div class="store-breadcrumb">
     <div class="container">
         <nav aria-label="breadcrumb">
@@ -24,12 +23,9 @@
 </div>
 
 <section class="store-section store-orders-section">
-
     <div class="container">
-
         {{-- HEADER --}}
         <div class="store-section-header store-orders-header">
-
             <div>
                 <span class="store-section-eyebrow">
                     Order History
@@ -51,17 +47,13 @@
                 <i class="bi bi-bag me-2"></i>
                 Continue Shopping
             </a>
-
         </div>
 
 
         @if ($orders->count())
-
             {{-- ORDER SUMMARY --}}
             <div class="store-orders-summary">
-
                 <div class="store-orders-summary-item">
-
                     <span class="store-orders-summary-icon">
                         <i class="bi bi-receipt"></i>
                     </span>
@@ -75,11 +67,9 @@
                             {{ $orders->total() }}
                         </strong>
                     </div>
-
                 </div>
 
                 <div class="store-orders-summary-item">
-
                     <span class="store-orders-summary-icon">
                         <i class="bi bi-clock-history"></i>
                     </span>
@@ -94,17 +84,13 @@
                             {{ Str::plural('order', $orders->count()) }}
                         </strong>
                     </div>
-
                 </div>
-
             </div>
-
 
             {{-- ORDER LIST --}}
             <div class="store-orders-list">
 
                 @foreach ($orders as $order)
-
                     @php
                         $statusClass = match ($order->status) {
                             'pending' => 'store-order-status-pending',
@@ -124,28 +110,18 @@
                             default => ucfirst($order->status),
                         };
 
-                        $itemCount =
-                            $order->items_count
-                            ?? $order->items()->count();
+                        $itemCount = $order->items_count ?? $order->items()->count();
 
-                        $canRefund =
-                            $order->status === 'completed'
-                            && $order->payment
-                            && $order->payment->status === 'succeeded';
+                        $canRefund = $order->status === 'completed' && $order->payment && $order->payment->status === 'succeeded';
                     @endphp
 
-
                     <article class="store-order-card">
-
                         {{-- ORDER HEADER --}}
                         <div class="store-order-card-header">
-
                             <div class="store-order-reference">
-
                                 <span class="store-order-reference-icon">
                                     <i class="bi bi-receipt"></i>
                                 </span>
-
                                 <div>
                                     <span class="store-order-label">
                                         Order
@@ -155,17 +131,12 @@
                                         #{{ $order->order_number }}
                                     </strong>
                                 </div>
-
                             </div>
-
-
                             <span class="store-order-status {{ $statusClass }}">
                                 <span class="store-order-status-dot"></span>
                                 {{ $statusLabel }}
                             </span>
-
                         </div>
-
 
                         {{-- ORDER BODY --}}
                         <div class="store-order-card-body">
@@ -232,19 +203,15 @@
 
                         </div>
 
-
                         {{-- ORDER FOOTER --}}
                         <div class="store-order-card-footer">
-
                             <span class="store-order-created">
                                 Order placed
                                 {{ $order->created_at->diffForHumans() }}
                             </span>
 
                             <div class="store-order-actions">
-
                                 @if ($canRefund)
-
                                     <form
                                         method="POST"
                                         action="{{ route('orders.refund.store', $order) }}"
@@ -287,30 +254,20 @@
                                 </a>
 
                             </div>
-
                         </div>
-
                     </article>
-
                 @endforeach
-
             </div>
-
 
             {{-- PAGINATION --}}
             @if ($orders->hasPages())
-
                 <div class="store-orders-pagination">
                     {{ $orders->links() }}
                 </div>
-
             @endif
-
         @else
-
             {{-- EMPTY STATE --}}
             <div class="store-empty-state store-orders-empty">
-
                 <div class="store-empty-icon">
                     <i class="bi bi-receipt"></i>
                 </div>
@@ -337,11 +294,7 @@
                 </a>
 
             </div>
-
         @endif
-
     </div>
-
 </section>
-
 @endsection
