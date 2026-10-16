@@ -6,6 +6,11 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Refund;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Inventory;
+use App\Models\InventoryMovement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -611,4 +616,121 @@ class MidtransNotificationTest extends TestCase
 
         $this->assertSame('canceled', $order->fresh()->status);
     }
+    
+    private function assertFailedOrExpiredNotificationRestoresStockOnce(
+        string $providerStatus,
+        string $expectedPaymentStatus
+    ): void {
+        [$order, $payment] = $this->createPendingMidtransPayment();
+    
+        $product = Product::factory()->create(['stock' => 8]);
+    
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'MIDTRANS-RESTORE-'.strtoupper($providerStatus).'-'.uniqid(),
+            'name' => 'Test variant',
+            'price' => 50000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+    
+        $inventory = Inventory::create([
+            'product_variant_id' => $variant->id,
+            'quantity' => 8,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+    
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => $product->name,
+            'price' => 50000,
+            'quantity' => 2,
+            'subtotal' => 100000,
+        ]);
+    
+        Config::set('midtrans.server_key', 'test-server-key');
+    
+        $this->mock(\App\Services\MidtransService::class, function ($mock) use ($order, $providerStatus) {
+            $mock->shouldReceive('verifyNotification')
+                ->twice()
+                ->andReturn(true);
+    
+            $mock->shouldReceive('getStatus')
+                ->twice()
+                ->with($order->order_number)
+                ->andReturn((object) [
+                    'order_id' => $order->order_number,
+                    'transaction_status' => $providerStatus,
+                    'status_code' => '200',
+                    'gross_amount' => '100000.00',
+                    'payment_type' => 'bank_transfer',
+                    'transaction_id' => 'MIDTRANS-TEST-123',
+                ]);
+        });
+    
+        $payload = [
+            'order_id' => $order->order_number,
+            'transaction_id' => 'MIDTRANS-TEST-123',
+            'transaction_status' => $providerStatus,
+            'status_code' => '200',
+            'gross_amount' => '100000.00',
+            'payment_type' => 'bank_transfer',
+            'signature_key' => hash(
+                'sha512',
+                $order->order_number.'200'.'100000.00'.'test-server-key'
+            ),
+        ];
+    
+        $this->postJson(
+            route('payment.midtrans.notification'),
+            $payload
+        )->assertSuccessful();
+    
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame($expectedPaymentStatus, $payment->fresh()->status);
+        $this->assertSame(10, (int) $inventory->fresh()->quantity);
+        $this->assertSame(10, (int) $product->fresh()->stock);
+    
+        $movements = InventoryMovement::query()
+            ->where('product_variant_id', $variant->id)
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $order->id)
+            ->where('type', 'return');
+    
+        $this->assertSame(1, (clone $movements)->count());
+        $this->assertSame(2, (int) (clone $movements)->sum('quantity'));
+    
+        // Notifikasi duplikat tidak boleh memulihkan stok sekali lagi.
+        $this->postJson(
+            route('payment.midtrans.notification'),
+            $payload
+        )->assertSuccessful();
+    
+        $this->assertSame(10, (int) $inventory->fresh()->quantity);
+        $this->assertSame(10, (int) $product->fresh()->stock);
+        $this->assertSame(1, (clone $movements)->count());
+        $this->assertSame(2, (int) (clone $movements)->sum('quantity'));
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame($expectedPaymentStatus, $payment->fresh()->status);
+    }
+    
+    public function test_midtrans_failed_notification_restores_stock_only_once(): void
+    {
+        $this->assertFailedOrExpiredNotificationRestoresStockOnce(
+            'deny',
+            'failed'
+        );
+    }
+    
+    public function test_midtrans_expired_notification_restores_stock_only_once(): void
+    {
+        $this->assertFailedOrExpiredNotificationRestoresStockOnce(
+            'expire',
+            'expired'
+        );
+    }
+
 }
