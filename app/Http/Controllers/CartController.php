@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\CartItem;
 use App\Services\CartService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -200,70 +202,67 @@ class CartController extends Controller
     /**
      * Update product quantity in the shopping cart.
      */
-    public function update(
-        Request $request,
-        int $item
-    ) {
+    public function update(Request $request, int $cartItem)
+    {
         $validated = $request->validate([
-            'quantity' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
+            'quantity' => ['required', 'integer', 'min:1'],
         ]);
-
-        try {
-            $this->cartService->update(
-                $product->id,
-                $validated['quantity']
-            );
-        } catch (\RuntimeException $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 422);
-            }
-
-            return back()->with(
-                'error',
-                $e->getMessage()
-            );
+    
+        $item = CartItem::query()
+            ->whereKey($cartItem)
+            ->whereHas('cart', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->with(['product', 'variant.inventory'])
+            ->firstOrFail();
+    
+        $inventory = $item->variant?->inventory;
+        $available = $inventory
+            ? (int) $inventory->quantity - (int) $inventory->reserved_quantity
+            : (int) $item->product->stock;
+    
+        if ($validated['quantity'] > $available) {
+            throw ValidationException::withMessages([
+                'quantity' => 'Jumlah melebihi stok yang tersedia.',
+            ]);
         }
-
+    
+        $item->update(['quantity' => $validated['quantity']]);
+    
         $total = $this->cartService->total();
         $cartCount = $this->cartService->count();
-
+    
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Jumlah produk berhasil diperbarui.',
-                'product_id' => $product->id,
-                'quantity' => $validated['quantity'],
-                'subtotal' => $product->price * $validated['quantity'],
+                'cart_item_id' => $item->id,
+                'quantity' => $item->quantity,
+                'subtotal' => ($item->variant?->price ?? $item->product->price)
+                    * $item->quantity,
                 'total' => $total,
                 'cart_count' => $cartCount,
                 'item_count' => $cartCount,
             ]);
         }
-
-        return back()->with(
-            'success',
-            'Keranjang berhasil diperbarui.'
-        );
+    
+        return back()->with('success', 'Keranjang berhasil diperbarui.');
     }
 
     /**
      * Remove a product from the shopping cart.
      */
-    public function destroy(
-        Request $request,
-        int $item
-    ) {
-        $this->cartService->remove(
-            $product->id
-        );
-
+    public function destroy(Request $request, int $cartItem)
+    {
+        $item = CartItem::query()
+            ->whereKey($cartItem)
+            ->whereHas('cart', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->firstOrFail();
+    
+        $item->delete();
+    
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -271,10 +270,8 @@ class CartController extends Controller
                 'cart_count' => $this->cartService->count(),
             ]);
         }
-
-        return back()->with(
-            'success',
-            'Produk berhasil dihapus dari keranjang.'
-        );
+    
+        return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
     }
+
 }
