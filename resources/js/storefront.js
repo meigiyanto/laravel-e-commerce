@@ -349,225 +349,139 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /**
- * =========================================================
- * MOBILE CART DRAWER
- * ========================================================= */
-document.addEventListener('DOMContentLoaded', function () {
-    const cartDrawer = document.getElementById(
-        'storeMobileCartDrawer'
+* MOBILE CART DRAWER — AJAX QUANTITY
+*/
+document.addEventListener('click', function (event) {
+    const button = event.target.closest('[data-mobile-cart-decrease], [data-mobile-cart-increase]');
+
+    if (!button) return;
+
+    const form = button.closest('.store-mobile-cart-quantity-form');
+
+    if (!form) return;
+
+    event.preventDefault();
+
+    const input = form.querySelector('.store-mobile-cart-quantity-input');
+
+    if (!input || input.disabled) return;
+
+    const min = Number(input.min) || 1;
+    const maxValue = Number(input.max);
+    const max = Number.isFinite(maxValue) && maxValue > 0
+    ? maxValue: Infinity;
+
+    const current = Number(input.value) || min;
+    const delta = button.hasAttribute('data-mobile-cart-increase')
+    ? 1: -1;
+
+    const quantity = Math.max(
+        min,
+        Math.min(current + delta, max)
     );
 
-    if (!cartDrawer) {
-        return;
-    }
+    if (quantity === current) return;
 
-    cartDrawer
-        .querySelectorAll('.store-mobile-cart-quantity-form')
-        .forEach(function (form) {
-
-            const input = form.querySelector(
-                '.store-mobile-cart-quantity-input'
-            );
-
-            const decreaseButton = form.querySelector(
-                '[data-mobile-cart-decrease]'
-            );
-
-            const increaseButton = form.querySelector(
-                '[data-mobile-cart-increase]'
-            );
-
-            if (!input) {
-                return;
-            }
-
-            function getQuantity() {
-                const value = parseInt(
-                    input.value,
-                    10
-                );
-
-                return Number.isNaN(value)
-                    ? 1
-                    : value;
-            }
-
-            function getMax() {
-                const value = parseInt(
-                    input.getAttribute('max'),
-                    10
-                );
-
-                return Number.isNaN(value)
-                    ? Infinity
-                    : value;
-            }
-
-            function submitQuantity() {
-                const quantity = Math.min(
-                    Math.max(getQuantity(), 1),
-                    getMax()
-                );
-
-                input.value = quantity;
-
-                form.submit();
-            }
-
-            if (decreaseButton) {
-                decreaseButton.addEventListener(
-                    'click',
-                    function () {
-                        const quantity =
-                            getQuantity();
-
-                        if (quantity <= 1) {
-                            return;
-                        }
-
-                        input.value =
-                            quantity - 1;
-
-                        submitQuantity();
-                    }
-                );
-            }
-
-            if (increaseButton) {
-                increaseButton.addEventListener(
-                    'click',
-                    function () {
-                        const quantity =
-                            getQuantity();
-
-                        const max =
-                            getMax();
-
-                        if (quantity >= max) {
-                            return;
-                        }
-
-                        input.value =
-                            quantity + 1;
-
-                        submitQuantity();
-                    }
-                );
-            }
-
-            input.addEventListener(
-                'change',
-                function () {
-                    submitQuantity();
-                }
-            );
-        });
+    input.value = quantity;
+    updateMobileCartQuantity(form, quantity);
 });
 
-document.addEventListener(
-    'submit',
-    async function (event) {
-        const form =
-            event.target.closest(
-                '.store-mobile-cart-remove-form'
-            );
+document.addEventListener('change', function (event) {
+    const input = event.target.closest('.store-mobile-cart-quantity-input');
 
-        if (!form) {
-            return;
+    if (!input) return;
+
+    const form = input.closest('.store-mobile-cart-quantity-form');
+
+    if (!form || input.disabled) return;
+
+    const min = Number(input.min) || 1;
+    const maxValue = Number(input.max);
+    const max = Number.isFinite(maxValue) && maxValue > 0
+    ? maxValue: Infinity;
+
+    const quantity = Math.max(
+        min,
+        Math.min(Number(input.value) || min, max)
+    );
+
+    input.value = quantity;
+    updateMobileCartQuantity(form, quantity);
+});
+
+async function updateMobileCartQuantity(form, quantity) {
+    const input = form.querySelector('.store-mobile-cart-quantity-input');
+
+    const buttons = form.querySelectorAll('button');
+    const previousQuantity = input.value;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    input.disabled = true;
+    buttons.forEach(button => button.disabled = true);
+    form.classList.add('opacity-75');
+
+    try {
+        const response = await fetch(form.action,
+            {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(csrfToken ? {
+                        'X-CSRF-TOKEN': csrfToken
+                    }: {}),
+                },
+                body: new URLSearchParams( {
+                    _token: csrfToken || '',
+                    _method: 'PATCH',
+                    quantity: String(quantity),
+                }),
+                credentials: 'same-origin',
+            });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.message || 'Gagal memperbarui keranjang.'
+            );
         }
 
-        event.preventDefault();
-
-        const button =
-            form.querySelector(
-                'button[type="submit"]'
-            );
-
-        if (!button) {
-            return;
+        // Sinkronkan halaman Cart jika sedang ditampilkan.
+        if (typeof window.syncCartPage === 'function') {
+            window.syncCartPage(data, form.dataset.cartItemKey);
         }
 
-        const originalHtml =
-            button.innerHTML;
-
-        button.disabled = true;
-
-        button.innerHTML = `
-            <span
-                class="spinner-border spinner-border-sm"
-                aria-hidden="true"
-            ></span>
-        `;
-
-        try {
-            const csrfToken =
-                document.querySelector(
-                    'meta[name="csrf-token"]'
-                )?.getAttribute('content');
-
-            const response = await fetch(
-                form.action,
-                {
-                    method: 'POST',
-
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-
-                        ...(csrfToken
-                            ? {
-                                'X-CSRF-TOKEN':
-                                    csrfToken,
-                            }
-                            : {}),
-                    },
-
-                    body: new FormData(form),
-
-                    credentials:
-                        'same-origin',
-                }
-            );
-
-            const data =
-                await response.json();
-
-            if (
-                !response.ok ||
-                !data.success
-            ) {
-                throw new Error(
-                    data.message ||
-                    'Gagal menghapus produk dari keranjang.'
-                );
-            }
-
+        // Render ulang drawer dengan data terbaru dari server.
+        if (typeof window.refreshCartDrawer === 'function') {
             await window.refreshCartDrawer();
-
-            window.showStoreNotification(
-                data.message ||
-                'Produk berhasil dihapus dari keranjang.',
-                'success'
-            );
-
-        } catch (error) {
-            console.error(
-                'Cart Drawer remove failed:',
-                error
-            );
-
-            window.showStoreNotification(
-                error.message ||
-                'Gagal menghapus produk dari keranjang.',
-                'danger'
-            );
-
-            button.disabled = false;
-            button.innerHTML =
-                originalHtml;
         }
+
+        window.showStoreNotification(
+            data.message || 'Jumlah produk berhasil diperbarui.',
+            'success'
+        );
+    } catch (error) {
+        console.error('Cart quantity update failed:', error);
+
+        window.showStoreNotification(
+            error.message || 'Gagal memperbarui keranjang.',
+            'danger'
+        );
+
+        // Jangan biarkan UI menampilkan perubahan yang gagal disimpan.
+        if (typeof window.refreshCartDrawer === 'function') {
+            await window.refreshCartDrawer();
+        } else {
+            input.value = previousQuantity;
+        }
+    } finally {
+        input.disabled = false;
+        buttons.forEach(button => button.disabled = false);
+        form.classList.remove('opacity-75');
     }
-);
+}
 
 /**
  * =========================================================

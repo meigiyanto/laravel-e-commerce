@@ -4591,7 +4591,7 @@ body.store-mobile-drawer-open {
     border: 0;
     border-radius: 7px;
     background: transparent;
-    color: #aaa;
+    color: red;
     cursor: pointer;
 }
 

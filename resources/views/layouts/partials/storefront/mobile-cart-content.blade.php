@@ -7,6 +7,9 @@
                 $variant = $cartItem->variant ?? null;
                 $price = $variant?->price ?? $product->price;
                 $lineTotal = (float) $price * $quantity;
+                $inventory = $variant?->inventory;
+                $availableStock = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $product->stock);
+
             @endphp
 
             <article class="store-mobile-cart-item" data-mobile-cart-item data-product-id="{{ $product->id }}">
@@ -73,12 +76,13 @@
                                     name="quantity"
                                     value="{{ $quantity }}"
                                     min="1"
-                                    max="{{ max(1, $product->stock) }}"
+                                    max="{{ $availableStock }}"
                                     class="store-mobile-cart-quantity-input"
                                     inputmode="numeric"
-                                    aria-label="Total {{ $product->name }}"
+                                    aria-label="Jumlah {{ $product->name }}"
+                                    data-available-stock="{{ $availableStock }}"
                                 >
-                            
+
                                 <button
                                     type="button"
                                     class="store-mobile-cart-quantity-button"
@@ -96,6 +100,28 @@
                         Rp {{ number_format($lineTotal, 0, ',', '.') }}
                     </div>
                 </div>
+                
+                <form
+                    action="{{ auth()->check()
+                        ? route('cart.items.destroy', $cartItem->id)
+                        : route('cart.product.destroy', $cartItem->product_variant_id) }}"
+                    method="POST"
+                    class="store-mobile-cart-remove-form"
+                    data-product-id="{{ $product->id }}"
+                    data-variant-id="{{ $cartItem->product_variant_id }}"
+                >
+                    @csrf
+                    @method('DELETE')
+                
+                    <button
+                        type="submit"
+                        class="store-mobile-cart-remove"
+                        aria-label="Hapus {{ $product->name }} — {{ $variant?->name ?? $variant?->sku ?? 'Produk' }}"
+                    >
+                        <i class="bi bi-trash3" aria-hidden="true"></i>
+                    </button>
+                </form>
+
             </article>
         @endforeach
     </div>

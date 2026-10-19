@@ -105,6 +105,8 @@
                                         
                                         $price = $variant?->price ?? $product->price;
                                         $subtotal = (float) $price * $quantity;
+                                        $inventory = $variant?->inventory;
+                                        $availableStock = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $product->stock);
 
                                         $image = $product->image ?? 'placeholder.png';
                                         $imageUrl = null;
@@ -191,7 +193,7 @@
                                                                     </button>
                                                                     
                                                                     <label for="{{ $quantityInputId }}" class="visually-hidden">Total {{ $product->name }}</label>
-                                                                    <input type="number" id="{{ $quantityInputId }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $product->stock }}" class="store-quantity-input quantity-input">
+                                                                    <input type="number" id="{{ $quantityInputId }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $availableStock }}" class="store-quantity-input quantity-input">
 
                                                                     <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
                                                                         <i class="bi bi-plus"></i>
@@ -206,7 +208,7 @@
                                                                 @csrf
                                                                 @method('DELETE')
                                                             
-                                                                <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
+                                                                <button type="submit" class="store-mobile-cart-remove" title="Delete Product">
                                                                     <i class="bi bi-trash3"></i>
                                                                 </button>
                                                             </form>
