@@ -187,7 +187,6 @@
 
         {{-- Stock --}}
         <div class="store-product-stock">
-
             @if ($product->stock > 0)
                 <span class="store-stock-available">
                     <i class="bi bi-check-circle"></i>
@@ -199,31 +198,26 @@
                     Stok habis
                 </span>
             @endif
-
         </div>
 
         {{-- Cart action --}}
         @if ($product->stock > 0)
-
             <form
                 action="{{ route('cart.store') }}"
                 method="POST"
                 class="store-product-cart-form add-to-cart-form"
             >
                 @csrf
-
                 <input
                     type="hidden"
                     name="product_id"
                     value="{{ $product->id }}"
                 >
-
                 <input
                     type="hidden"
                     name="quantity"
                     value="1"
                 >
-
                 <button
                     type="submit"
                     class="store-add-cart add-to-cart-button"
@@ -231,11 +225,8 @@
                     <i class="bi bi-cart-plus"></i>
                     Add to cart
                 </button>
-
             </form>
-
         @else
-
             <button
                 type="button"
                 class="store-add-cart store-add-cart-disabled"
@@ -244,7 +235,6 @@
                 <i class="bi bi-cart-x"></i>
                 Stok Habis
             </button>
-
         @endif
 
     </div>

@@ -7,12 +7,15 @@
                     <em class="icon ni ni-menu"></em>
                 </a>
             </div>
+            
+            <!--
             <div class="nk-header-brand d-xl-none">
                 <a href="{{ route('admin.dashboard') }}" class="logo-link">
                     <img class="logo-light logo-img" src="{{ asset('images/logo.png') }}" srcset="{{ asset('images/logo2x.png 2x') }}" alt="logo">
                     <img class="logo-dark logo-img" src="{{ asset('/images/logo-dark.png') }}" srcset="{{ asset('images/logo-dark2x.png 2x') }}" alt="logo-dark">
                 </a>
             </div>
+            -->
             
             <div class="nk-header-brand">
                 <a href="{{ route('storefront.home') }}" title="Visit Store">

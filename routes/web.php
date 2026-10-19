@@ -38,7 +38,8 @@ use App\Http\Controllers\WishlistController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-
+Route::post('/cart', [CartController::class, 'store'])
+    ->name('cart.store');
 Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.product.update');
 Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.product.destroy');
 Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');

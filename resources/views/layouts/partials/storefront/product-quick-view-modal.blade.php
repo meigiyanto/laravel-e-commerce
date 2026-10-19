@@ -12,7 +12,7 @@
             <div class="modal-body">
                 <div class="store-quick-view-main">
                     <div class="store-quick-view-image-wrap">
-                        <img id="storeQuickViewImage" class="store-quick-view-image" src="{{ asset('storage/products/placeholder.png') }}" alt="">
+                        <img id="storeQuickViewImage" class="img-responsive" src="{{ asset('storage/products/placeholder.png') }}" alt="">
                     </div>
                     <div class="store-quick-view-info">
                         <span id="storeQuickViewCategory" class="store-quick-view-category">Produk</span>

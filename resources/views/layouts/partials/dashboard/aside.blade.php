@@ -1,15 +1,15 @@
-<div class="nk-sidebar" data-content="sidebarMenu">
-    
+<div class="nk-sidebar nk-sidebar-fixed is-light " data-content="sidebarMenu">
+            
     <div class="nk-sidebar-element nk-sidebar-head">
         <div class="nk-sidebar-brand">
             <a href="{{ route('admin.dashboard') }}" class="logo-link nk-sidebar-logo">
-                <span class="logo-text">{{ config('app.name') }}</span>
+                <h3>{{ config('app.name') }}</h3>
             </a>
         </div>
 
         <div class="nk-menu-trigger mr-n2">
             <a href="#" class="nk-nav-toggle nk-quick-nav-icon d-xl-none" data-target="sidebarMenu" aria-label="Tutup navigasi admin">
-                <em class="icon ni ni-arrow-left" aria-hidden="true"></em>
+                <em class="icon ni ni-chevron-left" aria-hidden="true"></em>
             </a>
             
             <a href="#" class="nk-nav-compact nk-quick-nav-icon d-none d-xl-inline-flex" data-target="sidebarMenu" aria-label="Perkecil navigasi admin">
