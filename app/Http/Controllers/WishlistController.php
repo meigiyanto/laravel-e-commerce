@@ -23,6 +23,14 @@ class WishlistController extends Controller
         $request->user()
             ->wishlistProducts()
             ->syncWithoutDetaching([$product->id]);
+        
+        if ($request->expectsJson()) {
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk ditambahkan ke wishlist.',
+            ]);
+        }
 
         return back()->with('success', 'Produk ditambahkan ke wishlist.');
     }

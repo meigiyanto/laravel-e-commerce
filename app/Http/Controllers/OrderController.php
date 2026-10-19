@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-// use app\Services\RefundService;
+use App\Models\Product;
+use App\Models\Payment;
+use App\Services\VariantInventoryService;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -34,6 +37,7 @@ class OrderController extends Controller
         $order->load([
             'items.product',
             'payment',
+            'cancellationRequests'
         ]);
 
         /*
@@ -68,7 +72,9 @@ class OrderController extends Controller
                 'payment',
             ]);
         }
+        
+        $canCancelOrder = $this->customerCanCancel($order);
 
-        return view('storefront.orders.show', compact('order'));
+        return view('storefront.orders.show', compact('order', 'canCancelOrder'));
     }
 }

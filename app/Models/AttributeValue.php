@@ -12,6 +12,8 @@ class AttributeValue extends Model
         'attribute_id',
         'value',
         'slug',
+        'hex_color',
+        'sort_order',
     ];
 
     public function attribute(): BelongsTo

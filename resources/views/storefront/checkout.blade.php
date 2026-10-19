@@ -30,12 +30,8 @@
 <div class="container py-4 py-lg-5">
     {{-- Header --}}
     <div class="mb-4">
-        <h1 class="store-section-title">
-            Checkout
-        </h1>
-
+        <h1 class="store-section-title">Checkout</h1>
         <p class="store-section-subtitle">Complete the shipping information and select a payment method to complete the order.</p>
-
     </div>
 
 
@@ -75,9 +71,7 @@
 
     {{-- Validation Errors --}}
     @if ($errors->any())
-
         <div class="alert alert-danger shadow-sm mb-4">
-
             <div class="fw-bold mb-2">
                 <i class="bi bi-exclamation-triangle me-2"></i>
                 Please check your data again.
@@ -88,9 +82,7 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
-
         </div>
-
     @endif
 
 
@@ -376,30 +368,25 @@
                  RIGHT COLUMN
             ================================================== --}}
             <div class="col-lg-5">
-
                 <aside class="store-checkout-summary">
-
                     <div class="store-checkout-summary-header">
-
                         <h2>
                             Order Summary
                         </h2>
-
                         <span>
                             {{ $cart->items->sum('quantity') }} item
                         </span>
-
                     </div>
 
-
                     <div class="p-4">
-
                         {{-- Products --}}
                         <div class="store-checkout-products mb-4">
-
                             @foreach ($cart->items as $item)
                                 <div class="store-checkout-product">
                                     @php
+                                        $price = $item->variant?->price ?? $item->product->price;
+                                        $itemSubtotal = (float) $price * (int) $item->quantity;
+                                        
                                         $image = $item->product->image ?? 'placeholder.png';
                                         $imageUrl = null;
                                         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -431,14 +418,14 @@
                                         </div>
                                         <div class="small text-muted">
                                             Rp
-                                            {{ number_format($item->product->price, 0, ',', '.') }}
+                                            {{ number_format($price, 0, ',', '.') }}
                                             / item
                                         </div>
                                     </div>
 
                                     <div class="store-checkout-product-total">
 
-                                        Rp {{ number_format($item->product->price * $item->quantity, 0, ',', '.') }}
+                                        Rp {{ number_format($price * $item->quantity, 0, ',', '.') }}
                                     </div>
                                 </div>
                             @endforeach
@@ -446,14 +433,13 @@
 
                         <hr>
 
-
                         {{-- Subtotal --}}
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-muted">
                                 Subtotal
                             </span>
                             <span class="fw-semibold">
-                                Rp {{ number_format($subtotal, 0, ',', '.') }}
+                                Rp {{ number_format($itemSubtotal, 0, ',', '.') }}
                             </span>
                         </div>
 
@@ -474,15 +460,12 @@
                             @endif
                         </div>
 
-
                         <hr>
-
 
                         {{-- Total --}}
                         <div class="d-flex justify-content-between align-items-end mb-4">
                             <div>
                                 <div class="fw-bold">Total Payment</div>
-
                                 <small class="text-muted">Including shipping costs</small>
                             </div>
 
@@ -491,7 +474,6 @@
                             </div>
 
                         </div>
-
 
                         {{-- Submit --}}
                         <button
@@ -516,11 +498,9 @@
                             Back to Cart
                         </a>
 
-
                         <div class="store-checkout-note">
                             <i class="bi bi-shield-check"></i>
                             <span>By placing an order, you agree to {{ config('app.name') }}'s ordering and payment process.</span>
-
                         </div>
                     </div>
                 </aside>

@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\CartItem;
 use App\Services\CartService;
+use App\Models\ProductVariant;
+use Illuminate\Support\Collection;
+
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -25,38 +30,13 @@ class CartController extends Controller
 
             $total = $this->cartService->total();
         } else {
-            $guestCart = $this->cartService->getGuestCart();
-
-            $productIds = array_keys($guestCart);
-
-            $products = Product::with([
-                'category',
-                'subCategory',
-            ])
-                ->whereIn('id', $productIds)
-                ->get();
-
-            $items = $products->map(function ($product) use ($guestCart) {
-                $quantity = (int) (
-                    $guestCart[(string) $product->id]
-                    ?? $guestCart[$product->id]
-                    ?? 0
-                );
-
-                return (object) [
-                    'id' => null,
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'product' => $product,
-                ];
-            });
-
+            $items = $this->buildGuestCartItems();
             $cart = (object) [
                 'id' => null,
                 'user_id' => null,
                 'items' => $items,
             ];
-
+        
             $total = $this->cartService->total();
         }
 
@@ -72,51 +52,22 @@ class CartController extends Controller
     public function drawer()
     {
         $mobileCartCount = $this->cartService->count();
-
+    
         if (auth()->check()) {
             $cart = $this->cartService->getUserCartWithItems(
                 auth()->id()
             );
-
             $mobileCartItems = $cart->items;
         } else {
-            $guestCart = $this->cartService->getGuestCart();
-
-            $productIds = array_keys($guestCart);
-
-            $products = empty($productIds)
-                ? collect()
-                : Product::with([
-                    'category',
-                    'subCategory',
-                ])
-                    ->whereIn('id', $productIds)
-                    ->get();
-
-            $mobileCartItems = $products
-                ->map(function ($product) use ($guestCart) {
-                    $quantity = (int) (
-                        $guestCart[(string) $product->id]
-                        ?? $guestCart[$product->id]
-                        ?? 0
-                    );
-
-                    return (object) [
-                        'id' => null,
-                        'product_id' => $product->id,
-                        'quantity' => $quantity,
-                        'product' => $product,
-                    ];
-                })
-                ->filter(function ($item) {
-                    return $item->quantity > 0;
-                });
+            $mobileCartItems = $this->buildGuestCartItems();
         }
-
+    
         $mobileCartTotal = $mobileCartItems->sum(function ($item) {
-            return $item->product->price * $item->quantity;
+            $price = $item->variant?->price ?? $item->product->price;
+    
+            return (float) $price * (int) $item->quantity;
         });
-
+    
         return response()->json([
             'success' => true,
             'cart_count' => $mobileCartCount,
@@ -147,6 +98,11 @@ class CartController extends Controller
                 'integer',
                 'min:1',
             ],
+            'product_variant_id' => [
+                'nullable',
+                'integer',
+                'exists:product_variants,id',
+            ],
         ]);
 
         $product = Product::findOrFail(
@@ -154,9 +110,13 @@ class CartController extends Controller
         );
 
         try {
+            
             $this->cartService->add(
                 $product,
-                $validated['quantity']
+                (int) $validated['quantity'],
+                isset($validated['product_variant_id'])
+                    ? (int) $validated['product_variant_id']
+                    : null
             );
         } catch (\RuntimeException $e) {
             if ($request->expectsJson()) {
@@ -191,81 +151,193 @@ class CartController extends Controller
     /**
      * Update product quantity in the shopping cart.
      */
-    public function update(
-        Request $request,
-        Product $product
-    ) {
+    public function update(Request $request, int $cartItem)
+    {
         $validated = $request->validate([
-            'quantity' => [
-                'required',
-                'integer',
-                'min:1',
-            ],
+            'quantity' => ['required', 'integer', 'min:1'],
         ]);
-
-        try {
-            $this->cartService->update(
-                $product->id,
-                $validated['quantity']
-            );
-        } catch (\RuntimeException $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 422);
+        
+        if (! auth()->check()) {
+            try {
+                $this->cartService->update(
+                    $cartItem,
+                    (int) $validated['quantity']
+                );
+            } catch (\RuntimeException $e) {
+                throw ValidationException::withMessages([
+                    'quantity' => $e->getMessage(),
+                ]);
             }
-
-            return back()->with(
-                'error',
-                $e->getMessage()
-            );
+        
+            // Cari varian aktual setelah update, termasuk format URL lama
+            // yang menggunakan product ID jika hanya ada satu varian item.
+            $guestCart = $this->cartService->getGuestCart();
+            $entry = $guestCart['variant_'.$cartItem] ?? null;
+        
+            if (! $entry) {
+                $matches = collect($guestCart)->filter(
+                    fn ($value) => (int) ($value['product_id'] ?? 0) === $cartItem
+                );
+        
+                $entry = $matches->count() === 1
+                    ? $matches->first()
+                    : null;
+            }
+        
+            if ($request->expectsJson()) {
+                if (! $entry) {
+                    throw ValidationException::withMessages([
+                        'quantity' => 'Item keranjang tidak ditemukan.',
+                    ]);
+                }
+        
+                $variant = ProductVariant::with('product')
+                    ->findOrFail((int) $entry['product_variant_id']);
+        
+                $quantity = (int) $entry['quantity'];
+                $price = (float) ($variant->price ?? $variant->product->price);
+                $count = $this->cartService->count();
+        
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Jumlah produk berhasil diperbarui.',
+                    'cart_item_key' => (string) $variant->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => $quantity,
+                    'subtotal' => $price * $quantity,
+                    'total' => $this->cartService->total(),
+                    'cart_count' => $count,
+                    'item_count' => $count,
+                ]);
+            }
+        
+            return back()->with('success', 'Keranjang berhasil diperbarui.');
         }
-
-        $total = $this->cartService->total();
-        $cartCount = $this->cartService->count();
-
+        
+        $item = CartItem::query()
+            ->whereKey($cartItem)
+            ->whereHas('cart', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->with(['product', 'variant.inventory'])
+            ->firstOrFail();
+        
+        $inventory = $item->variant?->inventory;
+        $available = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $item->product->stock);
+        
+        if ((int) $validated['quantity'] > $available) {
+            throw ValidationException::withMessages([
+                'quantity' => 'Jumlah melebihi stok yang tersedia.',
+            ]);
+        }
+        
+        $item->update(['quantity' => (int) $validated['quantity']]);
+        $item->refresh();
+        
+        $count = $this->cartService->count();
+        $price = (float) ($item->variant?->price ?? $item->product->price);
+        
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Jumlah produk berhasil diperbarui.',
-                'product_id' => $product->id,
-                'quantity' => $validated['quantity'],
-                'subtotal' => $product->price * $validated['quantity'],
-                'total' => $total,
-                'cart_count' => $cartCount,
-                'item_count' => $cartCount,
+                'cart_item_key' => (string) $item->id,
+                'cart_item_id' => $item->id,
+                'variant_id' => $item->product_variant_id,
+                'quantity' => (int) $item->quantity,
+                'subtotal' => $price * (int) $item->quantity,
+                'total' => $this->cartService->total(),
+                'cart_count' => $count,
+                'item_count' => $count,
             ]);
         }
-
-        return back()->with(
-            'success',
-            'Keranjang berhasil diperbarui.'
-        );
+    
+        return back()->with('success', 'Keranjang berhasil diperbarui.');
     }
 
     /**
      * Remove a product from the shopping cart.
      */
-    public function destroy(
-        Request $request,
-        Product $product
-    ) {
-        $this->cartService->remove(
-            $product->id
-        );
-
+    public function destroy(Request $request, int $cartItem)
+    {
+        if (! auth()->check()) {
+            $this->cartService->remove($cartItem);
+            
+            if ($request->expectsJson()) {
+                $count = $this->cartService->count();
+            
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Produk berhasil dihapus dari keranjang.',
+                    'cart_count' => $count,
+                    'item_count' => $count,
+                    'total' => $this->cartService->total(),
+                ]);
+            }
+        
+            return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
+        }
+        
+        $item = CartItem::query()
+            ->whereKey($cartItem)
+            ->whereHas('cart', function ($query) {
+                $query->where('user_id', auth()->id());
+            })
+            ->firstOrFail();
+    
+        $item->delete();
+    
         if ($request->expectsJson()) {
+            $count = $this->cartService->count();
+        
             return response()->json([
                 'success' => true,
                 'message' => 'Produk berhasil dihapus dari keranjang.',
-                'cart_count' => $this->cartService->count(),
+                'cart_count' => $count,
+                'item_count' => $count,
+                'total' => $this->cartService->total(),
             ]);
         }
-
-        return back()->with(
-            'success',
-            'Produk berhasil dihapus dari keranjang.'
-        );
+    
+        return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
     }
+    
+    private function buildGuestCartItems(): Collection
+    {
+        $guestCart = $this->cartService->getGuestCart();
+    
+        $variantIds = collect($guestCart)
+            ->pluck('product_variant_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    
+        $variants = ProductVariant::with([
+            'product.category',
+            'product.subCategory',
+            'inventory',
+            'attributeValues.attribute',
+        ])->whereIn('id', $variantIds)->get()->keyBy('id');
+    
+        return collect($guestCart)->map(function ($entry) use ($variants) {
+            $variant = $variants->get(
+                (int) ($entry['product_variant_id'] ?? 0)
+            );
+    
+            if (! $variant || ! $variant->product) {
+                return null;
+            }
+    
+            return (object) [
+                'id' => null,
+                'product_id' => $variant->product_id,
+                'product_variant_id' => $variant->id,
+                'quantity' => (int) $entry['quantity'],
+                'product' => $variant->product,
+                'variant' => $variant,
+            ];
+        })->filter()->values();
+    }
+
 }

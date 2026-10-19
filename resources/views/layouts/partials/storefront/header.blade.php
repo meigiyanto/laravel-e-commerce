@@ -1,12 +1,8 @@
-    <header class="store-main-header sticky-top">
+    <header class="store-main-header">
         <div class="container">
             <div class="store-header-inner d-flex flex-wrap align-items-center gap-3">
                 {{-- Logo --}}
-                <a
-                    href="{{ route('storefront.home') }}"
-                    class="store-brand"
-                    aria-label="{{ config('app.name') }}"
-                >
+                <a href="{{ route('storefront.home') }}" class="store-brand" aria-label="{{ config('app.name') }}" >
                     <span class="store-brand-mark">
                         <i class="bi bi-bag-heart"></i>
                     </span>
@@ -14,35 +10,18 @@
                     Mei<span>Store</span>
                 </a>
 
-
                 {{-- Search --}}
-                <form
-                    class="store-search"
-                    action="{{ route('storefront.shop') }}"
-                    method="GET"
-                >
+                <form class="store-search" action="{{ route('storefront.shop') }}" method="GET" >
                     <div class="input-group">
 
-                        <input
-                            type="search"
-                            name="q"
-                            value="{{ request('q') }}"
-                            class="form-control"
-                            placeholder="Search for the product you want..."
-                            aria-label="Search for products"
-                        >
+                        <input type="search" name="q" value="{{ request('q') }}" class="form-control" placeholder="Cari produk yang Anda inginkan" aria-label="Cari produk" >
 
-                        <button
-                            type="submit"
-                            class="btn"
-                            aria-label="Search"
-                        >
+                        <button type="submit" class="btn" aria-label="Cari" >
                             <i class="bi bi-search"></i>
                         </button>
 
                     </div>
                 </form>
-
 
                 {{-- Header actions --}}
                 <div class="store-header-actions ms-auto">
@@ -52,23 +31,16 @@
                             $wishlistCount = auth()->user()->wishlistProducts()->count();
                         @endphp
 
-                        <a
-                            href="{{ route('wishlist.index') }}"
-                            class="store-action d-sm-none d-md-inline-flex"
-                            title="Wishlist"
-                        >
+                        <a href="{{ route('wishlist.index') }}" class="store-action d-none d-md-inline-flex" title="Wishlist" >
                             <span class="store-action-icon">
                                 <i class="bi bi-heart"></i>
 
                                 @if ($wishlistCount > 0)
-                                    <span class="store-badge">
-                                        {{ $wishlistCount }}
-                                    </span>
+                                    <span class="store-badge">{{ $wishlistCount }}</span>
                                 @endif
                             </span>
 
                             <span class="store-action-label">
-                                <small>Product</small>
                                 <strong>Wishlist</strong>
                             </span>
                         </a>
@@ -79,11 +51,7 @@
                             $compareCount = count(session('compare', []));
                         @endphp
 
-                        <a
-                            href="{{ route('compare.index') }}"
-                            class="store-action d-md-none d-md-inline-flex"
-                            title="Compare"
-                        >
+                        <a href="{{ route('compare.index') }}" class="store-action d-md-none d-md-inline-flex" title="Komparasi Produk" >
                             <span class="store-action-icon">
                                 <i class="bi bi-bar-chart"></i>
 
@@ -95,8 +63,7 @@
                             </span>
 
                             <span class="store-action-label">
-                                <small>Product</small>
-                                <strong>Compare</strong>
+                                <strong>Komparasi</strong>
                             </span>
                         </a>
 
@@ -119,8 +86,7 @@
                             </span>
 
                             <span class="store-action-label">
-                                <small>Shop</small>
-                                <strong>Cart</strong>
+                                <strong>Keranjang</strong>
                             </span>
                         </a>
 
@@ -133,14 +99,14 @@
                                 class="store-action border-0 bg-transparent p-0"
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
-                                title="Account"
+                                title="Akun"
                             >
                                 <span class="store-action-icon">
                                     <i class="bi bi-person-circle"></i>
                                 </span>
 
                                 <span class="store-action-label d-none d-lg-flex">
-                                    <small>Hello,</small>
+                                    <small>Halo,</small>
                                     <strong>
                                         {{ \Illuminate\Support\Str::limit(auth()->user()->name, 14) }}
                                     </strong>
@@ -166,20 +132,20 @@
                                 <li>
                                     <a class="dropdown-item" href="{{ route('account.index') }}">
                                         <i class="bi bi-speedometer2 me-2"></i>
-                                        Account
+                                        Akun
                                     </a>
                                 </li>
                                 <li>
                                     <a  class="dropdown-item" href="{{ route('orders.index') }}">
                                         <i class="bi bi-bag me-2"></i>
-                                        My Order
+                                        Pesanan Saya
                                     </a>
                                 </li>
 
                                 <li>
                                     <a class="dropdown-item" href="{{ route('profile.edit') }}" >
                                         <i class="bi bi-person me-2"></i>
-                                        My Profile
+                                        Profil Saya
                                     </a>
                                 </li>
 
@@ -210,7 +176,7 @@
                                             class="dropdown-item text-danger"
                                         >
                                             <i class="bi bi-box-arrow-right me-2"></i>
-                                            Logout
+                                            Keluar
                                         </button>
                                     </form>
                                 </li>

@@ -143,7 +143,7 @@ class InventoryControllerTest extends TestCase
 
         $response
             ->assertRedirect()
-            ->assertSessionHas('error');
+            ->assertSessionHasErrors('quantity');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,

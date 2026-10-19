@@ -3,13 +3,10 @@
 @section('title', config('app.name') . ' - Order #' . $order->order_number)
 
 @section('content')
-
 <div class="store-breadcrumb">
     <div class="container">
         <nav aria-label="breadcrumb">
-
             <ol class="breadcrumb mb-0">
-
                 <li class="breadcrumb-item">
                     <a href="{{ route('storefront.home') }}">
                         <i class="bi bi-house me-1"></i>
@@ -26,23 +23,16 @@
                 <li class="breadcrumb-item active" aria-current="page">
                     #{{ $order->order_number }}
                 </li>
-
             </ol>
-
         </nav>
     </div>
 </div>
 
-
 <section class="store-section store-order-detail-section">
-
     <div class="container">
-
         {{-- HEADER --}}
         <div class="store-order-detail-header">
-
             <div>
-
                 <a
                     href="{{ route('orders.index') }}"
                     class="store-order-back-link"
@@ -50,24 +40,19 @@
                     <i class="bi bi-arrow-left"></i>
                     Back to Orders
                 </a>
-
                 <span class="store-section-eyebrow">
                     Order Details
                 </span>
-
                 <h1 class="store-section-title">
                     #{{ $order->order_number }}
                 </h1>
-
                 <p class="store-section-subtitle">
                     Placed on
                     {{ $order->created_at->format('d M Y') }}
                     at
                     {{ $order->created_at->format('H:i') }}
                 </p>
-
             </div>
-
 
             @php
                 $statusClass = match ($order->status) {
@@ -90,36 +75,27 @@
             @endphp
 
             <div class="store-order-detail-status">
-
                 <span class="store-order-status {{ $statusClass }}">
                     <span class="store-order-status-dot"></span>
                     {{ $statusLabel }}
                 </span>
-
             </div>
-
         </div>
-
 
         {{-- STATUS TIMELINE --}}
         <div class="store-order-status-card">
-
             <div class="store-order-status-card-header">
-
                 <div>
                     <h2>
                         Order Status
                     </h2>
-
                     <p>
                         Current status of your order.
                     </p>
                 </div>
 
                 <i class="bi bi-truck"></i>
-
             </div>
-
 
             @php
                 $statusSteps = [
@@ -198,12 +174,9 @@
             {{-- LEFT --}}
             <div class="col-lg-8">
 
-
                 {{-- PRODUCTS --}}
                 <div class="store-order-panel">
-
                     <div class="store-order-panel-header">
-
                         <div>
                             <h2>
                                 Ordered Products
@@ -214,11 +187,8 @@
                                 {{ Str::plural('item', $order->items->sum('quantity')) }}
                             </p>
                         </div>
-
                         <i class="bi bi-bag"></i>
-
                     </div>
-
 
                     <div class="store-order-products">
                         @foreach ($order->items as $item)
@@ -255,7 +225,6 @@
                                         <h3>{{ $item->product_name }}</h3>
                                         <span>Rp {{ number_format($item->price, 0, ',', '.') }} × {{ $item->quantity }}</span>
                                     </div>
-
 
                                     <div class="store-order-product-total">
                                         <strong>Rp {{ number_format($item->subtotal, 0, ',', '.') }}</strong>
@@ -360,9 +329,50 @@
                             </div>
                         @endif
 
-
+                        @php($pendingCancellationRequest = $order->cancellationRequests->firstWhere('status', 'pending'))
+                        
+                        @if($pendingCancellationRequest)
+                            <div class="alert alert-warning mt-3" role="status">
+                                Permintaan pembatalan sedang ditinjau admin.
+                            </div>
+                        @elseif($order->status === 'pending' && !$order->cancellationRequests->contains('status', 'approved'))
+                            <form method="POST" action="{{ route('orders.cancellation-requests.store', $order) }}" class="store-order-detail-cancel-form mt-3">
+                                @csrf
+                                <label for="cancellation_reason_code" class="form-label">Mengapa Anda ingin membatalkan pesanan?</label>
+                                <select id="cancellation_reason_code" name="reason_code" class="form-select" required>
+                                    <option value="">Pilih alasan pembatalan</option>
+                                    <option value="changed_mind" @selected(old('reason_code') === 'changed_mind')>Berubah pikiran</option>
+                                    <option value="wrong_item" @selected(old('reason_code') === 'wrong_item')>Produk atau varian yang dipilih salah</option>
+                                    <option value="wrong_address" @selected(old('reason_code') === 'wrong_address')>Alamat pengiriman salah</option>
+                                    <option value="payment_issue" @selected(old('reason_code') === 'payment_issue')>Ada masalah saat pembayaran</option>
+                                    <option value="delivery_too_long" @selected(old('reason_code') === 'delivery_too_long')>Estimasi pengiriman terlalu lama</option>
+                                    <option value="duplicate_order" @selected(old('reason_code') === 'duplicate_order')>Pesanan dibuat lebih dari satu kali</option>
+                                    <option value="other" @selected(old('reason_code') === 'other')>Alasan lainnya</option>
+                                </select>
+                                
+                                @error('reason_code') 
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
+                                @enderror
+                                
+                                @error('reason') 
+                                    <div class="alert alert-danger mt-2">{{ $message }}</div> 
+                                @enderror
+                        
+                                <label for="cancellation_reason_details" class="form-label mt-3">Keterangan tambahan <span class="text-muted">(opsional, wajib untuk “Alasan lainnya”)</span></label>
+                                <textarea id="cancellation_reason_details" name="reason_details" class="form-control" rows="3" maxlength="1500" placeholder="Jelaskan jika ada detail yang perlu diketahui admin">{{ old('reason_details') }}</textarea>
+                                
+                                @error('reason_details') 
+                                    <div class="text-danger small mt-1">{{ $message }}</div> 
+                                @enderror
+                                
+                                <button type="submit" class="store-order-cancel-button mt-3" onclick="return confirm('Kirim permintaan pembatalan untuk ditinjau admin? Pesanan tidak langsung dibatalkan.')">
+                                    <i class="bi bi-x-circle"></i> Ajukan Pembatalan
+                                </button>
+                                <p class="small text-muted mt-2 mb-0">Pesanan tetap aktif sampai admin meninjau permintaan Anda.</p>
+                            </form>
+                        @endif
+                        
                         @if ($order->status === 'completed' && $order->payment && $order->payment->status === 'succeeded')
-
                             <form
                                 method="POST"
                                 action="{{ route('orders.refund.store', $order) }}"

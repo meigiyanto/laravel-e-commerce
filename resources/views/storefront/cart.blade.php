@@ -3,7 +3,6 @@
 @section('title', config('app.name') . ' - Shopping Cart')
 
 @section('content')
-
 {{-- =========================================================
     BREADCRUMB
 ========================================================= --}}
@@ -26,7 +25,6 @@
     </div>
 </div>
 
-
 {{-- =========================================================
     CART
 ========================================================= --}}
@@ -37,11 +35,9 @@
         <div class="store-section-header">
             <div>
                 <h1 class="store-section-title">Shopping Cart</h1>
-
                 <p class="store-section-subtitle">Check the products and order quantity before proceeding.</p>
             </div>
         </div>
-
 
         {{-- Flash messages --}}
         @if (session('success'))
@@ -57,7 +53,6 @@
                 {{ session('error') }}
             </div>
         @endif
-
 
         @if ($cart->items->isEmpty())
             {{-- =================================================
@@ -97,14 +92,22 @@
                                 </div>
                             </div>
 
-
                             {{-- Items --}}
                             <div class="store-cart-items">
                                 @foreach ($cart->items as $item)
                                     @php
                                         $product = $item->product;
-                                        $quantity = $item->quantity;
-                                        $subtotal = $product->price * $quantity;
+                                        $quantity = (int) $item->quantity;
+                                        $variant = $item->variant
+                                            ?? $item->variant
+                                            ?? null;
+                                        $quantityInputId = 'quantity-' . ($item->product_variant_id ?? $item->id);
+                                        
+                                        $price = $variant?->price ?? $product->price;
+                                        $subtotal = (float) $price * $quantity;
+                                        $inventory = $variant?->inventory;
+                                        $availableStock = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $product->stock);
+
                                         $image = $product->image ?? 'placeholder.png';
                                         $imageUrl = null;
                                         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -115,7 +118,7 @@
 
                                     @endphp
 
-                                    <article class="store-cart-item" data-product-id="{{ $product->id }}">
+                                    <article class="store-cart-item" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}" data-product-id="{{ $product->id }}">
                                         <div class="table table-responsive">
                                             <table class="table">
                                                 <thead>
@@ -136,7 +139,6 @@
                                                                     <a href="{{ route('storefront.product', $product->slug) }}" class="d-block">
                                                                         <img src="{{ $imageUrl }}" alt="{{ $product->name }}" class="store-cart-image" loading="lazy">
                                                                     </a>
-                                                                    <!-- <p>{{ $imageUrl }}</p> -->
                                                                 @else
                                                                     <a href="{{ route('storefront.product', $product->slug) }}" class="d-block" aria-label="{{ $product->name }}">
                                                                         <div class="store-cart-placeholder">
@@ -148,6 +150,19 @@
                                                         </td>
                                                         <td>
                                                             <a href="{{ route('storefront.product', $product->slug) }}" class="store-cart-product-name">{{ $product->name }}</a>
+                                                            
+                                                            @if ($variant)
+                                                                <div class="small text-muted mt-1">
+                                                                    {{ $variant->name ?: $variant->sku }}
+                                                            
+                                                                    @if ($variant->attributeValues->isNotEmpty())
+                                                                        — {{ $variant->attributeValues
+                                                                            ->map(fn ($value) => $value->value)
+                                                                            ->implode(' / ') }}
+                                                                    @endif
+                                                                </div>
+                                                            @endif
+                                                            
                                                             @if ($product->category)
                                                                 <div class="small text-muted mt-1">
                                                                     {{ $product->category->name }}
@@ -155,8 +170,9 @@
                                                             @endif
                                                         </td>
                                                         <td>
-                                                            {{-- Price --}}                                                                                  <div class="small text-muted">Price</div>
-                                                             <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
+                                                            {{-- Price --}}
+                                                            <div class="small text-muted">Price</div>
+                                                            <strong>Rp {{ number_format($price, 0, ',', '.') }}</strong>
                                                         </td>
                                                         <td>
                                                             {{-- Subtotal --}}
@@ -165,7 +181,8 @@
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
                                                             {{-- Quantity --}}
-                                                            <form action="{{ route('cart.update', $product) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                            <form action="{{ auth()->check() ? route('cart.items.update', $item->id) : route('cart.product.update', $item->product_variant_id) }}" method="POST" class="quantity-form" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}">
+                            
                                                                 @csrf
                                                                 @method('PATCH')
 
@@ -175,16 +192,9 @@
                                                                     <button type="button" class="store-quantity-button quantity-decrease" aria-label="Decrease Quantity">
                                                                         <i class="bi bi-dash"></i>
                                                                     </button>
-
-                                                                    <input
-                                                                        type="number"
-                                                                        id="quantity-{{ $product->id }}"
-                                                                        name="quantity"
-                                                                        value="{{ $quantity }}"
-                                                                        min="1"
-                                                                        max="{{ $product->stock }}"
-                                                                        class="store-quantity-input quantity-input"
-                                                                    >
+                                                                    
+                                                                    <label for="{{ $quantityInputId }}" class="visually-hidden">Total {{ $product->name }}</label>
+                                                                    <input type="number" id="{{ $quantityInputId }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $availableStock }}" class="store-quantity-input quantity-input">
 
                                                                     <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
                                                                         <i class="bi bi-plus"></i>
@@ -195,11 +205,11 @@
                                                         </td>
                                                         <td>
                                                             {{-- Remove --}}
-                                                            <form action="{{ route('cart.destroy', $product) }}" method="POST" class="store-cart-remove-form">
-
+                                                            <form action="{{ auth()->check() ? route('cart.items.destroy', $item->id) : route('cart.product.destroy', $item->product_variant_id) }}" method="POST" class="store-cart-remove-form" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}">
                                                                 @csrf
                                                                 @method('DELETE')
-                                                                <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
+                                                            
+                                                                <button type="submit" class="store-mobile-cart-remove" title="Delete Product">
                                                                     <i class="bi bi-trash3"></i>
                                                                 </button>
                                                             </form>
@@ -214,7 +224,6 @@
                         </div>
                     </div>
                 </div>
-
 
                 {{-- =================================================
                     SUMMARY
@@ -237,38 +246,30 @@
                                 <strong class="cart-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
                             </div>
 
-
                             <div class="d-flex justify-content-between mb-3">
                                 <span class="text-muted">Shipping</span>
                                 <span class="small">Calculated at checkout</span>
                             </div>
                             <hr>
                             <div class="d-flex justify-content-between align-items-center mb-4">
-
                                 <span class="fw-semibold">Total</span>
                                 <strong class="fs-5 cart-grand-total">Rp {{ number_format($total, 0, ',', '.') }}</strong>
                             </div>
 
                             @auth
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div>
                                     <div>
                                         <a href="{{ route('storefront.shop') }}" class="store-go-back-button">
-                                            Continue Shopping
+                                            <i class="bi bi-arrow-left"></i>    
+                                            Belanja Kembali
                                         </a>
                                     </div>
-                                                                                                      <div>
+                                    <div class="mt-1">
                                         <a href="{{ route('checkout.index') }}" class="store-checkout-button">
-                                            Continue Checkout
+                                            Lanjutkan ke Checkout
+                                            <i class="bi bi-arrow-right"></i>
                                         </a>
                                     </div>
-                                    <!--
-                                    <div>
-                                        <a href="{{ route('checkout.index') }}" class="store-checkout-button">
-                                                                                                              <span>Continue to Checkout</span>
-                                            <i class="bi bi-arrow-right me-2"></i>
-                                        </a>
-                                    </div>
-                                    -->
                                 </div>
                             @else
                                 <a href="{{ route('login') }}" class="store-checkout-button">
@@ -286,5 +287,4 @@
         @endif
     </div>
 </section>
-
 @endsection

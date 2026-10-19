@@ -11,8 +11,7 @@ class StorefrontController extends Controller
 {
     public function __construct(
         private readonly ProductFilter $productFilter
-    ) {
-    }
+    ) {}
 
     public function home()
     {
@@ -23,8 +22,10 @@ class StorefrontController extends Controller
         $latestProducts = Product::with([
             'category',
             'subCategory',
-        ])
-            ->withAvg('reviews', 'rating')
+            'specifications',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
+        ])->withAvg('reviews', 'rating')
             ->withCount('reviews')
             ->latest()
             ->take(8)
@@ -41,6 +42,9 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
+            'specifications',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews');
@@ -62,13 +66,7 @@ class StorefrontController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view(
-            'storefront.shop',
-            compact(
-                'products',
-                'categories'
-            )
-        );
+        return view('storefront.shop', compact('products', 'categories'));
     }
 
     public function product(string $slug)
@@ -78,6 +76,8 @@ class StorefrontController extends Controller
             'subCategory',
             'specifications',
             'reviews.user',
+            'variants.inventory',
+            'variants.attributeValues.attribute'
         ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
@@ -96,13 +96,7 @@ class StorefrontController extends Controller
             ->take(4)
             ->get();
 
-        return view(
-            'storefront.product',
-            compact(
-                'product',
-                'relatedProducts'
-            )
-        );
+        return view('storefront.product', compact('product','relatedProducts'));
     }
 
     public function category(

@@ -7,15 +7,15 @@
     <div class="nk-block-head nk-block-head-sm">
         <div class="nk-block-between">
             <div class="nk-block-head-content">
-                <h3 class="nk-block-title page-title">Products</h3>
+                <h3 class="nk-block-title page-title">Produk</h3>
                 <div class="nk-block-des text-soft">
-                    <p>Lists of all product</p>
+                    <p>Daftar seluruh produk</p>
                 </div>
             </div>
             <div class="nk-block-head-content">
                 <a href="{{ route('admin.products.create') }}" class="btn btn-outline-primary">
                     <em class="icon ni ni-plus"></em>
-                    <span>Add Product</span>
+                    <span>Tambah produk</span>
                 </a>
             </div>
         </div>
@@ -26,7 +26,7 @@
 
         @if($products->isEmpty())
             <div class="text-center text-soft py-4">
-                 No product yet.
+                 Belum ada produk.
             </div>
         @else
             <div class="table-responsive">
@@ -34,12 +34,12 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Product</th>
-                            <th>Category</th>
-                            <th>Sub Category</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th class="no-sort">Actions</th>
+                            <th>Produk</th>
+                            <th>Kategori</th>
+                            <th>Sub Kategori</th>
+                            <th>Harga</th>
+                            <th>Stok</th>
+                            <th class="no-sort">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -53,20 +53,18 @@
                                 <td>{{ $product->stock }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-info" title="Show">
-                                            <em class="ni ni-eye"></em>
+                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary" title="Edit produk" aria-label="Edit {{ $product->name }}">
+                                            <em class="icon ni ni-edit" aria-hidden="true"></em>
                                         </a>
-                                        <a href="{{ route('admin.products.edit', $product) }}" class="btn btn-sm btn-secondary" title="Edit">
-                                            <em class="ni ni-edit"></em>
-                                        </a>
-                                        <form method="POST" class="d-inline" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Are you sure want to delete this product?')">
+                                        <form method="POST" class="d-inline" action="{{ route('admin.products.destroy', $product) }}" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk ini?')" >
                                             @csrf
                                             @method('DELETE')
                                         
-                                            <a href="#" class="btn btn-sm btn-danger pt-1" title="Delete" onclick="event.preventDefault(); this.closest('form').requestSubmit();">
-                                                <em class="ni ni-trash"></em>
-                                            </a>
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus produk" aria-label="Hapus {{ $product->name }}" >
+                                                <em class="icon ni ni-trash" aria-hidden="true"></em>
+                                            </button>
                                         </form>
+
                                     </div>
                                 </td>
                             </tr>

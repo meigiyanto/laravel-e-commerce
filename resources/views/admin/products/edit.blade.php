@@ -1,34 +1,28 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Product')
-@section('header', 'Edit Product')
+@section('title', 'Edit Produk')
+@section('header', 'Edit Produk')
 
 @section('content')
 <div class="nk-block-head nk-block-head-sm">
     <div class="nk-block-between">
-        
         <div class="nk-block-head-content">
-            <h3 class="nk-block-title page-title">Edit Product</h3>
-            <div class="nk-block-des text-soft">
-                <p>Manage product information, specifications, variants, and inventory.</p>
-            </div>
+            <h3 class="nk-block-title page-title">Edit Produk</h3>
+            <p class="text-soft">Kelola informasi, spesifikasi, varian, inventaris, dan gambar produk.</p>
         </div>
-        
         <div class="nk-block-head-content">
-            <a href="{{ route('admin.products.index') }}" class="btn btn-white btn-outline-light">
-                <em class="icon ni ni-arrow-left"></em>
-                <span>Go back</span>
+            <a href="{{ route('admin.products.index') }}"
+               class="btn btn-white btn-outline-light">
+                <em class="icon ni ni-arrow-left"></em> Kembali
             </a>
         </div>
-        
     </div>
 </div>
 
-
 @if ($errors->any())
     <div class="alert alert-danger">
-        <strong>Double-check the following input.:</strong>
-        <ul>
+        <strong>Periksa input berikut:</strong>
+        <ul class="mb-0">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>
             @endforeach
@@ -51,26 +45,31 @@
 
 <div class="card card-bordered">
     <div class="card-inner">
-        <form method="POST" action="{{ route('admin.products.update', $product) }}" enctype="multipart/form-data">
+        <form method="POST"
+              action="{{ route('admin.products.update', $product) }}"
+              enctype="multipart/form-data">
             @csrf
             @method('PUT')
-            <h5>1. Product Information</h5>
 
-            <div class="form-group">
-                <label for="name">Product name *</label>
-                <input class="form-control" id="name" name="name" value="{{ old('name', $product->name) }}" required>
+            <h5>1. Informasi Produk</h5>
+
+            <div class="form-group mb-2">
+                <label for="name" class="control-label">Nama produk *</label>
+                <input class="form-control" id="name" name="name"
+                       value="{{ old('name', $product->name) }}"
+                       maxlength="255" required>
             </div>
 
-            <div class="form-group">
-                <label for="slug">Slug</label>
-                <input class="form-control" id="slug" name="slug" value="{{ old('slug', $product->slug) }}">
+            <div class="form-group mb-2">
+                <label for="slug" class="control-label">Slug</label>
+                <input class="form-control" id="slug" name="slug"
+                       value="{{ old('slug', $product->slug) }}">
             </div>
 
             <div class="row">
-
-                <div class="col-md-6">
+                <div class="col-md-6 mb-2">
                     <div class="form-group">
-                        <label for="category_id">Category *</label>
+                        <label for="category_id" class="control-label">Kategori *</label>
                         <select class="form-control" id="category_id"
                                 name="category_id" required>
                             <option value="">Pilih kategori</option>
@@ -84,437 +83,711 @@
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-6 mb-2">
                     <div class="form-group">
-                        <label for="sub_category_id">Subcategory *</label>
+                        <label for="sub_category_id" class="control-label">Subkategori *</label>
                         <select class="form-control" id="sub_category_id"
                                 name="sub_category_id" required>
-                            <option value="">Select a subcategory</option>
+                            <option value="">Pilih subkategori</option>
                             @foreach ($categories as $category)
                                 @foreach ($category->subCategories as $subCategory)
                                     <option value="{{ $subCategory->id }}"
-                                        data-category="{{ $category->id }}"
+                                            data-category="{{ $category->id }}"
                                         @selected(old('sub_category_id', $product->sub_category_id) == $subCategory->id)>
-                                        {{ $subCategory->name }}
+                                        {{ $category->name }} — {{ $subCategory->name }}
                                     </option>
                                 @endforeach
                             @endforeach
                         </select>
                     </div>
                 </div>
-
             </div>
 
             <div class="form-group">
-                <label for="description">Description</label>
-                <textarea class="form-control" id="description" name="description" rows="5">{{ old('description', $product->description) }}</textarea>
+                <label for="description" class="control-label">Deskripsi</label>
+                <textarea class="form-control" id="description"
+                          name="description" rows="5">{{ old('description', $product->description) }}</textarea>
             </div>
 
             <hr>
-            <div class="d-flex justify-content-between align-items-center">
-                <h5>2. Product Specifications</h5>
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5>5. Spesifikasi Produk</h5>
+                    <p class="text-soft">
+                        Contoh: Material — Kulit sintetis; Warna — Hitam.
+                    </p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" id="add-specification">
+                        <em class="ni ni-plus"></em>
+                    </button>
+                </div>
             </div>
-
-            <p class="text-soft">Descriptive specifications such as screen resolution, materials, or processor type. The SKU is not part of the specifications.</p>
-
+            
             <div id="specifications-container">
-                <table class="table table-hover table-striped nowrap">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Group</th>
-                            <th>Specification Name</th>
-                            <th>Value</th>
-                            <th>Order</th>
-                            <th>
-                                <button type="button" class="btn btn-outline-secondary" id="add-specification">
-                                    <em class="ni ni-plus"></em>
-                                </button>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped nowrap datatable-init">
+                        <thead>
+                            <tr>
+                                <th class="no-sort" style="width: 5%;"></th>
+                                <th class="no-sort" style="width: 20%;">Grup</th>
+                                <th class="no-sort" style="width: 30%;">Nama Spesifikasi</th>
+                                <th class="no-sort" style="width: 30%;">Value</th>
+                                <th class="no-sort" style="width: 10%;">Urutan</th>
+                                <th class="no-sort" style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
                         @foreach ($specificationRows as $index => $spec)
-                            @if (!empty($spec['id']))
-                                <input type="hidden" name="specifications[{{ $index }}][id]" value="{{ $spec['id'] }}">
-                            @endif
                             <tr class="specification-item">
                                 <td>
-                                    <input type="checkbox" value="{{ $spec['id'] ?? '' }}" name="specifications[{{ $index }}][id]" class="spec-input">
+                                    @if (!empty($spec['id']))
+                                        <input
+                                            type="hidden"
+                                            name="specifications[{{ $index }}][id]"
+                                            value="{{ $spec['id'] }}"
+                                        >
+                                    @endif
+                        
+                                    <input
+                                        type="checkbox"
+                                        class="spec-input"
+                                        aria-label="Pilih spesifikasi untuk dihapus"
+                                    >
                                 </td>
+                        
                                 <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_group]" value="{{ $spec['specification_group'] ?? '' }}">
-                                    </div>
+                                    <input
+                                        class="form-control"
+                                        name="specifications[{{ $index }}][specification_group]"
+                                        value="{{ $spec['specification_group'] ?? '' }}"
+                                        maxlength="255"
+                                        required
+                                    >
                                 </td>
+                        
                                 <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_name]" value="{{ $spec['specification_name'] ?? '' }}">
-                                    </div>
+                                    <input
+                                        class="form-control"
+                                        name="specifications[{{ $index }}][specification_name]"
+                                        value="{{ $spec['specification_name'] ?? '' }}"
+                                        maxlength="255"
+                                        required
+                                    >
                                 </td>
+                        
                                 <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][specification_value]" value="{{ $spec['specification_value'] ?? '' }}">
-                                    </div>
+                                    <input
+                                        class="form-control"
+                                        name="specifications[{{ $index }}][specification_value]"
+                                        value="{{ $spec['specification_value'] ?? '' }}"
+                                        maxlength="2000"
+                                        required
+                                    >
                                 </td>
+                        
                                 <td>
-                                    <div class="form-group">
-                                        <input class="form-control" name="specifications[{{ $index }}][sort_order]" value="{{ $spec['sort_order'] ?? '' }}">
-                                    </div>
+                                    <input
+                                        type="number"
+                                        class="form-control"
+                                        name="specifications[{{ $index }}][sort_order]"
+                                        value="{{ $spec['sort_order'] ?? 0 }}"
+                                        min="0"
+                                        step="1"
+                                    >
                                 </td>
+                        
                                 <td>
-                                    <button type="button" class="btn btn-outline-danger remove-specification">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-danger remove-specification"
+                                        aria-label="Hapus spesifikasi"
+                                    >
                                         <em class="ni ni-trash"></em>
                                     </button>
                                 </td>
                             </tr>
                         @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td>
-                                <input type="checkbox" value="spec_id[]" name="spec_id" id="check-all">
-                            </td>
-                            <td colspan="5">
-                                <button type="button" id="btn-delete" class="btn btn-danger" disabled>
-                                    <em class="ni ni-trash"></em>
-                                    Delete Selected
-                                </button>
-                            </td>
-                        <tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <hr>
-            <h5>3. Variants, SKUs, and Inventory</h5>
-            <p class="text-soft">The changes below apply to existing variants. Stock cannot be lower than the reserved quantity.</p>
-
-            @forelse ($product->variants as $variant)
-                @php
-                    $variantKey = $variant->id;
-                    $oldVariant = old("variants.$variantKey", []);
-                    $selectedValueIds = $oldVariant['attribute_value_ids'] ?? $variant->attributeValues->pluck('id')->all();
-                    $inventory = $variant->inventory;
-                @endphp
-
-                <div class="border rounded p-3 mb-4">
-                    <input type="hidden" name="variants[{{ $variantKey }}][id]" value="{{ $variant->id }}">
-                    <h6>Varian #{{ $variant->id }}
-                        @if ($variant->is_default)
-                            <span class="badge badge-primary">Default</span>
-                        @endif
-                    </h6>
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Variant Name</label>
-                                <input class="form-control" name="variants[{{ $variantKey }}][name]" value="{{ old("variants.$variantKey.name", $variant->name) }}">
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>SKU *</label>
-                                <input class="form-control" name="variants[{{ $variantKey }}][sku]" value="{{ old("variants.$variantKey.sku", $variant->sku) }}" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Barcode</label>
-                                <input class="form-control" name="variants[{{ $variantKey }}][barcode]" value="{{ old("variants.$variantKey.barcode", $variant->barcode) }}">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Selling price *</label>
-                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][price]" value="{{ old("variants.$variantKey.price", $variant->price) }}" required>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Price Before Discount</label>
-                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][compare_at_price]" value="{{ old("variants.$variantKey.compare_at_price", $variant->compare_at_price) }}">
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Capital price</label>
-                                <input type="number" min="0" step="0.01" class="form-control" name="variants[{{ $variantKey }}][cost_price]" value="{{ old("variants.$variantKey.cost_price", $variant->cost_price) }}">
-                            </div>
-                        <dfiv>
-                    </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Weight (kg)</label>
-                                <input type="number" min="0" step="0.001" class="form-control" name="variants[{{ $variantKey }}][weight]" value="{{ old("variants.$variantKey.weight", $variant->weight) }}">
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select class="form-control" name="variants[{{ $variantKey }}][status]" required>
-                                    <option value="active" @selected(old("variants.$variantKey.status", $variant->status) === 'active')>Active</option>
-                                    <option value="inactive" @selected(old("variants.$variantKey.status", $variant->status) === 'inactive')>Non-active</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h6>Variant Attributes</h6>
-                    <p class="text-soft">Select a maximum of one value for each attribute.</p>
-
-                    @foreach ($attributes as $attribute)
-                        <div class="form-group">
-                            <label for="attribute-{{ $variantKey }}-{{ $attribute->id }}">{{ $attribute->name }}</label>
-                            <select class="form-control variant-attribute"
-                                    id="attribute-{{ $variantKey }}-{{ $attribute->id }}"
-                                    data-attribute-id="{{ $attribute->id }}"
-                                    name="variants[{{ $variantKey }}][attribute_value_ids][]">
-                                <option value="">Not selected</option>
-                                @foreach ($attribute->values as $value)
-                                    <option value="{{ $value->id }}"
-                                            data-attribute-id="{{ $attribute->id }}"
-                                        @selected(in_array($value->id, $selectedValueIds))>
-                                        {{ $value->value }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @endforeach
-
-                    <h6>Inventory</h6>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Stock *</label>
-                                <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][quantity]" value="{{ old("variants.$variantKey.quantity", $inventory?->quantity ?? 0) }}" required>
-                                <small class="text-soft">
-                                    Changes in stock will be recorded as inventory movements.
-                                </small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Reserved Stock</label>
-                                <input type="number" class="form-control" value="{{ $inventory?->reserved_quantity ?? 0 }}" readonly>
-                                <small class="text-soft">
-                                    Unchanged from this form.
-                                </small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Minimum Stock Level *</label>
-                                <input type="number" min="0" class="form-control" name="variants[{{ $variantKey }}][reorder_level]" value="{{ old("variants.$variantKey.reorder_level", $inventory?->reorder_level ?? 0) }}" required>
-                            </div>
-                        </div>
-                    </div>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" id="check-all">
+                                </td>
+                                <td colspan="5">
+                                    <button type="button" id="btn-delete" class="btn btn-danger" disabled>
+                                        <em class="ni ni-trash"></em>
+                                        Delete Selected
+                                    </button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
-                
-                @empty
-                    <div class="alert alert-warning" role="alert">This product does not yet have any variants. Create a variant first before editing the SKU and inventory.</div>
-                @endforelse
-
-                <hr>
-                
-            {{-- Tombol untuk form data produk utama --}}
-            <div class="form-actions mt-4 mb-4">
-                <a href="{{ route('admin.products.index') }}"
-                   class="btn btn-secondary">
-                    Cancel
-                </a>
-            
-                <button type="submit" class="btn btn-primary">
-                    Save Product Changes
-                </button>
             </div>
-        
-        {{-- Tutup form data produk utama --}}
-        </form>
-    </div>
-</div>
-
-<div class="card card-bordered">
-    <div class="card-inner">
-
-    <h5>5. Product Images</h5>
-    
-    <p class="text-soft">Manage images separately. Changes to images do not alter product variants, prices, stock, or specifications.</p>
-
-    <form method="POST" action="{{ route('admin.products.images.update', $product) }}" enctype="multipart/form-data">
-            @csrf
-            @method('PATCH')
-        
-            @php
-                $productImages = $product->images;
-            @endphp
             
-            <h6>Available Gallery Images</h6>
-        
-            <p class="text-soft">Select the image you want to link to this product. Images already used by other products are not displayed. </p>
-            @if (count($availableGalleryImages))
-                <div class="gallery-images-container mb-4" style="height: 320px; overflow-y: auto; overflow-x: hidden; border: 2px solid lightgrey; border-radius: 4px; margin: 6px; padding: 6px;">
-                    <div class="row">
-                        @foreach ($availableGalleryImages as $image)
-                            <div class="col-md-4 col-lg-2 mb-3">
-                                <div class="card-inner px-2">
-                                    <div class="custom-control custom-radio image-control mb-2">
-                                        <input type="radio" class="custom-control-input" id="gallery-image-{{ $loop->index }}" name="existing_image_paths[]" value="{{ $image['path'] }}" @checked(in_array($image['path'], old('existing_image_paths', [])))>
-                                        <label class="custom-control-label" for="gallery-image-{{ $loop->index }}" title="{{ $image['filename'] }}">
-                                            <img src="{{ $image['url'] }}" alt="{{ $image['filename'] }}" class="img-fluid img-responsive mb-2" loading="lazy">
-                                         </label>
-                                    </div>
-    
-                                    <small class="text-soft d-block text-break">{{ $image['filename'] }}</small>
-                                    <small class="text-soft">Unlinked yet</small>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
+            <hr>
+            <h5>3. Varian dan Inventaris</h5>
+
+            @if ($product->variants->isEmpty())
+                <div class="alert alert-warning">
+                    <strong>Produk belum mempunyai varian.</strong>
+                    Anda tetap dapat menyimpan informasi produk dan spesifikasinya.
+                    Saat penyimpanan, controller akan membuat satu varian default
+                    menggunakan SKU internal dan menyelaraskan inventaris dari
+                    nilai stok lama produk.
                 </div>
             @else
-                <div class="alert alert-info" role="alert">
-                    There are no unlinked gallery images.
-                </div>
-            @endif
+                <p class="text-soft">
+                    Harga dan stok berikut milik masing-masing varian.
+                    Stok tidak dapat dikurangi di bawah jumlah yang direservasi.
+                </p>
 
-            {{-- Gambar yang sudah terhubung --}}
-            <h6>Connected Images</h6>
-        
-            {{-- Gambar galeri yang belum terhubung --}}
-            <hr>
-        
-            {{-- Unggah gambar baru --}}
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    @if ($productImages->isNotEmpty())
-                        @foreach ($productImages as $image)
-                            @php
-                                $imageExists = is_string($image->path) && Storage::disk('public')->exists($image->path);
-                                $imageUrl = $imageExists ? Storage::disk('public')->url($image->path) : null;
-                                $primaryImage = $productImages->firstWhere('is_primary', true) ?? $productImages->first();
-                            @endphp
-            
-                            <div class="card card-bordered">
-                                <div class="card-inner">
-                                    @if ($imageUrl)
-                                        <img src="{{ $imageUrl }}" alt="{{ $image->alt_text ?: $product->name }}" class="img-fluid img-responsive mb-3">
-                                    @else
-                                        <div class="d-flex align-items-center justify-content-center mb-3" style="height: 150px;">
-                                            <span class="text-soft">Image unavailable</span>
-                                        </div>
-                                    @endif
-                                    <div class="d-flex justify-content-between">
-                                        <div class="custom-control custom-radio mb-2">
-                                            <input type="radio" class="custom-control-input" id="primary-image-{{ $image->id }}" name="primary_image_id" value="{{ $image->id }}" @checked($primaryImage?->id === $image->id)>
-                                            <label class="custom-control-label" for="primary-image-{{ $image->id }}">Main image</label>
-                                        </div>
-                                        
-                                        <div class="custom-control custom-checkbox">
-                                            <input type="checkbox" class="custom-control-input" id="delete-image-{{ $image->id }}" name="delete_images[]" value="{{ $image->id }}">
-                                            <label class="custom-control-label" for="delete-image-{{ $image->id }}">Delete image</label>
-                                        </div>
-                                    </div>
+                @foreach ($product->variants as $variant)
+                    @php
+                        $key = $variant->id;
+                        $oldVariant = old("variants.$key", []);
+                        $inventory = $variant->inventory;
+                        $selectedValues = $oldVariant['attribute_value_ids']
+                            ?? $variant->attributeValues->pluck('id')->all();
+
+                        $reserved = (int) ($inventory?->reserved_quantity ?? 0);
+                        $quantity = (int) ($inventory?->quantity ?? 0);
+                    @endphp
+
+                    <div class="border rounded p-3 mb-4">
+                        <input type="hidden"
+                               name="variants[{{ $key }}][id]"
+                               value="{{ $variant->id }}">
+
+                        <h6>
+                            Varian #{{ $variant->id }}
+                            @if ($variant->is_default)
+                                <span class="badge badge-primary">Default</span>
+                            @endif
+                        </h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Nama varian</label>
+                                    <input class="form-control"
+                                           name="variants[{{ $key }}][name]"
+                                           value="{{ old("variants.$key.name", $variant->name) }}">
                                 </div>
                             </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">SKU *</label>
+                                    <input class="form-control"
+                                           name="variants[{{ $key }}][sku]"
+                                           value="{{ old("variants.$key.sku", $variant->sku) }}"
+                                           maxlength="100" required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Barcode</label>
+                                    <input class="form-control"
+                                           name="variants[{{ $key }}][barcode]"
+                                           value="{{ old("variants.$key.barcode", $variant->barcode) }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Harga jual *</label>
+                                    <input class="form-control" type="number"
+                                           min="0" step="0.01"
+                                           name="variants[{{ $key }}][price]"
+                                           value="{{ old("variants.$key.price", $variant->price) }}"
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <labe class="control-label">Harga sebelum diskon</label>
+                                    <input class="form-control" type="number"
+                                           min="0" step="0.01"
+                                           name="variants[{{ $key }}][compare_at_price]"
+                                           value="{{ old("variants.$key.compare_at_price", $variant->compare_at_price) }}">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Harga modal</label>
+                                    <input class="form-control" type="number"
+                                           min="0" step="0.01"
+                                           name="variants[{{ $key }}][cost_price]"
+                                           value="{{ old("variants.$key.cost_price", $variant->cost_price) }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="control-label">Berat (kg)</label>
+                                    <input class="form-control" type="number"
+                                           min="0" step="0.001"
+                                           name="variants[{{ $key }}][weight]"
+                                           value="{{ old("variants.$key.weight", $variant->weight) }}">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="control-label">Status *</label>
+                                    <select class="form-control"
+                                            name="variants[{{ $key }}][status]" required>
+                                        <option value="active"
+                                            @selected(old("variants.$key.status", $variant->status) === 'active')>
+                                            Aktif
+                                        </option>
+                                        <option value="inactive"
+                                            @selected(old("variants.$key.status", $variant->status) === 'inactive')>
+                                            Nonaktif
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6>Atribut varian</h6>
+
+                        @foreach ($attributes as $attribute)
+                            @php
+                                $attributeValue = collect($selectedValues)
+                                    ->first(function ($valueId) use ($attribute) {
+                                        return $attribute->values->contains('id', $valueId);
+                                    });
+                            @endphp
+
+                            <div class="form-group">
+                                <label for="attribute-{{ $key }}-{{ $attribute->id }}" class="control-label">
+                                    {{ $attribute->name }}
+                                </label>
+                                <select class="form-control variant-attribute"
+                                        id="attribute-{{ $key }}-{{ $attribute->id }}"
+                                        name="variants[{{ $key }}][attribute_value_ids][]">
+                                    <option value="">Tidak dipilih</option>
+                                    @foreach ($attribute->values as $value)
+                                        <option value="{{ $value->id }}"
+                                            @selected((string) $attributeValue === (string) $value->id)>
+                                            {{ $value->value }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                         @endforeach
+
+                        <h6>Inventaris</h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Stok *</label>
+                                    <input class="form-control" type="number"
+                                           min="{{ $reserved }}" step="1"
+                                           name="variants[{{ $key }}][quantity]"
+                                           value="{{ old("variants.$key.quantity", $quantity) }}"
+                                           required>
+                                    <small class="text-soft">
+                                        Stok tidak boleh di bawah {{ $reserved }} unit yang direservasi.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Stok direservasi</label>
+                                    <input class="form-control" type="number"
+                                           value="{{ $reserved }}" readonly>
+                                    <small class="text-soft">
+                                        Nilai ini tidak diubah melalui form produk.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="control-label">Batas stok minimum *</label>
+                                    <input class="form-control" type="number" min="0" name="variants[{{ $key }}][reorder_level]" value="{{ old("variants.$key.reorder_level", $inventory?->reorder_level ?? 0) }}" required>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+            
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-primary" id="add-product-variant">
+                    <em class="icon ni ni-plus"></em>
+                    Tambah Varian
+                </button>
+                <p class="text-soft mt-2">
+                    Setiap varian mempunyai SKU, harga, atribut, dan stok sendiri.
+                    Stok awal varian baru dimulai dari angka yang Anda masukkan.
+                </p>
+            </div>
+
+            <div id="new-product-variants"></div>
+
+            <template id="new-product-variant-template">
+                <div class="card card-bordered mb-4 new-product-variant">
+                    <div class="card-inner">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Varian Baru</h6>
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-new-variant">
+                                Hapus
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Nama varian *</label>
+                                    <input class="form-control"
+                                           data-field="name"
+                                           required
+                                           maxlength="255"
+                                           placeholder="Contoh: Red">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>SKU *</label>
+                                    <input class="form-control"
+                                           data-field="sku"
+                                           required
+                                           maxlength="100"
+                                           placeholder="Contoh: HANDBAG-RED">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Barcode</label>
+                                    <input class="form-control"
+                                           data-field="barcode"
+                                           maxlength="100">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga jual *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="price"
+                                           min="0"
+                                           step="0.01"
+                                           required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga sebelum diskon</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="compare_at_price"
+                                           min="0"
+                                           step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="form-group">
+                                    <label>Harga modal</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="cost_price"
+                                           min="0"
+                                           step="0.01">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group">
+                                    <label>Berat (kg)</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="weight"
+                                           min="0"
+                                           step="0.001">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="form-group">
+                                    <label>Status *</label>
+                                    <select class="form-control"
+                                            data-field="status"
+                                            required>
+                                        <option value="active">Aktif</option>
+                                        <option value="inactive">Nonaktif</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6>Atribut varian</h6>
+
+                        @foreach ($attributes as $attribute)
+                            <div class="form-group">
+                                <label>{{ $attribute->name }}</label>
+                                <select class="form-control variant-attribute"
+                                        data-attribute-select="1"
+                                        data-attribute-id="{{ $attribute->id }}">
+                                    <option value="">Tidak dipilih</option>
+                                    @foreach ($attribute->values as $value)
+                                        <option value="{{ $value->id }}">
+                                            {{ $value->value }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+
+                        <h6>Inventaris</h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Stok awal *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="quantity"
+                                           min="0"
+                                           step="1"
+                                           value="0"
+                                           required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Batas stok minimum *</label>
+                                    <input type="number"
+                                           class="form-control"
+                                           data-field="reorder_level"
+                                           min="0"
+                                           step="1"
+                                           value="0"
+                                           required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+
+            <hr>
+            <h5>4. Gambar Produk</h5>
+            @php
+                $productImages = $product->images;
+                $primaryImage = $productImages->firstWhere('is_primary', true)
+                    ?? $productImages->first();
+            @endphp
+
+            @if ($primaryImage)
+                <div class="mb-3">
+                    <p class="text-soft">Gambar utama saat ini</p>
+                    @if (
+                        is_string($primaryImage->path)
+                        && Storage::disk('public')->exists($primaryImage->path)
+                    )
+                        <img src="{{ Storage::disk('public')->url($primaryImage->path) }}"
+                             alt="{{ $primaryImage->alt_text ?: $product->name }}"
+                             class="img-fluid mb-2"
+                             style="max-width:240px; max-height:240px; object-fit:contain">
                     @else
-                        <div class="alert alert-info" role="alert">
-                            No images are currently linked via the product_images table. You can select gallery images below.
+                        <div class="alert alert-warning">
+                            File gambar utama tidak ditemukan pada penyimpanan lokal.
                         </div>
                     @endif
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="product-images-upload">Upload New Images</label>
-        
-                        <input
-                            type="file"
-                            id="product-images-upload"
-                            name="images[]"
-                            accept="image/jpeg,image/png,image/webp"
-                            multiple
-                            class="form-control"
-                        >
-                
-                        <small class="text-soft">Format JPG, PNG, atau WebP; maximum 5 MB per image.</small>
-                        
+            @elseif (
+                is_string($product->image)
+                && trim($product->image) !== ''
+                && ! filter_var($product->image, FILTER_VALIDATE_URL)
+            )
+                @php
+                    $legacyPath = ltrim($product->image, '/');
+                    if (str_starts_with($legacyPath, 'storage/')) {
+                        $legacyPath = substr($legacyPath, 8);
+                    }
+                @endphp
+
+                @if (Storage::disk('public')->exists($legacyPath))
+                    <div class="mb-3">
+                        <p class="text-soft">Gambar dari kolom lama</p>
+                        <img src="{{ Storage::disk('public')->url($legacyPath) }}"
+                             alt="{{ $product->name }}"
+                             class="img-fluid"
+                             style="max-width:240px; max-height:240px; object-fit:contain">
                     </div>
-                    <div class="form-group">
-                        <label for="image-alt-text">Alt text</label>
-                
-                        <input
-                            type="text"
-                            id="image-alt-text"
-                            name="image_alt_text"
-                            class="form-control"
-                            maxlength="255"
-                            value="{{ old('image_alt_text', $product->name) }}"
-                        >
+                @endif
+            @endif
+
+            @if ($productImages->isNotEmpty())
+                <p class="text-soft">
+                    Pilih gambar utama, atau tandai gambar yang ingin dihapus.
+                    Gambar yang tidak ditandai akan dipertahankan.
+                </p>
+
+                @foreach ($productImages as $image)
+                    <div class="border rounded p-3 mb-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                @if (
+                                    is_string($image->path)
+                                    && Storage::disk('public')->exists($image->path)
+                                )
+                                    <img src="{{ Storage::disk('public')->url($image->path) }}"
+                                         alt="{{ $image->alt_text ?: $product->name }}"
+                                         class="img-fluid"
+                                         style="max-height:140px; object-fit:contain">
+                                @else
+                                    <p class="text-soft">File tidak ditemukan</p>
+                                @endif
+                            </div>
+
+                            <div class="col-md-5">
+                                <p class="mb-1">{{ $image->alt_text ?: $image->path }}</p>
+                                <small class="text-soft">{{ $image->path }}</small>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio"
+                                           name="primary_image_id"
+                                           id="primary-{{ $image->id }}"
+                                           value="{{ $image->id }}"
+                                           @checked((string) old('primary_image_id', $primaryImage?->id) === (string) $image->id)>
+                                    <label class="form-check-label"
+                                           for="primary-{{ $image->id }}">
+                                        Jadikan gambar utama
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="delete_images[]"
+                                           id="delete-{{ $image->id }}"
+                                           value="{{ $image->id }}"
+                                           @checked(in_array(
+                                               $image->id,
+                                               old('delete_images', [])
+                                           ))>
+                                    <label class="form-check-label"
+                                           for="delete-{{ $image->id }}">
+                                        Hapus gambar ini
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                @endforeach
+            @endif
+
+            <div class="form-group">
+                <label for="images" class="control-label">Tambahkan gambar baru</label>
+                <input class="form-control" type="file" id="images"
+                       name="images[]" multiple
+                       accept=".jpg,.jpeg,.png,.webp">
+                <small class="text-soft">
+                    Maksimal 10 gambar baru, JPG/JPEG/PNG/WEBP, 5 MB per file.
+                    Gambar lama tetap dipertahankan kecuali ditandai untuk dihapus.
+                </small>
             </div>
-        
+
+            <div class="form-group">
+                <label for="image_alt_text">Teks alternatif gambar baru</label>
+                <input class="form-control" id="image_alt_text"
+                       name="image_alt_text" value="{{ old('image_alt_text') }}">
+            </div>
+
+            <hr>
             <div class="form-actions mt-4">
+                <a href="{{ route('admin.products.index') }}"
+                   class="btn btn-secondary">Batal</a>
                 <button type="submit" class="btn btn-primary">
-                    Save Images
+                    Simpan Perubahan
                 </button>
-        
-                <a
-                    href="{{ route('admin.products.edit', $product) }}"
-                    class="btn btn-secondary"
-                >
-                    Cancel
-                </a>
             </div>
         </form>
-        
-        <p class="mt-3">(**)<br>
-        - Existing images will be retained if no new images are uploaded.<br>
-        - Existing images will remain unless you choose to delete them.</p>
     </div>
 </div>
 
 <template id="specification-template">
     <tr class="specification-item">
         <td>
-            <input type="checkbox" value="">
+            <input
+                type="checkbox"
+                class="spec-input"
+                aria-label="Pilih spesifikasi untuk dihapus"
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_group" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_group"
+                maxlength="255"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_name" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_name"
+                maxlength="255"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input class="form-control" data-field="specification_value" required>
-            </div>
+            <input
+                class="form-control"
+                data-field="specification_value"
+                maxlength="2000"
+                required
+            >
         </td>
+
         <td>
-            <div class="form-group">
-                <input type="number" min="0" class="form-control" data-field="sort_order" value="0">
-            </div>
+            <input
+                type="number"
+                class="form-control"
+                data-field="sort_order"
+                min="0"
+                step="1"
+                value="0"
+            >
         </td>
+
         <td>
-            <button type="button" class="btn btn-outline-danger remove-specification">
+            <button
+                type="button"
+                class="btn btn-outline-danger remove-specification"
+                aria-label="Hapus spesifikasi"
+            >
                 <em class="ni ni-trash"></em>
             </button>
         </td>
@@ -527,15 +800,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const subCategory = document.getElementById('sub_category_id');
 
     function filterSubCategories() {
-        const categoryId = category.value;
+        const selectedCategory = category.value;
 
         Array.from(subCategory.options).forEach(function (option) {
-            if (!option.value) {
-                option.hidden = false;
-                return;
-            }
+            if (!option.value) return;
 
-            option.hidden = option.dataset.category !== categoryId;
+            option.hidden = option.dataset.category !== selectedCategory;
 
             if (option.hidden && option.selected) {
                 subCategory.value = '';
@@ -545,23 +815,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
     category.addEventListener('change', filterSubCategories);
     filterSubCategories();
-
+    
     const container = document.getElementById('specifications-container');
+    const tbody = container.querySelector('tbody');
     const template = document.getElementById('specification-template');
-    let nextIndex = {{ count($specificationRows) }};
+    
+    const existingIndexes = @json(array_map(
+        'intval',
+        array_keys($specificationRows)
+    ));
+    
+    let nextIndex = existingIndexes.length
+        ? Math.max(...existingIndexes) + 1
+        : 0;
 
-    document.getElementById('add-specification')
-        .addEventListener('click', function () {
-            const fragment = template.content.cloneNode(true);
-            const row = fragment.querySelector('.specification-item');
+    document.getElementById('add-specification').addEventListener('click', function () {
+        const fragment = template.content.cloneNode(true);
+        const row = fragment.querySelector('.specification-item');
 
-            row.querySelectorAll('[data-field]').forEach(function (input) {
-                input.name = `specifications[${nextIndex}][${input.dataset.field}]`;
-            });
-
-            container.children[0].children[0].nextElementSibling.appendChild(fragment);
-            nextIndex++;
+        row.querySelectorAll('[data-field]').forEach(function (input) {
+            input.name =
+                `specifications[${nextIndex}][${input.dataset.field}]`;
         });
+
+        tbody.appendChild(fragment);
+        nextIndex++;
+    });
 
     container.addEventListener('click', function (event) {
         const button = event.target.closest('.remove-specification');
@@ -588,13 +867,53 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    const addVariantButton = document.getElementById('add-product-variant');
+    const newVariantsContainer = document.getElementById('new-product-variants');
+    const newVariantTemplate = document.getElementById('new-product-variant-template');
+
+    let nextNewVariantIndex = 0;
+
+    addVariantButton.addEventListener('click', function () {
+        const fragment = newVariantTemplate.content.cloneNode(true);
+        const variantCard = fragment.querySelector('.new-product-variant');
+        const variantKey = `new_${nextNewVariantIndex++}`;
+
+        variantCard.querySelectorAll('[data-field]').forEach(function (input) {
+            input.name = `variants[${variantKey}][${input.dataset.field}]`;
+        });
+
+        variantCard.querySelectorAll('[data-attribute-select]').forEach(function (select) {
+            select.name = `variants[${variantKey}][attribute_value_ids][]`;
+
+            select.disabled = !select.value;
+
+            select.addEventListener('change', function () {
+                this.disabled = !this.value;
+            });
+        });
+
+        newVariantsContainer.appendChild(fragment);
+    });
+
+    newVariantsContainer.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('.remove-new-variant');
+
+        if (removeButton) {
+            removeButton.closest('.new-product-variant').remove();
+        }
+    });
+
     const selectAllCheckbox = document.getElementById('check-all');
     const deleteBtn = document.getElementById('btn-delete');
     
     function updateButtonStatus() {
-        const checkedBoxes = document.querySelectorAll('.spec-input:checked');
-        return checkedBoxes.length > 2 ? deleteBtn.disabled = false : deleteBtn.disabled = true
+        const checkedBoxes = document.querySelectorAll(
+            '.spec-input:checked'
+        );
+    
+        deleteBtn.disabled = checkedBoxes.length === 0;
     }
+    
     
     document.querySelector('#specifications-container table tbody').addEventListener('change', function(e) {
         if (e.target.classList.contains('spec-input')) {

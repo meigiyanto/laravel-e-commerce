@@ -45,6 +45,15 @@ class MidtransPaymentController extends Controller
         if ($payment->status === 'succeeded') {
             return redirect()->route('checkout.success', $order);
         }
+        
+        if ($order->status === 'canceled') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with(
+                    'error',
+                    'Pesanan ini sudah dibatalkan. Silakan buat pesanan baru.'
+                );
+        }
 
         try {
             /*
@@ -572,6 +581,47 @@ class MidtransPaymentController extends Controller
         }
 
         $payment->update($data);
+        
+        if (
+            in_array(
+                $paymentStatus,
+                ['failed', 'expired', 'canceled'],
+                true
+            )
+            && $order->status === 'pending'
+        ) {
+            // Transisi ini dan pemulihan stok harus berada
+            // dalam transaksi database yang sama.
+            $order->update([
+                'status' => 'canceled',
+            ]);
+        
+            $order->load('items');
+        
+            $stockService = app(
+                \App\Services\VariantInventoryService::class
+            );
+        
+            foreach ($order->items as $item) {
+                $product = \App\Models\Product::query()
+                    ->whereKey($item->product_id)
+                    ->lockForUpdate()
+                    ->first();
+        
+                if (! $product) {
+                    continue;
+                }
+        
+                $stockService->restoreForOrder(
+                    $product,
+                    $item->product_variant_id
+                        ? (int) $item->product_variant_id
+                        : null,
+                    (int) $item->quantity,
+                    $order
+                );
+            }
+        }
 
         if (
             $paymentStatus === 'succeeded'

@@ -7,7 +7,7 @@
     {{-- =========================================================
          HERO
     ========================================================== --}}
-    <section class="store-hero py-3 mb-3">
+    <section class="store-hero my-3">
         <div class="container">
             <div class="store-hero-content">
 
@@ -49,8 +49,8 @@
         </div>
     </section>
 
-        {{-- =========================================================
-         TRUST / SHOPPING BENEFITS
+    {{-- =========================================================
+        TRUST / SHOPPING BENEFITS
     ========================================================== --}}
     <section class="pb-5">
         <div class="container">

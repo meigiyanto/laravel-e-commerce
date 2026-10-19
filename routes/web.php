@@ -15,6 +15,10 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\ProductGalleryController;
+use App\Http\Controllers\Admin\AttributeController;
+use App\Http\Controllers\Admin\AttributeValueController;
+use App\Http\Controllers\OrderCancellationRequestController as CustomerOrderCancellationRequestController;
+use App\Http\Controllers\Admin\OrderCancellationRequestController as AdminOrderCancellationRequestController;
 
 /**
  * Store Front
@@ -33,12 +37,17 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
-
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
-Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.destroy');
+Route::post('/cart', [CartController::class, 'store'])
+    ->name('cart.store');
+
+Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.product.update');
+Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.product.destroy');
+Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
+Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
+
+Route::get('/cart/drawer', [CartController::class, 'drawer'])
+    ->name('cart.drawer');
 
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
@@ -48,10 +57,17 @@ Route::post('/payment/midtrans/notification', [MidtransPaymentController::class,
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /*
-|-----------------------------------------------------------| Authenticated User Routes
-|-----------------------------------------------------------*/
+|-----------------------------------------------------------| 
+| Authenticated User Routes
+|-----------------------------------------------------------
+*/
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Cancel Orders
+    Route::post('/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
+    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
+
     // Refund
     Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
 
@@ -85,7 +101,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Customer orders
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-
+    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    
     // Account profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -97,19 +114,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 /*
-|-----------------------------------------------------------| Admin and Staff Operational Routes
+|-----------------------------------------------------------
+| Admin and Staff Operational Routes
 |----------------------------------------------------------
-|
-| Admin and staff share the operational dashboard. User/account
-| administration remains restricted to administrators below.
+| Admin and staff share the operational dashboard. 
+| User/account administration remains restricted to 
+| administrators below.
+|----------------------------------------------------------
 */
 
 Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
+    // Attribute Product management
+    Route::resource('attributes', AttributeController::class)->except(['show']);
+    Route::post('attributes/{attribute}/values', [AttributeValueController::class, 'store'])->name('attributes.values.store');
+    Route::put('attributes/{attribute}/values/{attributeValue}', [AttributeValueController::class, 'update'])->name('attributes.values.update');
+    Route::delete('attributes/{attribute}/values/{attributeValue}', [AttributeValueController::class, 'destroy'])->name('attributes.values.destroy');
+    
     // Gallery management
     Route::get('/product-gallery', [ProductGalleryController::class,'index'])->name('product-gallery.index');
-    
     Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
     
     // Refund management
@@ -127,11 +151,13 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
+    
+    Route::get('/order-cancellation-requests', [AdminOrderCancellationRequestController::class, 'index'])->name('order-cancellation-requests.index');
+    Route::get('/order-cancellation-requests/{cancellationRequest}', [AdminOrderCancellationRequestController::class, 'show'])->name('order-cancellation-requests.show');
+    Route::post('/order-cancellation-requests/{cancellationRequest}/decision', [AdminOrderCancellationRequestController::class, 'decide'])->name('order-cancellation-requests.decide');
 
     // Catalog management
-    Route::resource('sub-categories', SubCategoryController::class)
-        ->parameters(['sub-categories' => 'subCategory'])
-        ->except(['show']);
+    Route::resource('sub-categories', SubCategoryController::class)->parameters(['sub-categories' => 'subCategory'])->except(['show']);
     Route::resource('categories', CategoryController::class)->except(['show']);
     Route::patch('/products/{product}/images', [ProductController::class, 'updateImages'])->name('products.images.update');
     Route::resource('products', ProductController::class)->except(['show']);

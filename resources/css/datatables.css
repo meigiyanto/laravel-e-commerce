@@ -151,3 +151,50 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+
+/* Tabel admin: keterbacaan dan scroll di perangkat kecil */
+.dt-container {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.dt-container .datatable-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.dt-container table {
+    margin-bottom: 0;
+}
+
+.dt-container th,
+.dt-container td {
+    vertical-align: middle;
+}
+
+.dt-container .dt-layout-row {
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+}
+
+.dt-container .dt-search input,
+.dt-container .dt-length select {
+    max-width: 100%;
+}
+
+@media (max-width: 575.98px) {
+    .dt-container .dt-layout-row {
+        gap: 0.75rem;
+    }
+
+    .dt-container .dt-info {
+        font-size: 0.8rem;
+    }
+
+    .dt-container .dt-paging {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+}

@@ -32,6 +32,15 @@ class CompareController extends Controller
             $ids[] = $product->id;
             $request->session()->put('compare', $ids);
         }
+        
+        if ($request->expectsJson()) {
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk ditambahkan ke compare product.',
+            ]);
+        }
+
 
         return back()->with('success', 'Produk ditambahkan ke compare.');
     }

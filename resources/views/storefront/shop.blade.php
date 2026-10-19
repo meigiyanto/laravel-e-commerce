@@ -70,9 +70,7 @@
                         product
                     </span>
                 @else
-                    <span class="small text-muted">
-                        Product not found
-                    </span>
+                    <span class="small text-muted">Product not found</span>
                 @endif
             </div>
         </div>
@@ -86,10 +84,21 @@
 <section class="pb-5">
     <div class="container">
         @if ($products->count())
-            <div class="row g-3 g-md-4">
+            {{-- <div class="row g-3 g-md-4">
                 @foreach ($products as $product)
                     <div class="col-6 col-md-4 col-lg-3">
-                        <x-store-product-card :product="$product"/>
+                        <x-store-product-card :product="$product" :show-view-toggle="true" />
+                    </div>
+                @endforeach
+            </div> --}}
+            
+            <div id="storeShopProducts" class="row g-3 g-md-4 store-shop-products is-grid">
+                @foreach ($products as $product)
+                    <div class="col-6 col-md-4 col-lg-3 store-shop-product-item">
+                        <x-store-product-card
+                            :product="$product"
+                            :show-description="true"
+                        />
                     </div>
                 @endforeach
             </div>
@@ -106,7 +115,7 @@
             <div class="shop-empty-state">
                 <div class="shop-empty-icon"><i class="bi bi-search"></i></div>
 
-                <h2 class="h5 fw-bold mb-2">Product not found<h2>
+                <h2 class="h5 fw-bold mb-2">Product not found</h2>
                 <p class="text-muted mb-4">No products match the selected filters.</p>
                 <a
                     href="{{ route('storefront.shop') }}"
@@ -120,4 +129,119 @@
     </div>
 </section>
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const productsContainer = document.querySelector('#storeShopProducts');
+    const viewButtons = document.querySelectorAll('[data-shop-view]');
+    
+    viewButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!productsContainer) {
+                return;
+            }
+    
+            const view = button.dataset.shopView;
+    
+            if (view !== 'grid' && view !== 'list') {
+                return;
+            }
+    
+            productsContainer.classList.toggle('is-grid', view === 'grid');
+            productsContainer.classList.toggle('is-list', view === 'list');
+    
+            viewButtons.forEach(function (item) {
+                const isActive = item.dataset.shopView === view;
+    
+                item.classList.toggle('is-active', isActive);
+                item.setAttribute('aria-pressed', String(isActive));
+            });
+        });
+    });
+    
+    const cards = document.querySelectorAll(
+        '.store-product-card'
+    );
+
+    function formatRupiah(value) {
+        return 'Rp ' + new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: 0
+        }).format(Number(value || 0));
+    }
+
+    cards.forEach(function (card) {
+        const form = card.querySelector('.js-product-cart-form');
+        const variantSelect = card.querySelector('.js-variant-select');
+        const priceElement = card.querySelector('.js-variant-price');
+        const stockElement = card.querySelector('.js-variant-stock');
+        const quantityInput = card.querySelector('.js-quantity-input');
+        const submitButton = card.querySelector('.js-add-to-cart');
+
+        if (!form || !priceElement || !stockElement ||
+            !quantityInput || !submitButton) {
+            return;
+        }
+
+        function updateVariant() {
+            const option = variantSelect?.selectedOptions[0];
+
+            const price = option
+                ? Number(option.dataset.price || 0)
+                : null;
+
+            const stock = option
+                ? Number(option.dataset.stock || 0)
+                : Number(quantityInput.max || 0);
+
+            if (price !== null) {
+                priceElement.textContent = formatRupiah(price);
+            }
+
+            quantityInput.max = Math.max(1, stock);
+
+            if (stock > 0) {
+                const currentQuantity = Number(quantityInput.value || 1);
+
+                quantityInput.value = Math.min(
+                    Math.max(1, currentQuantity),
+                    stock
+                );
+            } else {
+                quantityInput.value = 1;
+            }
+
+            quantityInput.disabled = stock < 1;
+            submitButton.disabled = stock < 1;
+
+            stockElement.classList.toggle('is-available', stock > 0);
+            stockElement.classList.toggle('is-empty', stock < 1);
+
+            stockElement.innerHTML = stock > 0
+                ? '<i class="bi bi-check-circle-fill" aria-hidden="true"></i>' +
+                  '<span>' + stock + ' unit tersedia</span>'
+                : '<i class="bi bi-x-circle-fill" aria-hidden="true"></i>' +
+                  '<span>Stok habis</span>';
+
+            submitButton.innerHTML = stock > 0
+                ? '<i class="bi bi-cart-plus" aria-hidden="true"></i><span>Tambah</span>'
+                : '<i class="bi bi-cart-x" aria-hidden="true"></i><span>Habis</span>';
+        }
+
+        variantSelect?.addEventListener('change', updateVariant);
+
+        quantityInput.addEventListener('change', function () {
+            const max = Number(quantityInput.max || 1);
+            const quantity = Number(quantityInput.value || 1);
+
+            quantityInput.value = Math.min(
+                Math.max(1, quantity),
+                Math.max(1, max)
+            );
+        });
+
+        updateVariant();
+    });
+});
+</script>
+@endpush
 @endsection

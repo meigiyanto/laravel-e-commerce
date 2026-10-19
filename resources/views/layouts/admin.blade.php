@@ -18,31 +18,48 @@
             @include('layouts.partials.dashboard.aside')
             <div class="nk-wrap">
                 @include('layouts.partials.dashboard.header')                           <div class="nk-content">
-                        <div class="container-fluid">
-                            <div class="nk-content-inner">
-                                <div class="nk-content-body">
+                <div class="container-fluid">
+                    <div class="nk-content-inner">
+                        <div class="nk-content-body">
+                            @if (session('success'))
+                                <div
+                                    class="alert alert-pro alert-success alert-dismissible"
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    <div class="alert-text">{{ session('success') }}</div>
+                            
+                                    <button
+                                        type="button"
+                                        class="close"
+                                        data-bs-dismiss="alert"
+                                        aria-label="Tutup notifikasi"
+                                    ></button>
+                                </div>
+                            @endif
+                            
+                            @if (session('error'))
+                                <div
+                                    class="alert alert-pro alert-danger alert-dismissible"
+                                    role="alert"
+                                >
+                                    <div class="alert-text">{{ session('error') }}</div>
+                            
+                                    <button
+                                        type="button"
+                                        class="close"
+                                        data-bs-dismiss="alert"
+                                        aria-label="Tutup notifikasi"
+                                    ></button>
+                                </div>
+                            @endif
 
-                                @if (session('success'))
-                                    <div class="alert alert-pro alert-success alert-dismissible">
-                                        <div class="alert-text">{{ session('success') }}</div>
-                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                @endif
-
-                                @if (session('error'))
-                                    <div class="alert alert-pro alert-danger alert-dismissible">
-                                        <div class="alert-text">{{ session('error') }}</div>
-                                        <button type="button" class="close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                @endif
-
-                                @yield('content')
-                            </div>
+                            @yield('content')
                         </div>
                     </div>
                 </div>
-                @include('layouts.partials.dashboard.footer')
             </div>
+            @include('layouts.partials.dashboard.footer')
         </div>
     </div>
     @stack('scripts')
