@@ -4,27 +4,17 @@
             @php
                 $product = $cartItem->product;
                 $quantity = (int) $cartItem->quantity;
-                $lineTotal = $product->price * $quantity;
+                $variant = $cartItem->variant ?? null;
+                $price = $variant?->price ?? $product->price;
+                $lineTotal = (float) $price * $quantity;
             @endphp
 
-            <article
-                class="store-mobile-cart-item"
-                data-mobile-cart-item
-                data-product-id="{{ $product->id }}"
-            >
+            <article class="store-mobile-cart-item" data-mobile-cart-item data-product-id="{{ $product->id }}">
 
                 {{-- IMAGE --}}
-                <a
-                    href="{{ route('storefront.product', $product->slug) }}"
-                    class="store-mobile-cart-image"
-                    aria-label="View {{ $product->name }}"
-                >
+                <a href="{{ route('storefront.product', $product->slug) }}" class="store-mobile-cart-image" aria-label="View {{ $product->name }}">
                     @if ($product->image_url)
-                        <img
-                            src="{{ $product->image_url }}"
-                            alt="{{ $product->name }}"
-                            loading="lazy"
-                        >
+                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy">
                     @else
                         <span>
                             <i class="bi bi-image"></i>
@@ -36,10 +26,7 @@
                 {{-- CONTENT --}}
                 <div class="store-mobile-cart-content">
 
-                    <a
-                        href="{{ route('storefront.product', $product->slug) }}"
-                        class="store-mobile-cart-name"
-                    >
+                    <a href="{{ route('storefront.product', $product->slug) }}" class="store-mobile-cart-name">
                         {{ $product->name }}
                     </a>
 
@@ -51,41 +38,16 @@
                     <div class="store-mobile-cart-meta">
                         {{-- QUANTITY --}}
                         <div class="store-mobile-cart-quantity">
-                            <form
-                                action="{{ route('cart.items.update', $cartItem->id) }}"
-                                method="POST"
-                                class="store-mobile-cart-quantity-form"
-                                data-product-id="{{ $product->id }}"
-                            >
+                            <form action="{{ route('cart.items.update', $cartItem->id) }}" method="POST" class="store-mobile-cart-quantity-form" data-product-id="{{ $product->id }}">
                                 @csrf
                                 @method('PATCH')
 
-                                <button
-                                    type="button"
-                                    class="store-mobile-cart-quantity-button"
-                                    data-mobile-cart-decrease
-                                    aria-label="Decrease {{ $product->name }}"
-                                >
+                                <button type="button" class="store-mobile-cart-quantity-button" data-mobile-cart-decrease aria-label="Decrease {{ $product->name }}">
                                     <i class="bi bi-dash"></i>
                                 </button>
 
-                                <input
-                                    type="number"
-                                    name="quantity"
-                                    value="{{ $quantity }}"
-                                    min="1"
-                                    max="{{ max(1, $product->stock) }}"
-                                    class="store-mobile-cart-quantity-input"
-                                    inputmode="numeric"
-                                    aria-label="Total {{ $product->name }}"
-                                >
-
-                                <button
-                                    type="button"
-                                    class="store-mobile-cart-quantity-button"
-                                    data-mobile-cart-increase
-                                    aria-label="Increase {{ $product->name }}"
-                                >
+                                <input type="number" name="quantity" value="{{ $quantity }}" min="1" max="{{ max(1, $product->stock) }}" class="store-mobile-cart-quantity-input" inputmode="numeric" aria-label="Total {{ $product->name }}">
+                                <button type="button" class="store-mobile-cart-quantity-button" data-mobile-cart-increase aria-label="Increase {{ $product->name }}"
                                     <i class="bi bi-plus"></i>
                                 </button>
                             </form>
@@ -112,27 +74,18 @@
 
     {{-- ACTIONS --}}
     <div class="store-mobile-cart-actions">
-        <a
-            href="{{ route('cart.index') }}"
-            class="store-mobile-cart-view-button"
-        >
+        <a href="{{ route('cart.index') }}" class="store-mobile-cart-view-button">
             <i class="bi bi-cart3"></i>
             View Cart
         </a>
 
         @auth
-            <a
-                href="{{ route('checkout.index') }}"
-                class="store-mobile-cart-checkout-button"
-            >
+            <a href="{{ route('checkout.index') }}" class="store-mobile-cart-checkout-button">
                 Checkout
                 <i class="bi bi-arrow-right"></i>
             </a>
         @else
-            <a
-                href="{{ route('login') }}"
-                class="store-mobile-cart-checkout-button"
-            >
+            <a href="{{ route('login') }}" class="store-mobile-cart-checkout-button">
                 Login untuk Checkout
                 <i class="bi bi-arrow-right"></i>
             </a>
@@ -155,10 +108,7 @@
             ke keranjang untuk melanjutkan.
         </p>
 
-        <a
-            href="{{ route('storefront.shop') }}"
-            class="store-mobile-cart-empty-button"
-        >
+        <a href="{{ route('storefront.shop') }}" class="store-mobile-cart-empty-button">
             <i class="bi bi-shop"></i>
             Mulai Belanja
         </a>

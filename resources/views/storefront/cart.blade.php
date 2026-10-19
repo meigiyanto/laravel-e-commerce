@@ -35,7 +35,6 @@
         <div class="store-section-header">
             <div>
                 <h1 class="store-section-title">Shopping Cart</h1>
-
                 <p class="store-section-subtitle">Check the products and order quantity before proceeding.</p>
             </div>
         </div>
@@ -98,11 +97,14 @@
                                 @foreach ($cart->items as $item)
                                     @php
                                         $product = $item->product;
-                                        $quantity = $item->quantity;
-                                        $variant = $item->variant;
-                                        $subtotal = $product->price * $quantity;
+                                        $quantity = (int) $item->quantity;
+                                        $variant = $item->variant
+                                            ?? $item->variant
+                                            ?? null;
+                                    
                                         $price = $variant?->price ?? $product->price;
-                                        
+                                        $subtotal = (float) $price * $quantity;
+
                                         $image = $product->image ?? 'placeholder.png';
                                         $imageUrl = null;
                                         if (filter_var($image, FILTER_VALIDATE_URL)) {
@@ -113,7 +115,7 @@
 
                                     @endphp
 
-                                    <article class="store-cart-item" data-product-id="{{ $product->id }}">
+                                    <article class="store-cart-item" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}">
                                         <div class="table table-responsive">
                                             <table class="table">
                                                 <thead>
@@ -165,8 +167,9 @@
                                                             @endif
                                                         </td>
                                                         <td>
-                                                            {{-- Price --}}                                                                                  <div class="small text-muted">Price</div>
-                                                             <strong>Rp {{ number_format($product->price, 0, ',', '.') }}</strong>
+                                                            {{-- Price --}}
+                                                            <div class="small text-muted">Price</div>
+                                                            <strong>Rp {{ number_format($price, 0, ',', '.') }}</strong>
                                                         </td>
                                                         <td>
                                                             {{-- Subtotal --}}
@@ -174,9 +177,9 @@
                                                                 <div class="small text-muted">Subtotal</div>
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
-                                                            {{-- Quantity --}}
                                                             
-                                                            <form action="{{ route('cart.items.update', $item->id) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                            {{-- Quantity --}}
+                                                            <form action="{{ auth()->check() ? route('cart.items.update', $item->id) : route('cart.product.update', $item->product_variant_id) }}" method="POST" class="quantity-form" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}">
                                                                 @csrf
                                                                 @method('PATCH')
 
@@ -187,16 +190,7 @@
                                                                         <i class="bi bi-dash"></i>
                                                                     </button>
 
-                                                                    <input
-                                                                        type="number"
-                                                                        id="quantity-{{ $product->id }}"
-                                                                        name="quantity"
-                                                                        value="{{ $quantity }}"
-                                                                        min="1"
-                                                                        max="{{ $product->stock }}"
-                                                                        class="store-quantity-input quantity-input"
-                                                                    >
-
+                                                                    <input type="number" id="quantity-{{ $product->id }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $product->stock }}" class="store-quantity-input quantity-input">
                                                                     <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
                                                                         <i class="bi bi-plus"></i>
                                                                     </button>

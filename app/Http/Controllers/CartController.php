@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\CartItem;
 use App\Services\CartService;
+use App\Models\ProductVariant;
+use Illuminate\Support\Collection;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -29,9 +31,7 @@ class CartController extends Controller
             $total = $this->cartService->total();
         } else {
             $guestCart = $this->cartService->getGuestCart();
-
             $productIds = array_keys($guestCart);
-
             $products = Product::with([
                 'category',
                 'subCategory',
@@ -39,27 +39,14 @@ class CartController extends Controller
                 ->whereIn('id', $productIds)
                 ->get();
 
-            $items = $products->map(function ($product) use ($guestCart) {
-                $quantity = (int) (
-                    $guestCart[(string) $product->id]
-                    ?? $guestCart[$product->id]
-                    ?? 0
-                );
-
-                return (object) [
-                    'id' => null,
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'product' => $product,
-                ];
-            });
-
+            $items = $this->buildGuestCartItems();
+            
             $cart = (object) [
                 'id' => null,
                 'user_id' => null,
                 'items' => $items,
             ];
-
+            
             $total = $this->cartService->total();
         }
 
@@ -81,7 +68,7 @@ class CartController extends Controller
                 auth()->id()
             );
 
-            $mobileCartItems = $cart->items;
+            $mobileCartItems = $this->buildGuestCartItems();
         } else {
             $guestCart = $this->cartService->getGuestCart();
 
@@ -115,9 +102,11 @@ class CartController extends Controller
                     return $item->quantity > 0;
                 });
         }
-
+        
         $mobileCartTotal = $mobileCartItems->sum(function ($item) {
-            return $item->product->price * $item->quantity;
+            $price = $item->variant?->price ?? $item->product->price;
+        
+            return (float) $price * $item->quantity;
         });
 
         return response()->json([
@@ -208,6 +197,29 @@ class CartController extends Controller
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
+        
+        if (! auth()->check()) {
+            try {
+                $this->cartService->update(
+                    $cartItem,
+                    (int) $validated['quantity']
+                );
+            } catch (\RuntimeException $e) {
+                throw ValidationException::withMessages([
+                    'quantity' => $e->getMessage(),
+                ]);
+            }
+        
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'cart_count' => $this->cartService->count(),
+                    'total' => $this->cartService->total(),
+                ]);
+            }
+        
+            return back()->with('success', 'Keranjang berhasil diperbarui.');
+        }
     
         $item = CartItem::query()
             ->whereKey($cartItem)
@@ -255,6 +267,20 @@ class CartController extends Controller
      */
     public function destroy(Request $request, int $cartItem)
     {
+        if (! auth()->check()) {
+            $this->cartService->remove($cartItem);
+        
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'cart_count' => $this->cartService->count(),
+                    'total' => $this->cartService->total(),
+                ]);
+            }
+        
+            return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
+        }
+        
         $item = CartItem::query()
             ->whereKey($cartItem)
             ->whereHas('cart', function ($query) {
@@ -274,4 +300,43 @@ class CartController extends Controller
     
         return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
     }
+    
+    private function buildGuestCartItems(): Collection
+    {
+        $guestCart = $this->cartService->getGuestCart();
+    
+        $variantIds = collect($guestCart)
+            ->pluck('product_variant_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    
+        $variants = ProductVariant::with([
+            'product.category',
+            'product.subCategory',
+            'inventory',
+            'attributeValues.attribute',
+        ])->whereIn('id', $variantIds)->get()->keyBy('id');
+    
+        return collect($guestCart)->map(function ($entry) use ($variants) {
+            $variant = $variants->get(
+                (int) ($entry['product_variant_id'] ?? 0)
+            );
+    
+            if (! $variant || ! $variant->product) {
+                return null;
+            }
+    
+            return (object) [
+                'id' => null,
+                'product_id' => $variant->product_id,
+                'product_variant_id' => $variant->id,
+                'quantity' => (int) $entry['quantity'],
+                'product' => $variant->product,
+                'variant' => $variant,
+            ];
+        })->filter()->values();
+    }
+
 }
