@@ -111,24 +111,25 @@ class OrderController extends Controller
                 Rule::in(self::STATUSES),
             ],
         ]);
-
+    
         $newStatus = $validated['status'];
-
-        /*
-         * Tidak ada perubahan status.
-         */
+    
         if ($order->status === $newStatus) {
             return back()->with(
                 'success',
                 'Status pesanan tidak berubah.'
             );
         }
-
+    
+        /*
+         * Konfirmasi pembatalan Stripe dilakukan sebelum transaksi
+         * database agar tidak menahan lock saat menunggu jaringan.
+         */
         $stripeCancellationConfirmed = false;
-        
+    
         if ($newStatus === 'canceled') {
             $payment = $order->payment()->first();
-        
+    
             if (
                 $payment
                 && $payment->provider === 'stripe'
@@ -144,29 +145,30 @@ class OrderController extends Controller
                         'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.'
                     );
                 }
-        
+    
                 try {
                     $paymentIntent = app(
                         \App\Services\StripePaymentService::class
                     )->cancel($payment->stripe_payment_intent_id);
-        
+    
                     if ($paymentIntent->status !== 'canceled') {
                         return back()->with(
                             'error',
-                            'Pesanan tidak dibatalkan karena pembayaran Stripe belum berstatus canceled.'
+                            'Pembayaran Stripe belum dapat dipastikan batal. Pesanan dan stok tidak diubah.'
                         );
                     }
-        
+    
                     $stripeCancellationConfirmed = true;
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning(
                         'Admin failed to cancel Stripe PaymentIntent.',
                         [
                             'order_id' => $order->id,
+                            'exception' => get_class($e),
                             'message' => $e->getMessage(),
                         ]
                     );
-        
+    
                     return back()->with(
                         'error',
                         'Pembatalan Stripe gagal. Status pesanan dan stok tidak diubah.'
@@ -174,70 +176,34 @@ class OrderController extends Controller
                 }
             }
         }
-
+    
         $result = DB::transaction(function () use (
             $order,
             $newStatus,
             $stripeCancellationConfirmed
         ) {
-            /*
-             * Lock dan baca status pesanan terbaru.
-             */
             $lockedOrder = Order::query()
                 ->lockForUpdate()
                 ->findOrFail($order->id);
-
-            /*
-             * Aturan transisi status pesanan.
-             */
+    
             $allowedTransitions = [
-                'pending' => [
-                    'processing',
-                    'canceled',
-                ],
-                'processing' => [
-                    'shipped',
-                    'canceled',
-                ],
-                'shipped' => [
-                    'completed',
-                ],
+                'pending' => ['processing', 'canceled'],
+                'processing' => ['shipped', 'canceled'],
+                'shipped' => ['completed'],
                 'completed' => [],
                 'canceled' => [],
             ];
-
-            /*
-             * Tolak perpindahan status yang tidak diizinkan.
-             */
-            if (! in_array($newStatus, $allowedTransitions[$lockedOrder->status] ?? [], true)) {
+    
+            if (! in_array(
+                $newStatus,
+                $allowedTransitions[$lockedOrder->status] ?? [],
+                true
+            )) {
                 return 'transition_blocked';
             }
-
-            /*
-             * Pesanan yang sudah dibatalkan tidak boleh
-             * diaktifkan kembali.
-             */
-            if ($lockedOrder->status === 'canceled'
-                && $newStatus !== 'canceled'
-            ) {
-                return 'reactivation_blocked';
-            }
-
-            /*
-             * Pesanan yang sudah dikirim atau selesai
-             * tidak boleh dibatalkan oleh admin.
-             */
-            if ($newStatus === 'canceled'
-                && in_array(
-                    $lockedOrder->status,
-                    ['shipped', 'completed'],
-                    true
-                )
-            ) {
-                return 'cancellation_blocked';
-            }
-
-            if ($newStatus === 'canceled'
+    
+            if (
+                $newStatus === 'canceled'
                 && in_array(
                     $lockedOrder->status,
                     ['pending', 'processing'],
@@ -247,33 +213,58 @@ class OrderController extends Controller
                 $payment = $lockedOrder->payment()
                     ->lockForUpdate()
                     ->first();
-            
+    
                 if ($payment) {
-                    $isOnlinePayment = in_array(
-                        $payment->provider,
-                        ['stripe', 'midtrans'],
-                        true
-                    );
-            
-                    // Pembayaran online harus benar-benar terminal dan belum
-                    // berhasil sebelum jalur pembatalan biasa boleh dilanjutkan.
-                    $isSafeTerminalStatus = in_array(
-                        $payment->status,
-                        ['failed', 'expired', 'canceled'],
-                        true
-                    );
-            
-                    if ($isOnlinePayment && ! $isSafeTerminalStatus) {
+                    if ($payment->provider === 'stripe') {
+                        $safeStatuses = [
+                            'failed',
+                            'expired',
+                            'canceled',
+                        ];
+    
+                        if (
+                            ! in_array(
+                                $payment->status,
+                                $safeStatuses,
+                                true
+                            )
+                        ) {
+                            if (! $stripeCancellationConfirmed) {
+                                return 'payment_not_safe';
+                            }
+    
+                            $payment->update([
+                                'status' => 'canceled',
+                                'transaction_status' => 'canceled',
+                                'transaction_id' => $payment->stripe_payment_intent_id,
+                                'reference_id' => $payment->stripe_payment_intent_id,
+                                'metadata' => array_merge(
+                                    $payment->metadata ?? [],
+                                    [
+                                        'admin_cancellation_confirmed' => true,
+                                    ]
+                                ),
+                            ]);
+                        }
+                    } elseif (
+                        $payment->provider === 'midtrans'
+                        && ! in_array(
+                            $payment->status,
+                            ['failed', 'expired', 'canceled'],
+                            true
+                        )
+                    ) {
                         return 'payment_not_safe';
                     }
                 }
             }
-
+    
             /*
-             * Kembalikan stok hanya ketika status berubah
-             * menjadi canceled dari status yang diizinkan.
+             * Stok dipulihkan hanya saat pesanan benar-benar
+             * beralih dari pending/processing ke canceled.
              */
-            if ($newStatus === 'canceled'
+            if (
+                $newStatus === 'canceled'
                 && in_array(
                     $lockedOrder->status,
                     ['pending', 'processing'],
@@ -285,31 +276,31 @@ class OrderController extends Controller
                     ->orderBy('product_variant_id')
                     ->orderBy('id')
                     ->get();
-            
+    
                 $productIds = $items
                     ->pluck('product_id')
                     ->unique()
                     ->sort()
                     ->values();
-            
+    
                 $products = Product::query()
                     ->whereIn('id', $productIds)
                     ->orderBy('id')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
-            
+    
                 $stockService = app(VariantInventoryService::class);
-            
+    
                 foreach ($items as $item) {
                     $product = $products->get($item->product_id);
-            
+    
                     if (! $product) {
                         throw new \RuntimeException(
                             "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
                         );
                     }
-            
+    
                     $stockService->restoreForOrder(
                         $product,
                         $item->product_variant_id
@@ -320,85 +311,28 @@ class OrderController extends Controller
                     );
                 }
             }
-
+    
             $lockedOrder->update([
                 'status' => $newStatus,
             ]);
-
+    
             return 'updated';
         });
-
+    
         if ($result === 'payment_not_safe') {
-            if ($payment) {
-                if ($payment->provider === 'stripe') {
-                    if (
-                        ! in_array($payment->status, [
-                            'failed',
-                            'expired',
-                            'canceled',
-                        ], true)
-                    ) {
-                        if (! $stripeCancellationConfirmed) {
-                            return 'payment_not_safe';
-                        }
-            
-                        // Stripe sudah mengonfirmasi pembatalan.
-                        $payment->update([
-                            'status' => 'canceled',
-                            'transaction_status' => 'canceled',
-                            'transaction_id' => $payment->stripe_payment_intent_id,
-                            'reference_id' => $payment->stripe_payment_intent_id,
-                            'metadata' => array_merge(
-                                $payment->metadata ?? [],
-                                [
-                                    'admin_cancellation_confirmed' => true,
-                                ]
-                            ),
-                        ]);
-                    }
-                } elseif ($payment->provider === 'midtrans') {
-                    if (! in_array($payment->status, [
-                        'failed',
-                        'expired',
-                        'canceled',
-                    ], true)) {
-                        return 'payment_not_safe';
-                    }
-                }
-            }
-        }
-
-        \Illuminate\Support\Facades\Log::error(
-            'Admin Stripe cancellation failed.',
-            [
-                'order_id' => $order->id,
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-            ]
-        );
-
-        if ($result === 'reactivation_blocked') {
             return back()->with(
                 'error',
-                'Pesanan yang sudah dibatalkan tidak dapat diaktifkan kembali.'
+                'Pembatalan ditolak: pembayaran online belum dipastikan terminal.'
             );
         }
-
-        if ($result === 'cancellation_blocked') {
-            return back()->with(
-                'error',
-                'Pesanan yang sudah dikirim atau selesai tidak dapat dibatalkan.'
-            );
-        }
-
-
+    
         if ($result === 'transition_blocked') {
             return back()->with(
                 'error',
                 'Perubahan status pesanan tidak diizinkan.'
             );
         }
-
+    
         return redirect()
             ->route('admin.orders.show', $order)
             ->with(
