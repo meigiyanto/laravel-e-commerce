@@ -242,24 +242,48 @@ document.addEventListener('DOMContentLoaded', function() {
     updateScrollUI();
 });
 
-window.syncCartPage = function(data, itemKey) {
-    const rows = document.querySelectorAll('.store-cart-item');
-    const row = Array.from(rows).find(element => element.dataset.cartItemKey === String(itemKey));
-    if (row) {
-        const input = row.querySelector('.quantity-input');
-        const subtotal = row.querySelector('.cart-item-subtotal');
-        if (input) input.value = data.quantity;
-        if (subtotal) {
-            subtotal.textContent = formatRupiah(data.subtotal);
+window.formatCartRupiah = function (value) {
+    return 'Rp ' + Number(value ?? 0).toLocaleString('id-ID');
+};
+
+window.syncCartPage = function (data, itemKey) {
+    const key = String(data.cart_item_key ?? itemKey ?? '');
+
+    if (key) {
+        const row = Array.from(
+            document.querySelectorAll('.store-cart-item')
+        ).find(element => element.dataset.cartItemKey === key);
+
+        if (row) {
+            const input = row.querySelector('.quantity-input');
+            const subtotal = row.querySelector('.cart-item-subtotal');
+
+            if (input && data.quantity != null) {
+                input.value = data.quantity;
+            }
+
+            if (subtotal && data.subtotal != null) {
+                subtotal.textContent = window.formatCartRupiah(data.subtotal);
+            }
         }
     }
-    document.querySelectorAll('.cart-total, .cart-grand-total').forEach(element => {
-        element.textContent = formatRupiah(data.total);
-    });
-    document.querySelectorAll('.cart-item-count').forEach(element => {
-        element.textContent = data.item_count;
-    });
-    if (typeof window.updateCartBadge === 'function') {
+
+    if (data.total != null) {
+        document.querySelectorAll('.cart-total, .cart-grand-total')
+            .forEach(element => {
+                element.textContent = window.formatCartRupiah(data.total);
+            });
+    }
+
+    if (data.item_count != null) {
+        document.querySelectorAll('.cart-item-count')
+            .forEach(element => {
+                element.textContent = data.item_count;
+            });
+    }
+
+    if (typeof window.updateCartBadge === 'function'
+        && data.cart_count != null) {
         window.updateCartBadge(data.cart_count);
     }
 };
@@ -673,24 +697,31 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCartItem(form, value);
         });
     });
+    
     async function updateCartItem(form, quantity) {
         const input = form.querySelector('.quantity-input');
-        const minusButton = form.querySelector('.quantity-decrease');
-        const plusButton = form.querySelector('.quantity-increase');
-        const productId = form.dataset.productId;
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (!csrfToken || !productId) {
+        const buttons = form.querySelectorAll('button');
+        const csrfToken = document.querySelector(
+            'meta[name="csrf-token"]'
+        )?.getAttribute('content');
+    
+        if (!csrfToken || !form.dataset.cartItemKey) {
+            window.showStoreNotification(
+                'Identitas item keranjang tidak tersedia.',
+                'danger'
+            );
             return;
         }
+    
         input.disabled = true;
-        minusButton.disabled = true;
-        plusButton.disabled = true;
+        buttons.forEach(button => button.disabled = true);
         form.classList.add('opacity-75');
+    
         try {
             const response = await fetch(form.action, {
                 method: 'POST',
                 headers: {
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': csrfToken,
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -698,64 +729,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: new URLSearchParams({
                     _token: csrfToken,
                     _method: 'PATCH',
-                    quantity: quantity,
+                    quantity: String(quantity),
                 }),
+                credentials: 'same-origin',
             });
+    
             const data = await response.json();
+    
             if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Gagal memperbarui keranjang.');
+                throw new Error(
+                    data.message || 'Gagal memperbarui keranjang.'
+                );
             }
-            input.value = data.quantity;
-            /*
-             * Update subtotal produk.
-             *
-             * Subtotal berada di dalam .store-cart-item
-             * yang mempunyai data-product-id.
-             */
-            const cartItem = document.querySelector(`.store-cart-item[data-product-id="${productId}"]`);
-            if (cartItem) {
-                const subtotal = cartItem.querySelector('.cart-item-subtotal');
-                if (subtotal) {
-                    subtotal.textContent = formatRupiah(data.subtotal);
-                }
+    
+            window.syncCartPage(data, form.dataset.cartItemKey);
+    
+            if (typeof window.refreshCartDrawer === 'function') {
+                await window.refreshCartDrawer();
             }
-            /*
-             * Update semua total keranjang.
-             */
-            document.querySelectorAll('.cart-total, .cart-grand-total').forEach(function(element) {
-                element.textContent = formatRupiah(data.total);
-            });
-            /*
-             * Update jumlah item.
-             */
-            document.querySelectorAll('.cart-item-count').forEach(function(element) {
-                element.textContent = data.item_count;
-            });
-            /*
-             * Update cart badge pada navbar.
-             */
-            if (typeof window.updateCartBadge === 'function') {
-                window.updateCartBadge(data.cart_count);
-            }
-            /*
-             * Tampilkan notifikasi.
-             */
-            if (typeof window.showStoreNotification === 'function') {
-                window.showStoreNotification(data.message, 'success');
-            }
+    
+            window.showStoreNotification(
+                data.message || 'Jumlah produk berhasil diperbarui.',
+                'success'
+            );
         } catch (error) {
-            /*
-             * Jika AJAX gagal, kembalikan
-             * input ke kondisi server sebelumnya.
-             */
+            window.showStoreNotification(
+                error.message || 'Gagal memperbarui keranjang.',
+                'danger'
+            );
+    
+            // Server adalah sumber kebenaran; pulihkan input yang tampil.
             window.location.reload();
-            return;
         } finally {
             input.disabled = false;
+            buttons.forEach(button => button.disabled = false);
             form.classList.remove('opacity-75');
             updateButtons(form);
         }
     }
+    
     window.refreshCartDrawer = async function() {
         const content = document.getElementById('storeMobileCartContent');
         if (!content) {
@@ -794,9 +806,82 @@ document.addEventListener('DOMContentLoaded', function() {
         minusButton.disabled = value <= min;
         plusButton.disabled = value >= max;
     }
+});
 
-    function formatRupiah(value) {
-        return 'Rp ' + Number(value).toLocaleString('id-ID');
+document.addEventListener('submit', async function (event) {
+    const form = event.target.closest(
+        '.store-cart-remove-form, .store-mobile-cart-remove-form'
+    );
+
+    if (!form) return;
+
+    event.preventDefault();
+
+    const button = form.querySelector('button[type="submit"]');
+    const csrfToken = document.querySelector(
+        'meta[name="csrf-token"]'
+    )?.getAttribute('content');
+
+    if (!button || !csrfToken) return;
+
+    button.disabled = true;
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: new FormData(form),
+            credentials: 'same-origin',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.message || 'Gagal menghapus item keranjang.'
+            );
+        }
+
+        const row = form.closest(
+            '.store-cart-item, .store-mobile-cart-item'
+        );
+
+        row?.remove();
+
+        window.syncCartPage(data);
+
+        const pageRows = document.querySelectorAll('.store-cart-item');
+
+        if (document.querySelector('.store-cart-items')
+            && pageRows.length === 0) {
+            // Agar empty state dan tombol checkout ikut diperbarui.
+            window.location.reload();
+            return;
+        }
+
+        if (typeof window.refreshCartDrawer === 'function') {
+            await window.refreshCartDrawer();
+        }
+
+        window.showStoreNotification(
+            data.message || 'Produk berhasil dihapus dari keranjang.',
+            'success'
+        );
+    } catch (error) {
+        window.showStoreNotification(
+            error.message || 'Gagal menghapus item keranjang.',
+            'danger'
+        );
+
+        if (typeof window.refreshCartDrawer === 'function') {
+            await window.refreshCartDrawer();
+        }
+    } finally {
+        button.disabled = false;
     }
 });
 

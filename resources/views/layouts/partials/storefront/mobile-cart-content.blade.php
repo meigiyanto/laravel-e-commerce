@@ -11,8 +11,8 @@
                 $availableStock = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $product->stock);
 
             @endphp
-
-            <article class="store-mobile-cart-item" data-mobile-cart-item data-product-id="{{ $product->id }}">
+            
+            <article class="store-mobile-cart-item" data-cart-item-key="{{ auth()->check() ? $cartItem->id : $cartItem->product_variant_id }}">
                 {{-- IMAGE --}}
                 <a href="{{ route('storefront.product', $product->slug) }}" class="store-mobile-cart-image" aria-label="View {{ $product->name }}">
                     @if ($product->image_url)
@@ -57,7 +57,7 @@
                                 method="POST"
                                 class="store-mobile-cart-quantity-form"
                                 data-product-id="{{ $product->id }}"
-                                data-variant-id="{{ $cartItem->product_variant_id }}"
+                                data-variant-id="{{ $cartItem->product_variant_id }}" data-cart-item-key="{{ auth()->check() ? $cartItem->id : $cartItem->product_variant_id }}"
                             >
                                 @csrf
                                 @method('PATCH')
@@ -109,6 +109,7 @@
                     class="store-mobile-cart-remove-form"
                     data-product-id="{{ $product->id }}"
                     data-variant-id="{{ $cartItem->product_variant_id }}"
+                    data-cart-item-key="{{ auth()->check() ? $cartItem->id : $cartItem->product_variant_id }}"
                 >
                     @csrf
                     @method('DELETE')

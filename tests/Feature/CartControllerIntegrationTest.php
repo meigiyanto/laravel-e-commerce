@@ -386,4 +386,62 @@ class CartControllerIntegrationTest extends TestCase
             'quantity' => 2,
         ]);
     }
+    
+    public function test_guest_cart_page_and_drawer_render_stable_variant_keys(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Stable Key Shirt',
+            'stock' => 10,
+        ]);
+    
+        $small = $this->createVariant(
+            $product,
+            'Stable Small',
+            '12000.00',
+            10,
+            true,
+        );
+    
+        $large = $this->createVariant(
+            $product,
+            'Stable Large',
+            '18000.00',
+            10,
+        );
+    
+        $this->withSession(['cart' => [
+            'variant_'.$small->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $small->id,
+                'quantity' => 1,
+            ],
+            'variant_'.$large->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $large->id,
+                'quantity' => 2,
+            ],
+        ]]);
+    
+        $page = $this->get(route('cart.index'));
+    
+        $page->assertOk()
+            ->assertSee('data-cart-item-key="'.$small->id.'"', false)
+            ->assertSee('data-cart-item-key="'.$large->id.'"', false);
+    
+        $drawer = $this->getJson(route('cart.drawer'));
+    
+        $drawer->assertOk();
+    
+        $html = $drawer->json('html');
+    
+        $this->assertStringContainsString(
+            'data-cart-item-key="'.$small->id.'"',
+            $html,
+        );
+    
+        $this->assertStringContainsString(
+            'data-cart-item-key="'.$large->id.'"',
+            $html,
+        );
+    }
 }

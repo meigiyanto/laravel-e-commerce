@@ -118,7 +118,7 @@
 
                                     @endphp
 
-                                    <article class="store-cart-item" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}" data-product-id="{{ $product->id }}">
+                                    <article class="store-cart-item" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}" data-product-id="{{ $product->id }}">
                                         <div class="table table-responsive">
                                             <table class="table">
                                                 <thead>
@@ -181,7 +181,8 @@
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
                                                             {{-- Quantity --}}
-                                                            <form action="{{ auth()->check() ? route('cart.items.update', $item->id) : route('cart.product.update', $item->product_variant_id) }}" method="POST" class="quantity-form" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}">
+                                                            <form action="{{ auth()->check() ? route('cart.items.update', $item->id) : route('cart.product.update', $item->product_variant_id) }}" method="POST" class="quantity-form" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}">
+                            
                                                                 @csrf
                                                                 @method('PATCH')
 
@@ -204,7 +205,7 @@
                                                         </td>
                                                         <td>
                                                             {{-- Remove --}}
-                                                            <form action="{{ auth()->check() ? route('cart.items.destroy', $item->id) : route('cart.product.destroy', $item->product_variant_id) }}" method="POST" class="store-cart-remove-form">
+                                                            <form action="{{ auth()->check() ? route('cart.items.destroy', $item->id) : route('cart.product.destroy', $item->product_variant_id) }}" method="POST" class="store-cart-remove-form" data-cart-item-key="{{ auth()->check() ? $item->id : $item->product_variant_id }}">
                                                                 @csrf
                                                                 @method('DELETE')
                                                             

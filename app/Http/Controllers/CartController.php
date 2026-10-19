@@ -57,15 +57,13 @@ class CartController extends Controller
             $cart = $this->cartService->getUserCartWithItems(
                 auth()->id()
             );
-    
             $mobileCartItems = $cart->items;
         } else {
             $mobileCartItems = $this->buildGuestCartItems();
         }
     
         $mobileCartTotal = $mobileCartItems->sum(function ($item) {
-            $price = $item->variant?->price
-                ?? $item->product->price;
+            $price = $item->variant?->price ?? $item->product->price;
     
             return (float) $price * (int) $item->quantity;
         });
@@ -171,17 +169,51 @@ class CartController extends Controller
                 ]);
             }
         
+            // Cari varian aktual setelah update, termasuk format URL lama
+            // yang menggunakan product ID jika hanya ada satu varian item.
+            $guestCart = $this->cartService->getGuestCart();
+            $entry = $guestCart['variant_'.$cartItem] ?? null;
+        
+            if (! $entry) {
+                $matches = collect($guestCart)->filter(
+                    fn ($value) => (int) ($value['product_id'] ?? 0) === $cartItem
+                );
+        
+                $entry = $matches->count() === 1
+                    ? $matches->first()
+                    : null;
+            }
+        
             if ($request->expectsJson()) {
+                if (! $entry) {
+                    throw ValidationException::withMessages([
+                        'quantity' => 'Item keranjang tidak ditemukan.',
+                    ]);
+                }
+        
+                $variant = ProductVariant::with('product')
+                    ->findOrFail((int) $entry['product_variant_id']);
+        
+                $quantity = (int) $entry['quantity'];
+                $price = (float) ($variant->price ?? $variant->product->price);
+                $count = $this->cartService->count();
+        
                 return response()->json([
                     'success' => true,
-                    'cart_count' => $this->cartService->count(),
+                    'message' => 'Jumlah produk berhasil diperbarui.',
+                    'cart_item_key' => (string) $variant->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => $quantity,
+                    'subtotal' => $price * $quantity,
                     'total' => $this->cartService->total(),
+                    'cart_count' => $count,
+                    'item_count' => $count,
                 ]);
             }
         
             return back()->with('success', 'Keranjang berhasil diperbarui.');
         }
-    
+        
         $item = CartItem::query()
             ->whereKey($cartItem)
             ->whereHas('cart', function ($query) {
@@ -189,37 +221,34 @@ class CartController extends Controller
             })
             ->with(['product', 'variant.inventory'])
             ->firstOrFail();
-    
+        
         $inventory = $item->variant?->inventory;
-        $available = $inventory ? (int) $inventory->quantity - (int) $inventory->reserved_quantity : (int) $item->product->stock;
-    
-        if ($validated['quantity'] > $available) {
+        $available = $inventory ? max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity) : max(0, (int) $item->product->stock);
+        
+        if ((int) $validated['quantity'] > $available) {
             throw ValidationException::withMessages([
                 'quantity' => 'Jumlah melebihi stok yang tersedia.',
             ]);
         }
-    
-        $item->update(['quantity' => $validated['quantity']]);
-    
-        $total = $this->cartService->total();
-        $cartCount = $this->cartService->count();
+        
+        $item->update(['quantity' => (int) $validated['quantity']]);
+        $item->refresh();
+        
+        $count = $this->cartService->count();
+        $price = (float) ($item->variant?->price ?? $item->product->price);
         
         if ($request->expectsJson()) {
-            $variant = ProductVariant::with(['inventory', 'product'])
-                ->findOrFail($cartItem);
-        
-            $quantity = (int) $validated['quantity'];
-            $price = (float) ($variant->price ?? $variant->product->price);
-        
             return response()->json([
                 'success' => true,
                 'message' => 'Jumlah produk berhasil diperbarui.',
-                'variant_id' => $variant->id,
-                'quantity' => $quantity,
-                'subtotal' => $price * $quantity,
+                'cart_item_key' => (string) $item->id,
+                'cart_item_id' => $item->id,
+                'variant_id' => $item->product_variant_id,
+                'quantity' => (int) $item->quantity,
+                'subtotal' => $price * (int) $item->quantity,
                 'total' => $this->cartService->total(),
-                'cart_count' => $this->cartService->count(),
-                'item_count' => $this->cartService->count(),
+                'cart_count' => $count,
+                'item_count' => $count,
             ]);
         }
     
@@ -233,11 +262,15 @@ class CartController extends Controller
     {
         if (! auth()->check()) {
             $this->cartService->remove($cartItem);
-        
+            
             if ($request->expectsJson()) {
+                $count = $this->cartService->count();
+            
                 return response()->json([
                     'success' => true,
-                    'cart_count' => $this->cartService->count(),
+                    'message' => 'Produk berhasil dihapus dari keranjang.',
+                    'cart_count' => $count,
+                    'item_count' => $count,
                     'total' => $this->cartService->total(),
                 ]);
             }
@@ -255,10 +288,14 @@ class CartController extends Controller
         $item->delete();
     
         if ($request->expectsJson()) {
+            $count = $this->cartService->count();
+        
             return response()->json([
                 'success' => true,
                 'message' => 'Produk berhasil dihapus dari keranjang.',
-                'cart_count' => $this->cartService->count(),
+                'cart_count' => $count,
+                'item_count' => $count,
+                'total' => $this->cartService->total(),
             ]);
         }
     
