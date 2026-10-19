@@ -51,7 +51,7 @@
     <div class="container">
 
         <div class="row g-4">
-            <div class="col-4">
+            <div class="col-lg-4">
                 <div class="store-profile-sidebar">
                     <div class="store-profile-sidebar-item">
                         <div class="store-profile-sidebar-icon">
@@ -135,7 +135,7 @@
             {{-- =================================================
                 PROFILE
             ================================================= --}}
-            <div class="col-8">
+            <div class="col-lg-8">
                 <div class="store-account-card mb-3">
 
                     <div class="store-account-card-icon">

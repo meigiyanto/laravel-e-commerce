@@ -24,7 +24,8 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" href="#tab_avatar">
-                            <em class="icon ni ni-user-circle-fill"></em><span>Avatar</span>
+                            <em class="icon ni ni-user-circle-fill"></em>
+                            <span>Avatar</span>
                         </a>
                     </li>
                     <li class="nav-item">

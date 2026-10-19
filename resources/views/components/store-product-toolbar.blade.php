@@ -2,6 +2,7 @@
     'categories' => collect(),
     'categoryContext' => null,
     'action' => null,
+    'showViewToggle' => true,
 ])
 
 @php
@@ -34,7 +35,7 @@
 
             <div class="row g-3">
                 {{-- Search --}}
-                <div class="col-12 col-md-6 col-lg-2">
+                <div class="col-12 col-md-6 col-lg-4">
                     <label for="store-filter-search" class="form-label" >Search Product</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white">
@@ -45,7 +46,7 @@
                 </div>
 
                 {{-- Category --}}
-                <div class="col-12 col-md-6 col-lg-3">
+                <div class="col-12 col-md-6 col-lg-2">
                     <label for="store-filter-category" class="form-label">Category</label>
                     @if ($isCategoryContext)
                         <div class="store-filter-context">
@@ -64,9 +65,8 @@
                     @endif
                 </div>
 
-
                 {{-- Subcategory --}}
-                <div class="col-12 col-md-6 col-lg-3">
+                <div class="col-12 col-md-6 col-lg-2">
                     <label for="store-filter-subcategory" class="form-label">Sub Category</label>
                     <select id="store-filter-subcategory" name="subcategory" class="form-select" data-filter-subcategory @disabled(! $selectedCategorySlug)>
                         <option value="">{{ $selectedCategorySlug ? 'All Subcategory' : 'Choose category first' }}</option>
@@ -85,7 +85,6 @@
                     </select>
                 </div>
 
-
                 {{-- Sorting --}}
                 <div class="col-12 col-md-6 col-lg-2">
                     <label for="store-filter-sort" class="form-label">Sorting</label>
@@ -98,7 +97,6 @@
                         <option value="name_desc" @selected($selectedSort === 'name_desc')>Name Z - A</option>
                     </select>
                 </div>
-
 
                 {{-- Actions --}}
                 <div class="col-12 col-md-6 col-lg-2">
@@ -118,100 +116,132 @@
             </div>
         </form>
 
-
-        {{-- Active filters --}}
-        @if($hasActiveFilters)
-            <div class="store-active-filters">
-                <span class="store-active-filters-label">Active Filter:</span>
-
-                {{-- Search --}}
-                @if ($selectedSearch)
-                    <span class="store-filter-badge">
-                        <i class="bi bi-search"></i>
-                        {{ $selectedSearch }}
-                    </span>
-
-                @endif
-
-
-                {{-- Category --}}
-                @if ($selectedCategorySlug)
-                    @php
-                        $activeCategory = $categoryContext;
-                        if (! $activeCategory) {
-                            $activeCategory = $categories->firstWhere('slug', $selectedCategorySlug);
-                        }
-                    @endphp
-
-                    @if ($activeCategory)
-                        <span class="store-filter-badge">
-                            <i class="bi bi-grid"></i>
-                            {{ $activeCategory->name }}
-                        </span>
-                    @endif
-                @endif
-
-                {{-- Subcategory --}}
-                @if ($selectedSubCategorySlug)
-
-                    @php
-                        $activeSubCategory = null;
-
-                        if ($categoryContext) {
-                            $activeSubCategory = $categoryContext
-                                ->subCategories
-                                ->firstWhere(
-                                    'slug',
-                                    $selectedSubCategorySlug
-                                );
-                        } else {
-                            foreach ($categories as $filterCategory) {
-                                $match = $filterCategory
-                                    ->subCategories
-                                    ->firstWhere(
-                                        'slug',
-                                        $selectedSubCategorySlug
-                                    );
-
-                                if ($match) {
-                                    $activeSubCategory = $match;
-                                    break;
+        <div class="row">
+            <div class="col-md-6">
+                {{-- Active filters --}}
+                @if($hasActiveFilters)
+                    <div class="store-active-filters">
+                        <span class="store-active-filters-label">Active Filter:</span>
+        
+                        {{-- Search --}}
+                        @if ($selectedSearch)
+                            <span class="store-filter-badge">
+                                <i class="bi bi-search"></i>
+                                {{ $selectedSearch }}
+                            </span>
+        
+                        @endif
+        
+                        {{-- Category --}}
+                        @if ($selectedCategorySlug)
+                            @php
+                                $activeCategory = $categoryContext;
+                                if (! $activeCategory) {
+                                    $activeCategory = $categories->firstWhere('slug', $selectedCategorySlug);
                                 }
-                            }
-                        }
-                    @endphp
-
-                    @if ($activeSubCategory)
-                        <span class="store-filter-badge">
-                            <i class="bi bi-diagram-3"></i>
-                            {{ $activeSubCategory->name }}
-                        </span>
-                    @endif
+                            @endphp
+        
+                            @if ($activeCategory)
+                                <span class="store-filter-badge">
+                                    <i class="bi bi-grid"></i>
+                                    {{ $activeCategory->name }}
+                                </span>
+                            @endif
+                        @endif
+        
+                        {{-- Subcategory --}}
+                        @if ($selectedSubCategorySlug)
+        
+                            @php
+                                $activeSubCategory = null;
+        
+                                if ($categoryContext) {
+                                    $activeSubCategory = $categoryContext
+                                        ->subCategories
+                                        ->firstWhere(
+                                            'slug',
+                                            $selectedSubCategorySlug
+                                        );
+                                } else {
+                                    foreach ($categories as $filterCategory) {
+                                        $match = $filterCategory
+                                            ->subCategories
+                                            ->firstWhere(
+                                                'slug',
+                                                $selectedSubCategorySlug
+                                            );
+        
+                                        if ($match) {
+                                            $activeSubCategory = $match;
+                                            break;
+                                        }
+                                    }
+                                }
+                            @endphp
+        
+                            @if ($activeSubCategory)
+                                <span class="store-filter-badge">
+                                    <i class="bi bi-diagram-3"></i>
+                                    {{ $activeSubCategory->name }}
+                                </span>
+                            @endif
+                        @endif
+        
+                        {{-- Sorting --}}
+                        @php
+                            $sortLabels = [
+                                'oldest' => 'Terlama',
+                                'price_low' => 'Harga Terendah',
+                                'price_high' => 'Harga Tertinggi',
+                                'name_asc' => 'Nama A - Z',
+                                'name_desc' => 'Nama Z - A',
+                            ];
+                        @endphp
+        
+                        @if ($selectedSort)
+                            <span class="store-filter-badge">
+                                <i class="bi bi-sort-down"></i>
+                                {{ $sortLabels[$selectedSort] ?? 'Terbaru' }}
+                            </span>
+                        @endif
+        
+                        <a href="{{ $isCategoryContext ? route('storefront.category', $categoryContext->slug) : route('storefront.shop') }}" class="store-filter-reset">
+                            <i class="bi bi-x-lg"></i>
+                            Reset
+                        </a>
+                    </div>
                 @endif
-
-                {{-- Sorting --}}
-                @php
-                    $sortLabels = [
-                        'oldest' => 'Terlama',
-                        'price_low' => 'Harga Terendah',
-                        'price_high' => 'Harga Tertinggi',
-                        'name_asc' => 'Nama A - Z',
-                        'name_desc' => 'Nama Z - A',
-                    ];
-                @endphp
-
-                @if ($selectedSort)
-                    <span class="store-filter-badge">
-                        <i class="bi bi-sort-down"></i>
-                        {{ $sortLabels[$selectedSort] ?? 'Terbaru' }}
-                    </span>
-                @endif
-
-                <a href="{{ $isCategoryContext ? route('storefront.category', $categoryContext->slug) : route('storefront.shop') }}" class="store-filter-reset">
-                    <i class="bi bi-x-lg"></i>
-                    Reset
-                </a>
             </div>
-        @endif
+            <div class="col-md-6">
+                @if ($showViewToggle)
+                    <div class="store-view-toggle" role="group" aria-label="Tampilan produk">
+                        <span class="store-view-toggle-label">Tampilan:</span>
+                
+                        <button
+                            type="button"
+                            class="store-view-toggle-button is-active"
+                            data-shop-view="grid"
+                            aria-label="Tampilan grid"
+                            aria-pressed="true"
+                        >
+                            <i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>
+                            <span>Grid</span>
+                        </button>
+                
+                        <button
+                            type="button"
+                            class="store-view-toggle-button"
+                            data-shop-view="list"
+                            aria-label="Tampilan list"
+                            aria-pressed="false"
+                        >
+                            <i class="bi bi-list-ul" aria-hidden="true"></i>
+                            <span>List</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
+        </div>
+        
     </div>
 </div>

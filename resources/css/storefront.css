@@ -946,7 +946,8 @@ img {
     color: var(--store-primary-dark);
 }
 
-.store-active-filters {
+.store-active-filters,
+.store-active-filters-label {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
@@ -958,6 +959,7 @@ img {
     color: var(--store-muted);
     font-size: .75rem;
     font-weight: 700;
+    margin-top: 6px;
 }
 
 .store-filter-badge {
@@ -5182,11 +5184,10 @@ body.store-mobile-drawer-open {
         );
     }
     
-    /* 
     .store-main-header,
     .store-header-inner {
         display: none;
-    } */
+    }
     
     .store-mobile-bottom {
         display: grid;
@@ -6127,5 +6128,211 @@ body.store-mobile-drawer-open {
     .store-quick-view-close {
         flex: 1 1 0;
         text-align: center;
+    }
+}
+
+/**
+ * GRID & LIST VIEW
+ */
+
+/* Toggle tampilan produk pada halaman Shop */
+.store-view-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: 1rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--store-border);
+}
+
+.store-view-toggle-label {
+    margin-right: .25rem;
+    color: var(--store-muted);
+    font-size: .8rem;
+    font-weight: 700;
+}
+
+.store-view-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    min-height: 38px;
+    padding: .45rem .8rem;
+    border: 1px solid var(--store-border);
+    border-radius: 5px;
+    background: #fff;
+    color: var(--store-dark);
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.store-view-toggle-button.is-active span,
+.store-view-toggle-button.is-active i {
+    color: #fff;
+}
+
+.store-view-toggle-button:hover,
+.store-view-toggle-button.is-active {
+    border-color: var(--store-primary);
+    background: var(--store-primary);
+    color: var(--store-dark);
+}
+
+.store-view-toggle-button:focus-visible {
+    outline: 2px solid var(--store-primary-dark);
+    outline-offset: 2px;
+}
+
+.store-shop-products.is-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.store-shop-products.is-list > .store-shop-product-item {
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+}
+
+.store-shop-products.is-list .store-product-card {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    align-items: stretch;
+    height: auto;
+    min-width: 0;
+    overflow: hidden;
+    transform: none;
+}
+
+/* Gambar tetap berada di kolom kiri */
+.store-shop-products.is-list .store-product-image-wrap {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 220px;
+    aspect-ratio: auto;
+    align-self: stretch;
+}
+
+.store-shop-products.is-list .store-product-image-link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+}
+
+.store-shop-products.is-list .store-product-image,
+.store-shop-products.is-list .store-product-placeholder {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    object-fit: cover;
+}
+
+/* Semua ringkasan berada di sebelah kanan gambar */
+.store-shop-products.is-list .store-product-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    padding: 1rem 1.25rem;
+}
+
+.store-shop-products.is-list .store-product-category {
+    min-height: 0;
+    margin-bottom: .4rem;
+}
+
+.store-shop-products.is-list .store-product-name {
+    min-height: 0;
+    margin-bottom: .5rem;
+    font-size: 1rem;
+}
+
+.store-shop-products.is-list .store-product-name a {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+}
+
+.store-shop-products.is-list .store-product-rating {
+    min-height: 0;
+    margin-bottom: .6rem;
+    flex-wrap: wrap;
+}
+
+.store-shop-products.is-list .store-product-price {
+    margin-bottom: .5rem;
+    font-size: 1.1rem;
+}
+
+.store-shop-products.is-list .store-product-description {
+    display: block;
+    max-width: 720px;
+    margin-bottom: .75rem;
+    font-size: .85rem;
+    line-height: 1.65;
+}
+
+.store-shop-products.is-list .store-product-stock {
+    min-height: 0;
+    margin-bottom: .75rem;
+}
+
+.store-shop-products.is-list .store-product-cart-form {
+    width: auto;
+    max-width: 220px;
+    margin-top: auto;
+}
+
+.store-shop-products.is-list .store-add-cart {
+    width: auto;
+    min-width: 150px;
+    padding-inline: 1rem;
+}
+
+/* Tetap horizontal pada layar ponsel */
+@media (max-width: 575.98px) {
+    .store-shop-products.is-list .store-product-card {
+        grid-template-columns: 110px minmax(0, 1fr);
+    }
+
+    .store-shop-products.is-list .store-product-image-wrap,
+    .store-shop-products.is-list .store-product-image-link,
+    .store-shop-products.is-list .store-product-image,
+    .store-shop-products.is-list .store-product-placeholder {
+        min-height: 150px;
+    }
+
+    .store-shop-products.is-list .store-product-body {
+        padding: .65rem;
+    }
+
+    .store-shop-products.is-list .store-product-name {
+        font-size: .85rem;
+        overflow-wrap: anywhere;
+    }
+
+    .store-shop-products.is-list .store-product-price {
+        font-size: .95rem;
+    }
+
+    .store-shop-products.is-list .store-product-description {
+        font-size: .75rem;
+        overflow-wrap: anywhere;
+    }
+
+    .store-shop-products.is-list .store-add-cart {
+        min-width: 0;
+        min-height: 34px;
+        padding: .4rem .55rem;
+        font-size: .7rem;
     }
 }

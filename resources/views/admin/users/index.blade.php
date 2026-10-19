@@ -17,7 +17,7 @@
     </div>
 
     <div class="row g-gs mb-3">
-        <div class="col-sm-4">
+        <div class="col-sm-12 col-lg-4">
             <div class="card card-bordered h-100">
                 <div class="card-inner">
                     <div class="card-title-group align-start mb-2">
@@ -35,7 +35,7 @@
             </div>
         </div>
 
-        <div class="col-sm-4">
+        <div class="col-sm-12 col-lg-4">
             <div class="card card-bordered h-100">
                 <div class="card-inner">
                     <div class="card-title-group align-start mb-2">
@@ -53,7 +53,7 @@
             </div>
         </div>
 
-        <div class="col-sm-4">
+        <div class="col-sm-12 col-lg-4">
             <div class="card card-bordered h-100">
                 <div class="card-inner">
                     <div class="card-title-group align-start mb-2">

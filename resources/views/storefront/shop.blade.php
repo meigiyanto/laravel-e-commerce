@@ -84,10 +84,21 @@
 <section class="pb-5">
     <div class="container">
         @if ($products->count())
-            <div class="row g-3 g-md-4">
+            {{-- <div class="row g-3 g-md-4">
                 @foreach ($products as $product)
                     <div class="col-6 col-md-4 col-lg-3">
-                        <x-store-product-card :product="$product" />
+                        <x-store-product-card :product="$product" :show-view-toggle="true" />
+                    </div>
+                @endforeach
+            </div> --}}
+            
+            <div id="storeShopProducts" class="row g-3 g-md-4 store-shop-products is-grid">
+                @foreach ($products as $product)
+                    <div class="col-6 col-md-4 col-lg-3 store-shop-product-item">
+                        <x-store-product-card
+                            :product="$product"
+                            :show-description="true"
+                        />
                     </div>
                 @endforeach
             </div>
@@ -121,6 +132,33 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const productsContainer = document.querySelector('#storeShopProducts');
+    const viewButtons = document.querySelectorAll('[data-shop-view]');
+    
+    viewButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (!productsContainer) {
+                return;
+            }
+    
+            const view = button.dataset.shopView;
+    
+            if (view !== 'grid' && view !== 'list') {
+                return;
+            }
+    
+            productsContainer.classList.toggle('is-grid', view === 'grid');
+            productsContainer.classList.toggle('is-list', view === 'list');
+    
+            viewButtons.forEach(function (item) {
+                const isActive = item.dataset.shopView === view;
+    
+                item.classList.toggle('is-active', isActive);
+                item.setAttribute('aria-pressed', String(isActive));
+            });
+        });
+    });
+    
     const cards = document.querySelectorAll(
         '.store-product-card'
     );
