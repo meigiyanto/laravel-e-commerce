@@ -3,7 +3,7 @@
     <div class="nk-sidebar-element nk-sidebar-head">
         <div class="nk-sidebar-brand">
             <a href="{{ route('admin.dashboard') }}" class="logo-link nk-sidebar-logo">
-                <h3>{{ config('app.name') }}</h3>
+                {{ config('app.name') }}
             </a>
         </div>
 

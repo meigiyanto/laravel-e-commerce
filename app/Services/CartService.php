@@ -62,11 +62,25 @@ class CartService
                 $quantity = (int) ($item['quantity'] ?? 0);
     
                 if ($variantId > 0 && $productId > 0 && $quantity > 0) {
-                    $normalized['variant_'.$variantId] = [
-                        'product_id' => $productId,
-                        'product_variant_id' => $variantId,
-                        'quantity' => $quantity,
-                    ];
+                    // A session entry must reference a variant belonging to
+                    // the same product. Otherwise totals and cart rendering
+                    // can disagree about which product is being purchased.
+                    $variant = ProductVariant::query()
+                        ->whereKey($variantId)
+                        ->where('product_id', $productId)
+                        ->first();
+
+                    if ($variant) {
+                        $variantKey = 'variant_'.$variantId;
+                        $normalized[$variantKey] = [
+                            'product_id' => $productId,
+                            'product_variant_id' => $variantId,
+                            // Canonicalize aliases to one key without losing
+                            // quantity if a legacy/malformed session repeats it.
+                            'quantity' => $quantity
+                                + (int) ($normalized[$variantKey]['quantity'] ?? 0),
+                        ];
+                    }
                 }
     
                 continue;

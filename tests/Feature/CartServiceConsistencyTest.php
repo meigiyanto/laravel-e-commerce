@@ -220,6 +220,52 @@ class CartServiceConsistencyTest extends TestCase
         );
     }
 
+    public function test_guest_session_canonicalizes_duplicate_keys_for_same_variant_without_losing_quantity(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant($product, 'Canonical', '12000.00');
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 2,
+            ],
+            'legacy-alias' => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 3,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame(['variant_'.$variant->id], array_keys($cart));
+        $this->assertSame(5, $cart['variant_'.$variant->id]['quantity']);
+        $this->assertSame(5, app(CartService::class)->count());
+    }
+
+    public function test_guest_session_discards_variant_mismatched_with_product_id(): void
+    {
+        $firstProduct = Product::factory()->create(['stock' => 10]);
+        $secondProduct = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant($secondProduct, 'Wrong product', '25000.00');
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $firstProduct->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 2,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame([], $cart);
+        $this->assertSame([], session('cart'));
+        $this->assertSame(0.0, app(CartService::class)->total());
+    }
+
     public function test_authenticated_cart_subtotal_uses_variant_price(): void
     {
         $user = User::factory()->create();
