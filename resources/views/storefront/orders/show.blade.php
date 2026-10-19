@@ -335,9 +335,10 @@
                             <div class="alert alert-warning mt-3" role="status">
                                 Permintaan pembatalan sedang ditinjau admin.
                             </div>
-                        @elseif($order->status === 'pending' && !$order->cancellationRequests->contains('status', 'approved'))
+                        @elseif($canCancelOrder)
                             <form method="POST" action="{{ route('orders.cancellation-requests.store', $order) }}" class="store-order-detail-cancel-form mt-3">
                                 @csrf
+                                
                                 <label for="cancellation_reason_code" class="form-label">Mengapa Anda ingin membatalkan pesanan?</label>
                                 <select id="cancellation_reason_code" name="reason_code" class="form-select" required>
                                     <option value="">Pilih alasan pembatalan</option>
