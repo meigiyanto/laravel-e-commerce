@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\CartItem;
 use App\Services\CartService;
+
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -273,5 +274,4 @@ class CartController extends Controller
     
         return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
     }
-
 }

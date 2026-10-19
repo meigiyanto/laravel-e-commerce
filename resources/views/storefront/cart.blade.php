@@ -175,7 +175,8 @@
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
                                                             {{-- Quantity --}}
-                                                            <form action="{{ route('cart.update', $item->id) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
+                                                            
+                                                            <form action="{{ route('cart.items.update', $item->id) }}" method="POST" class="quantity-form" data-product-id="{{ $product->id }}">
                                                                 @csrf
                                                                 @method('PATCH')
 
@@ -205,8 +206,7 @@
                                                         </td>
                                                         <td>
                                                             {{-- Remove --}}
-                                                            <form action="{{ route('cart.destroy', $item->id) }}" method="POST" class="store-cart-remove-form">
-
+                                                            <form action="{{ route('cart.items.destroy', $item->id) }}" method="POST" class="store-cart-remove-form">
                                                                 @csrf
                                                                 @method('DELETE')
                                                                 <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">

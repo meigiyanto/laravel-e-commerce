@@ -37,14 +37,12 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
-
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
-Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.destroy');
-Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+
+Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.product.update');
+Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.product.destroy');
+Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
+Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');

@@ -49,12 +49,10 @@
 
 
                     <div class="store-mobile-cart-meta">
-
                         {{-- QUANTITY --}}
                         <div class="store-mobile-cart-quantity">
-
                             <form
-                                action="{{ route('cart.update', $product) }}"
+                                action="{{ route('cart.items.update', $cartItem->id) }}"
                                 method="POST"
                                 class="store-mobile-cart-quantity-form"
                                 data-product-id="{{ $product->id }}"
@@ -90,69 +88,30 @@
                                 >
                                     <i class="bi bi-plus"></i>
                                 </button>
-
                             </form>
-
                         </div>
-
-
-                        {{-- REMOVE --}}
-                        <form
-                            action="{{ route('cart.destroy', $product) }}"
-                            method="POST"
-                            class="store-mobile-cart-remove-form"
-                            data-product-id="{{ $product->id }}"
-                        >
-                            @csrf
-                            @method('DELETE')
-
-                            <button
-                                type="submit"
-                                class="store-mobile-cart-remove"
-                                aria-label="Remove {{ $product->name }}"
-                                title="Remove Product"
-                            >
-                                <i class="bi bi-trash3"></i>
-                            </button>
-                        </form>
-
                     </div>
-
 
                     <div class="store-mobile-cart-line-total">
                         Rp {{ number_format($lineTotal, 0, ',', '.') }}
                     </div>
-
                 </div>
-
             </article>
-
         @endforeach
-
     </div>
 
 
     {{-- SUMMARY --}}
     <div class="store-mobile-cart-summary">
-
         <div class="store-mobile-cart-summary-row">
-
-            <span>
-                {{ $mobileCartCount }} item
-            </span>
-
-            <strong>
-                Rp {{ number_format($mobileCartTotal, 0, ',', '.') }}
-            </strong>
-
+            <span>{{ $mobileCartCount }} item</span>
+            <strong>Rp {{ number_format($mobileCartTotal, 0, ',', '.') }}</strong>
         </div>
-
     </div>
 
 
     {{-- ACTIONS --}}
     <div class="store-mobile-cart-actions">
-
         <a
             href="{{ route('cart.index') }}"
             class="store-mobile-cart-view-button"
@@ -162,7 +121,6 @@
         </a>
 
         @auth
-
             <a
                 href="{{ route('checkout.index') }}"
                 class="store-mobile-cart-checkout-button"
@@ -170,9 +128,7 @@
                 Checkout
                 <i class="bi bi-arrow-right"></i>
             </a>
-
         @else
-
             <a
                 href="{{ route('login') }}"
                 class="store-mobile-cart-checkout-button"
@@ -180,9 +136,7 @@
                 Login untuk Checkout
                 <i class="bi bi-arrow-right"></i>
             </a>
-
         @endauth
-
     </div>
 @else
     {{-- EMPTY CART --}}
@@ -210,5 +164,4 @@
         </a>
 
     </div>
-
 @endif
