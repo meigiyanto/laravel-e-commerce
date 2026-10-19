@@ -118,7 +118,7 @@
 
                                     @endphp
 
-                                    <article class="store-cart-item" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}">
+                                    <article class="store-cart-item" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}" data-product-id="{{ $product->id }}">
                                         <div class="table table-responsive">
                                             <table class="table">
                                                 <thead>

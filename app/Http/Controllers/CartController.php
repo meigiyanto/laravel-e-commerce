@@ -191,9 +191,7 @@ class CartController extends Controller
             ->firstOrFail();
     
         $inventory = $item->variant?->inventory;
-        $available = $inventory
-            ? (int) $inventory->quantity - (int) $inventory->reserved_quantity
-            : (int) $item->product->stock;
+        $available = $inventory ? (int) $inventory->quantity - (int) $inventory->reserved_quantity : (int) $item->product->stock;
     
         if ($validated['quantity'] > $available) {
             throw ValidationException::withMessages([
@@ -205,18 +203,23 @@ class CartController extends Controller
     
         $total = $this->cartService->total();
         $cartCount = $this->cartService->count();
-    
+        
         if ($request->expectsJson()) {
+            $variant = ProductVariant::with(['inventory', 'product'])
+                ->findOrFail($cartItem);
+        
+            $quantity = (int) $validated['quantity'];
+            $price = (float) ($variant->price ?? $variant->product->price);
+        
             return response()->json([
                 'success' => true,
                 'message' => 'Jumlah produk berhasil diperbarui.',
-                'cart_item_id' => $item->id,
-                'quantity' => $item->quantity,
-                'subtotal' => ($item->variant?->price ?? $item->product->price)
-                    * $item->quantity,
-                'total' => $total,
-                'cart_count' => $cartCount,
-                'item_count' => $cartCount,
+                'variant_id' => $variant->id,
+                'quantity' => $quantity,
+                'subtotal' => $price * $quantity,
+                'total' => $this->cartService->total(),
+                'cart_count' => $this->cartService->count(),
+                'item_count' => $this->cartService->count(),
             ]);
         }
     
