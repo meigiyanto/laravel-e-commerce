@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\Product;
 use App\Models\Payment;
 use App\Services\WebhookEventService;
+use App\Services\VariantInventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -327,68 +330,38 @@ class StripeWebhookController extends Controller
     private function handlePaymentIntentCanceled(
         object $paymentIntent
     ): void {
-        if (! isset($paymentIntent->id)) {
+        if (
+            ! isset($paymentIntent->id, $paymentIntent->status)
+            || ! is_string($paymentIntent->id)
+            || ! is_string($paymentIntent->status)
+            || $paymentIntent->status !== 'canceled'
+        ) {
             throw new \RuntimeException(
-                'Stripe payment intent ID is missing.'
+                'Stripe payment intent is invalid for cancellation.'
             );
         }
-
-        if (! is_string($paymentIntent->id)) {
-            throw new \RuntimeException(
-                'Stripe payment intent ID must be a string.'
-            );
-        }
-
-        if (! isset($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status is missing.'
-            );
-        }
-
-        if (! is_string($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status must be a string.'
-            );
-        }
-
-        if ($paymentIntent->status !== 'canceled') {
-            throw new \RuntimeException(
-                'Stripe payment intent has an invalid status for payment_intent.canceled event.'
-            );
-        }
-
+        
         DB::transaction(function () use ($paymentIntent): void {
             $payment = Payment::query()
                 ->where('provider', 'stripe')
-                ->where(
-                    'stripe_payment_intent_id',
-                    $paymentIntent->id
-                )
+                ->where('stripe_payment_intent_id', $paymentIntent->id)
                 ->lockForUpdate()
                 ->first();
-
+        
             if (! $payment) {
                 return;
             }
-
-            /*
-             * Jangan pernah menurunkan payment yang sudah
-             * succeeded, failed, atau canceled.
-             */
-            if (in_array(
-                $payment->status,
-                ['succeeded', 'failed', 'canceled'],
-                true
-            )) {
-                return;
-            }
-
-            $order = $payment->order;
-
+        
+            $order = Order::query()
+                ->whereKey($payment->order_id)
+                ->lockForUpdate()
+                ->first();
+        
             if (! $order) {
                 return;
             }
-
+        
+            // Pertahankan status untuk pesanan terminal.
             if (in_array(
                 $order->status,
                 ['completed', 'canceled', 'failed', 'refunded'],
@@ -396,7 +369,21 @@ class StripeWebhookController extends Controller
             )) {
                 return;
             }
-
+        
+            // Pembayaran yang sudah terminal tidak boleh diturunkan.
+            if (in_array(
+                $payment->status,
+                ['succeeded', 'failed', 'canceled'],
+                true
+            )) {
+                return;
+            }
+        
+            // Jalur ini hanya membatalkan pesanan pending.
+            if ($order->status !== 'pending') {
+                return;
+            }
+        
             $payment->update([
                 'status' => 'canceled',
                 'transaction_status' => 'canceled',
@@ -407,10 +394,52 @@ class StripeWebhookController extends Controller
                     [
                         'stripe_webhook_event' => 'payment_intent.canceled',
                         'stripe_payment_intent_status' => $paymentIntent->status,
-                    ],
+                    ]
                 ),
             ]);
+        
+            $items = $order->items()
+                ->orderBy('product_id')
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->get();
+        
+            $productIds = $items->pluck('product_id')
+                ->unique()
+                ->sort()
+                ->values();
+        
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+        
+            $stockService = app(VariantInventoryService::class);
+        
+            foreach ($items as $item) {
+                $product = $products->get($item->product_id);
+        
+                if (! $product) {
+                    throw new \RuntimeException(
+                        "Product {$item->product_id} not found while restoring stock."
+                    );
+                }
+        
+                $stockService->restoreForOrder(
+                    $product,
+                    $item->product_variant_id
+                        ? (int) $item->product_variant_id
+                        : null,
+                    (int) $item->quantity,
+                    $order
+                );
+            }
+        
+            $order->update(['status' => 'canceled']);
         });
+
     }
 
     private function convertStripeAmount(int $amount): float

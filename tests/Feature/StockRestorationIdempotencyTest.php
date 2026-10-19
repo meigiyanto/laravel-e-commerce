@@ -9,6 +9,8 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\StripePaymentService;
+use Mockery;
 use ReflectionMethod;
 use Stripe\PaymentIntent;
 use Tests\TestCase;
@@ -60,15 +62,19 @@ class StockRestorationIdempotencyTest extends TestCase
             ['status' => 'canceled']
         );
 
-        $this->assertSame(
-            'canceled',
-            $order->fresh()->status
+        $response = $this->actingAs(
+            User::factory()->create(['role' => 'admin'])
+        )->patch(
+            route('admin.orders.status', $order),
+            ['status' => 'canceled']
         );
 
-        $this->assertSame(
-            10,
-            $product->fresh()->stock
-        );
+        $response->dumpSession();
+        $response->dump();
+
+        $this->assertSame('canceled', $order->fresh()->status);
+
+        $this->assertSame(10, $product->fresh()->stock);
 
         // Tahap 2: Stripe kemudian melaporkan canceled.
         $paymentIntent = PaymentIntent::constructFrom([

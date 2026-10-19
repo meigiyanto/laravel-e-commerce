@@ -50,7 +50,7 @@ class CartService
         $cart = session()->get('cart', []);
         $normalized = [];
         $inventoryService = app(VariantInventoryService::class);
-    
+        
         foreach ($cart as $key => $item) {
             // Pertahankan format varian yang sudah benar.
             if (
@@ -87,9 +87,7 @@ class CartService
             }
     
             // Migrasikan format lama: product_id => quantity.
-            $productId = is_numeric((string) $key)
-                ? (int) $key
-                : 0;
+            $productId = is_numeric((string) $key) ? (int) $key : 0;
     
             if ($productId < 1) {
                 continue;
@@ -101,9 +99,7 @@ class CartService
                 continue;
             }
     
-            $quantity = is_array($item)
-                ? (int) ($item['quantity'] ?? 0)
-                : (int) $item;
+            $quantity = is_array($item) ? (int) ($item['quantity'] ?? 0) : (int) $item;
     
             if ($quantity < 1) {
                 continue;
@@ -120,14 +116,52 @@ class CartService
                     + (int) ($normalized[$variantKey]['quantity'] ?? 0),
             ];
         }
-    
+        
+        if ($cart !== $normalized) {
+            session()->put('cart', $normalized);
+        }
+
+        foreach ($normalized as $variantKey => $item) {
+            $variant = ProductVariant::query()
+                ->with('inventory')
+                ->whereKey($item['product_variant_id'])
+                ->where('product_id', $item['product_id'])
+                ->first();
+
+            $inventory = $variant?->inventory;
+
+            if (
+                ! $variant
+                || $variant->status !== 'active'
+                || ! $inventory
+            ) {
+                unset($normalized[$variantKey]);
+                continue;
+            }
+
+            $available = max(
+                0,
+                (int) $inventory->quantity
+                    - (int) $inventory->reserved_quantity
+            );
+
+            if ($available < 1) {
+                unset($normalized[$variantKey]);
+                continue;
+            }
+
+            $normalized[$variantKey]['quantity'] = min(
+                (int) $item['quantity'],
+                $available
+            );
+        }
+
         if ($cart !== $normalized) {
             session()->put('cart', $normalized);
         }
     
         return $normalized;
     }
-
 
     /**
      * Tambahkan produk ke cart.
