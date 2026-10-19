@@ -101,7 +101,8 @@
                                         $variant = $item->variant
                                             ?? $item->variant
                                             ?? null;
-                                    
+                                        $quantityInputId = 'quantity-' . ($item->product_variant_id ?? $item->id);
+                                        
                                         $price = $variant?->price ?? $product->price;
                                         $subtotal = (float) $price * $quantity;
 
@@ -177,7 +178,6 @@
                                                                 <div class="small text-muted">Subtotal</div>
                                                                 <strong class="cart-item-subtotal">Rp {{ number_format($subtotal, 0, ',', '.') }}</strong>
                                                             </div>
-                                                            
                                                             {{-- Quantity --}}
                                                             <form action="{{ auth()->check() ? route('cart.items.update', $item->id) : route('cart.product.update', $item->product_variant_id) }}" method="POST" class="quantity-form" data-cart-item-key="{{ $item->product_variant_id ?? $item->id }}">
                                                                 @csrf
@@ -189,8 +189,10 @@
                                                                     <button type="button" class="store-quantity-button quantity-decrease" aria-label="Decrease Quantity">
                                                                         <i class="bi bi-dash"></i>
                                                                     </button>
+                                                                    
+                                                                    <label for="{{ $quantityInputId }}" class="visually-hidden">Total {{ $product->name }}</label>
+                                                                    <input type="number" id="{{ $quantityInputId }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $product->stock }}" class="store-quantity-input quantity-input">
 
-                                                                    <input type="number" id="quantity-{{ $product->id }}" name="quantity" value="{{ $quantity }}" min="1" max="{{ $product->stock }}" class="store-quantity-input quantity-input">
                                                                     <button type="button" class="store-quantity-button quantity-increase" aria-label="Add Quantity">
                                                                         <i class="bi bi-plus"></i>
                                                                     </button>
@@ -200,9 +202,10 @@
                                                         </td>
                                                         <td>
                                                             {{-- Remove --}}
-                                                            <form action="{{ route('cart.items.destroy', $item->id) }}" method="POST" class="store-cart-remove-form">
+                                                            <form action="{{ auth()->check() ? route('cart.items.destroy', $item->id) : route('cart.product.destroy', $item->product_variant_id) }}" method="POST" class="store-cart-remove-form">
                                                                 @csrf
                                                                 @method('DELETE')
+                                                            
                                                                 <button type="submit" class="btn btn-link text-danger p-0" title="Delete Product">
                                                                     <i class="bi bi-trash3"></i>
                                                                 </button>

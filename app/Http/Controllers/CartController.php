@@ -30,23 +30,13 @@ class CartController extends Controller
 
             $total = $this->cartService->total();
         } else {
-            $guestCart = $this->cartService->getGuestCart();
-            $productIds = array_keys($guestCart);
-            $products = Product::with([
-                'category',
-                'subCategory',
-            ])
-                ->whereIn('id', $productIds)
-                ->get();
-
             $items = $this->buildGuestCartItems();
-            
             $cart = (object) [
                 'id' => null,
                 'user_id' => null,
                 'items' => $items,
             ];
-            
+        
             $total = $this->cartService->total();
         }
 
@@ -62,53 +52,24 @@ class CartController extends Controller
     public function drawer()
     {
         $mobileCartCount = $this->cartService->count();
-
+    
         if (auth()->check()) {
             $cart = $this->cartService->getUserCartWithItems(
                 auth()->id()
             );
-
-            $mobileCartItems = $this->buildGuestCartItems();
+    
+            $mobileCartItems = $cart->items;
         } else {
-            $guestCart = $this->cartService->getGuestCart();
-
-            $productIds = array_keys($guestCart);
-
-            $products = empty($productIds)
-                ? collect()
-                : Product::with([
-                    'category',
-                    'subCategory',
-                ])
-                    ->whereIn('id', $productIds)
-                    ->get();
-
-            $mobileCartItems = $products
-                ->map(function ($product) use ($guestCart) {
-                    $quantity = (int) (
-                        $guestCart[(string) $product->id]
-                        ?? $guestCart[$product->id]
-                        ?? 0
-                    );
-
-                    return (object) [
-                        'id' => null,
-                        'product_id' => $product->id,
-                        'quantity' => $quantity,
-                        'product' => $product,
-                    ];
-                })
-                ->filter(function ($item) {
-                    return $item->quantity > 0;
-                });
+            $mobileCartItems = $this->buildGuestCartItems();
         }
-        
+    
         $mobileCartTotal = $mobileCartItems->sum(function ($item) {
-            $price = $item->variant?->price ?? $item->product->price;
-        
-            return (float) $price * $item->quantity;
+            $price = $item->variant?->price
+                ?? $item->product->price;
+    
+            return (float) $price * (int) $item->quantity;
         });
-
+    
         return response()->json([
             'success' => true,
             'cart_count' => $mobileCartCount,
