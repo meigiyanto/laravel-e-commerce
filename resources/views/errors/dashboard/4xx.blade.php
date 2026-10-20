@@ -1,11 +1,5 @@
-@extends('layouts.dashboard')
-
-@section('title', 'Permintaan Tidak Dapat Diproses')
-
-@section('content')
-    @include('errors.partials.dashboard', [
-        'status' => $exception->getStatusCode(),
-        'title' => 'Permintaan Tidak Dapat Diproses',
-        'message' => 'Permintaan Anda tidak dapat diproses. Periksa kembali informasi yang dikirim atau coba lagi.',
-    ])
-@endsection
+@include('errors.partials.dashboard', [
+    'status' => $status ?? 400,
+    'title' => 'Permintaan Tidak Dapat Diproses',
+    'message' => 'Permintaan tidak dapat diproses. Periksa kembali data atau hak akses Anda.',
+])

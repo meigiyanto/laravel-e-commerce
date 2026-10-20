@@ -1,11 +1,5 @@
-@extends('layouts.storefront')
-
-@section('title', 'Gangguan Layanan')
-
-@section('content')
-    @include('errors.partials.storefront', [
-        'status' => $exception->getStatusCode(),
-        'title' => 'Layanan Sedang Mengalami Gangguan',
-        'message' => 'Terjadi masalah pada layanan kami. Silakan coba kembali beberapa saat lagi.',
-    ])
-@endsection
+@include('errors.partials.storefront', [
+    'status' => $status ?? 500,
+    'title' => 'Terjadi Kesalahan Server',
+    'message' => 'Server mengalami kendala saat memproses permintaan Anda. Silakan coba lagi nanti.',
+])
