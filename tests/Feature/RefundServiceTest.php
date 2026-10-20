@@ -3021,25 +3021,25 @@ class RefundServiceTest extends TestCase
             $secondResult->processed_at
         );
     }
-
+    
     public function test_expired_recovery_lock_can_allow_second_stripe_recovery(): void
     {
         $user = User::factory()->create();
-
+    
         $order = Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'completed',
-            'total' => 150000,
+            'total' => 500000,
         ]);
-
+    
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'stripe',
             'status' => 'succeeded',
-            'gross_amount' => 150000,
+            'gross_amount' => 500000,
             'stripe_payment_intent_id' => 'pi_test_123',
         ]);
-
+    
         $refund = Refund::create([
             'order_id' => $order->id,
             'payment_id' => $payment->id,
@@ -3051,50 +3051,42 @@ class RefundServiceTest extends TestCase
             'requested_at' => now()->subMinutes(30),
             'processing_at' => now()->subMinutes(20),
         ]);
-
+    
         $stripeRefund = \Stripe\Refund::constructFrom([
             'id' => 're_test_123',
             'status' => 'succeeded',
         ]);
-
+    
         $stripe = Mockery::mock(StripePaymentService::class);
-        $this->app->instance(
-            StripePaymentService::class,
-            $stripe
-        );
-        
-        // Pastikan RefundService dibuat ulang menggunakan
-        // instance StripePaymentService yang baru dipasang.
-        $this->app->forgetInstance(RefundService::class);
-        
-        $service = app(RefundService::class);
-
+    
+        $this->app->instance(StripePaymentService::class, $stripe);
+    
         $firstLock = Mockery::mock(
             \Illuminate\Contracts\Cache\Lock::class
         );
-
+    
         $secondLock = Mockery::mock(
             \Illuminate\Contracts\Cache\Lock::class
         );
-
+    
         $firstLock
             ->shouldReceive('get')
             ->once()
             ->andReturn(true);
-
+    
         $firstLock
             ->shouldReceive('release')
             ->once();
-
+    
         $secondLock
             ->shouldReceive('get')
             ->once()
             ->andReturn(true);
-
+    
         $secondLock
             ->shouldReceive('release')
             ->once();
-
+    
         Cache::shouldReceive('lock')
             ->twice()
             ->with(
@@ -3102,15 +3094,15 @@ class RefundServiceTest extends TestCase
                 (int) config('services.refund.recovery_lock_ttl_seconds')
             )
             ->andReturn($firstLock, $secondLock);
-
-        $result = $service->recoverRefund($refund);
-        
+    
+        $service = app(RefundService::class);
+    
         $stripe
             ->shouldReceive('refund')
             ->twice()
             ->with(
                 'pi_test_123',
-                5000000,
+                50000000,
                 'requested_by_customer',
                 'refund-'.$refund->id
             )
@@ -3122,22 +3114,27 @@ class RefundServiceTest extends TestCase
                 ) {
                     static $callCount = 0;
                     $callCount++;
-        
+    
                     if ($callCount === 1) {
                         $service->recoverRefund($refund->fresh());
                     }
-        
+    
                     return $stripeRefund;
                 }
             );
-        
+    
         $result = $service->recoverRefund($refund);
-        
+    
         $this->assertSame(
             Refund::STATUS_COMPLETED,
             $result->status
         );
-    }
+    
+        $this->assertSame(
+            're_test_123',
+            $result->fresh()->reference_id
+        );
+    }    
 
     public function test_recovery_lock_ttl_is_greater_than_provider_timeout(): void
     {
