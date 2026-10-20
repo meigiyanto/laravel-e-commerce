@@ -1,6 +1,6 @@
 <div class="nk-block nk-block-middle wide-md mx-auto">
     <div class="nk-block-content nk-error-ld text-center">
-        <img class="nk-error-gfx" src="{{ asset('images/gfx/error-{{ $status }}.svg') }}" alt="{{ $status }}">
+        <img class="nk-error-gfx" src="{{ asset('images/gfx/error-'. $status .'.svg') }}" alt="{{ $status }}">
         <div class="wide-xs mx-auto">
             <div class="display-1 fw-bold text-primary mb-2">{{ $status }}</div>
 

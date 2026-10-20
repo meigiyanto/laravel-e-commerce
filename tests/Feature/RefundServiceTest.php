@@ -3043,7 +3043,7 @@ class RefundServiceTest extends TestCase
         $refund = Refund::create([
             'order_id' => $order->id,
             'payment_id' => $payment->id,
-            'amount' => 50000,
+            'amount' => 500000,
             'currency' => 'IDR',
             'reason' => 'Refund expired lock recovery',
             'status' => Refund::STATUS_PROCESSING,
@@ -3237,7 +3237,7 @@ class RefundServiceTest extends TestCase
         $refund = \App\Models\Refund::create([
             'order_id' => $order->id,
             'payment_id' => $payment->id,
-            'amount' => 100000,
+            'amount' => 500000,
             'currency' => 'IDR',
             'reason' => 'Late payment after cancellation',
             'status' => \App\Models\Refund::STATUS_REQUESTED,
@@ -3251,8 +3251,20 @@ class RefundServiceTest extends TestCase
                 ->once()
                 ->andThrow(new \RuntimeException('Provider timeout'));
         });
-    
+        
         $service = app(\App\Services\RefundService::class);
+
+        $this->assertSame(
+            500000.0,
+            (float) $payment->refunds()
+                ->whereIn('status', [
+                    \App\Models\Refund::STATUS_REQUESTED,
+                    \App\Models\Refund::STATUS_APPROVED,
+                    \App\Models\Refund::STATUS_PROCESSING,
+                    \App\Models\Refund::STATUS_COMPLETED,
+                ])
+                ->sum('amount')
+        );
     
         $result = $service->process($refund);
     
@@ -3302,5 +3314,26 @@ class RefundServiceTest extends TestCase
                 ->where('idempotency_key', 'late-canceled-order-payment-'.$payment->id)
                 ->count()
         );
+    }
+    
+    private function createCanceledOrderWithSucceededPayment(): array
+    {
+        $user = User::factory()->create();
+    
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'canceled',
+            'total' => 150000,
+        ]);
+    
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'transaction-123',
+            'gross_amount' => 150000,
+        ]);
+    
+        return [$order, $payment];
     }
 }

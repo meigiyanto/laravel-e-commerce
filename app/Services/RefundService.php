@@ -147,22 +147,29 @@ class RefundService
     /**
      * Menghitung sisa nominal yang masih dapat direfund.
      */
-    public function refundableAmount(Payment $payment): float
-    {
-        $refundedAmount = (float) $payment->refunds()
+    public function refundableAmount(
+        Payment $payment,
+        ?int $excludeRefundId = null
+    ): float {
+        $query = $payment->refunds()
             ->whereIn('status', [
                 Refund::STATUS_REQUESTED,
                 Refund::STATUS_APPROVED,
                 Refund::STATUS_PROCESSING,
                 Refund::STATUS_COMPLETED,
-            ])
-            ->sum('amount');
-
+            ]);
+    
+        if ($excludeRefundId !== null) {
+            $query->where('id', '!=', $excludeRefundId);
+        }
+    
+        $refundedAmount = (float) $query->sum('amount');
+    
         return max(
             0,
             (float) $payment->gross_amount - $refundedAmount
         );
-    }
+}
 
     /**
      * Memproses refund yang masih berstatus requested.
@@ -280,7 +287,9 @@ class RefundService
             * COMPLETED ikut dihitung sebagai dana yang sudah dicadangkan
             * atau sudah direfund.
             */
-            $refundableAmount = $this->refundableAmount($payment);
+            $refundableAmount = $this->refundableAmount(
+                $payment, (int) $refund->id
+            );
 
             if ((float) $refund->amount > $refundableAmount) {
                 throw ValidationException::withMessages([
