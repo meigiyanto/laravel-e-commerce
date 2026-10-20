@@ -1,5 +1,11 @@
-@include('errors.partials.dashboard', [
-    'status' => 500,
-    'title' => 'Kesalahan Internal Server',
-    'message' => 'Terjadi kesalahan saat memproses halaman administrasi. Silakan coba lagi nanti.',
-])
+@extends('layouts.dashboard')
+
+@section('title', 'Terjadi Kesalahan')
+
+@section('content')
+    @include('errors.partials.dashboard', [
+        'status' => 500,
+        'title' => 'Terjadi Kesalahan pada Sistem',
+        'message' => 'Maaf, permintaan belum dapat diselesaikan. Silakan coba kembali beberapa saat lagi.',
+    ])
+@endsection
