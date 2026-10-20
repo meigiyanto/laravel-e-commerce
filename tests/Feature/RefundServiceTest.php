@@ -3058,12 +3058,15 @@ class RefundServiceTest extends TestCase
         ]);
 
         $stripe = Mockery::mock(StripePaymentService::class);
-
         $this->app->instance(
             StripePaymentService::class,
             $stripe
         );
-
+        
+        // Pastikan RefundService dibuat ulang menggunakan
+        // instance StripePaymentService yang baru dipasang.
+        $this->app->forgetInstance(RefundService::class);
+        
         $service = app(RefundService::class);
 
         $firstLock = Mockery::mock(
@@ -3093,24 +3096,16 @@ class RefundServiceTest extends TestCase
             ->once();
 
         Cache::shouldReceive('lock')
-            ->once()
+            ->twice()
             ->with(
                 'refund-recovery:'.$refund->id,
-                (int) config(
-                    'services.refund.recovery_lock_ttl_seconds'
-                )
+                (int) config('services.refund.recovery_lock_ttl_seconds')
             )
-            ->andReturn($firstLock);
+            ->andReturn($firstLock, $secondLock);
 
-        Cache::shouldReceive('lock')
-            ->once()
-            ->with(
-                'refund-recovery:'.$refund->id,
-                (int) config(
-                    'services.refund.recovery_lock_ttl_seconds'
-                )
-            )
-            ->andReturn($secondLock);$stripe
+        $result = $service->recoverRefund($refund);
+        
+        $stripe
             ->shouldReceive('refund')
             ->twice()
             ->with(
@@ -3126,29 +3121,18 @@ class RefundServiceTest extends TestCase
                     $stripeRefund
                 ) {
                     static $callCount = 0;
-
                     $callCount++;
-
+        
                     if ($callCount === 1) {
-                        /*
-                        * Recovery pertama masih berada
-                        * di dalam provider call.
-                        *
-                        * Simulasikan lock pertama sudah
-                        * expired sehingga recovery kedua
-                        * berhasil memperoleh lock.
-                        */
-                        $service->recoverRefund(
-                            $refund->fresh()
-                        );
+                        $service->recoverRefund($refund->fresh());
                     }
-
+        
                     return $stripeRefund;
                 }
             );
-
+        
         $result = $service->recoverRefund($refund);
-
+        
         $this->assertSame(
             Refund::STATUS_COMPLETED,
             $result->status
@@ -3237,7 +3221,7 @@ class RefundServiceTest extends TestCase
         $refund = \App\Models\Refund::create([
             'order_id' => $order->id,
             'payment_id' => $payment->id,
-            'amount' => 500000,
+            'amount' => 100000,
             'currency' => 'IDR',
             'reason' => 'Late payment after cancellation',
             'status' => \App\Models\Refund::STATUS_REQUESTED,
@@ -3255,7 +3239,7 @@ class RefundServiceTest extends TestCase
         $service = app(\App\Services\RefundService::class);
 
         $this->assertSame(
-            500000.0,
+            100000.0,
             (float) $payment->refunds()
                 ->whereIn('status', [
                     \App\Models\Refund::STATUS_REQUESTED,
