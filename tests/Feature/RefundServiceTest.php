@@ -3228,4 +3228,79 @@ class RefundServiceTest extends TestCase
             $client->getConnectTimeout()
         );
     }
+    
+    public function test_refund_remains_processing_when_provider_outcome_is_ambiguous(): void
+    {
+        // Siapkan order canceled, payment succeeded, dan refund requested.
+        [$order, $payment] = $this->createCanceledOrderWithSucceededPayment();
+    
+        $refund = \App\Models\Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 100000,
+            'currency' => 'IDR',
+            'reason' => 'Late payment after cancellation',
+            'status' => \App\Models\Refund::STATUS_REQUESTED,
+            'provider' => 'midtrans',
+            'idempotency_key' => 'late-canceled-order-payment-'.$payment->id,
+            'requested_at' => now(),
+        ]);
+    
+        $this->mock(\App\Services\MidtransService::class, function ($mock) {
+            $mock->shouldReceive('refund')
+                ->once()
+                ->andThrow(new \RuntimeException('Provider timeout'));
+        });
+    
+        $service = app(\App\Services\RefundService::class);
+    
+        $result = $service->process($refund);
+    
+        $this->assertSame(
+            \App\Models\Refund::STATUS_PROCESSING,
+            $result->fresh()->status
+        );
+    
+        $this->assertNotNull(
+            $result->fresh()->processing_at
+        );
+    
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'canceled',
+        ]);
+    
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'succeeded',
+        ]);
+    }
+    
+    public function test_late_payment_refund_is_not_marked_completed_before_provider_confirms(): void
+    {
+        [$order, $payment] = $this->createCanceledOrderWithSucceededPayment();
+    
+        $refundService = app(\App\Services\RefundService::class);
+    
+        $refund = $refundService->requestLateCanceledOrderRefund(
+            $order,
+            $payment
+        );
+    
+        $this->assertNotNull($refund);
+    
+        $this->assertSame(
+            \App\Models\Refund::STATUS_REQUESTED,
+            $refund->status
+        );
+    
+        $this->assertNull($refund->processed_at);
+    
+        $this->assertSame(
+            1,
+            \App\Models\Refund::query()
+                ->where('idempotency_key', 'late-canceled-order-payment-'.$payment->id)
+                ->count()
+        );
+    }
 }

@@ -6,11 +6,9 @@
     <div class="store-footer-top">
         <div class="container">
             <div class="row g-2">
-            @foreach ($categories as $category)
-                <div class="col-md-3">
-                    <small><a href="{{ url($category->slug) }}">{{ $category->name }}</a></small>
-                </div>
-            @endforeach
+                <div class="col-md-3">Left</div>
+                <div class="col-md-3">Middle</div>
+                <div class="col-md-3">Right</div>
             </div>
         </div>
     </div>

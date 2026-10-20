@@ -623,8 +623,7 @@ class MidtransPaymentController extends Controller
             }
         }
 
-        if (
-            $paymentStatus === 'succeeded'
+        if ($paymentStatus === 'succeeded'
             && $order->status === 'canceled'
         ) {
             $refund = $this->refundService
@@ -632,7 +631,6 @@ class MidtransPaymentController extends Controller
                     $order,
                     $payment->fresh()
                 );
-
             Log::warning(
                 'Midtrans payment succeeded for a canceled order.',
                 [
