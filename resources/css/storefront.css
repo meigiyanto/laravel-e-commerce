@@ -828,6 +828,13 @@ img {
     color: rgba(255, 255, 255, .68);
 }
 
+.store-footer-top {
+    padding: 2.5rem 0 2rem;
+    background-color: #8c95a6;
+    color: #000;
+    font-weight: 800;
+}
+
 .store-footer-main {
     padding: 3rem 0 2rem;
 }
@@ -2918,6 +2925,24 @@ textarea.store-form-control {
 .store-order-canceled-state p {
     margin: .15rem 0 0;
     font-size: .68rem;
+}
+
+.store-order-cancel-button {
+    border: none;
+    background-color: var(--store-primary);
+    color: #fff;
+    padding: 1rem 1.15rem;
+    width: 100%;
+    font-weight: 600;
+    
+}
+
+.store-order-cancel-buttonl:hover {
+    color: var(--store-primary);
+    background-color: #fff;
+    width: 100%;
+    padding: 1rem 1.15rem;
+    font-weight: 600;
 }
 
 .store-order-panel {
