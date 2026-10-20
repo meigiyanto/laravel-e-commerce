@@ -7,9 +7,12 @@ use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use App\Services\VariantInventoryService;
+use App\Services\MidtransService;
 use App\Services\RefundService;
+use App\Services\StripePaymentService;
+use App\Services\VariantInventoryService;
 
 class OrderController extends Controller
 {
@@ -128,154 +131,211 @@ class OrderController extends Controller
          */
         $stripeCancellationConfirmed = false;
         $midtransCancellationConfirmed = false;
+        $providerPaymentSucceeded = false;
         
         if ($newStatus === 'canceled') {
             $payment = $order->payment()->first();
         
-            if ($payment && $payment->status === 'succeeded') {
-                // Pembayaran sukses ditangani lewat alur refund,
-                // bukan cancel transaksi yang belum dibayar.
-            } elseif ($payment && $payment->provider === 'stripe') {
-                if (! $payment->stripe_payment_intent_id) {
-                    return back()->with(
-                        'error',
-                        'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.'
-                    );
-                }
+            if ($payment) {
+                $safeStatuses = [
+                    'failed',
+                    'expired',
+                    'canceled',
+                ];
         
-                try {
-                    $stripe = app(
-                        \App\Services\StripePaymentService::class
-                    );
-        
-                    $intent = $stripe->cancel(
-                        $payment->stripe_payment_intent_id
-                    );
-        
-                    if ($intent->status !== 'canceled') {
+                /*
+                 * Status succeeded tidak boleh dibatalkan melalui API
+                 * pembatalan. Lanjutkan ke alur refund setelah pesanan
+                 * berhasil dibatalkan.
+                 */
+                if ($payment->status === 'succeeded') {
+                    $providerPaymentSucceeded = true;
+                } elseif (in_array($payment->status, $safeStatuses, true)) {
+                    // Pembayaran sudah terminal; tidak perlu membatalkan provider.
+                } elseif ($payment->provider === 'stripe') {
+                    if (! $payment->stripe_payment_intent_id) {
                         return back()->with(
                             'error',
-                            'Transaksi Stripe belum dipastikan batal. Pesanan dan stok tidak diubah.'
+                            'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.'
                         );
                     }
         
-                    $stripeCancellationConfirmed = true;
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning(
-                        'Gagal membatalkan transaksi Stripe.',
-                        [
-                            'order_id' => $order->id,
-                            'exception' => get_class($e),
-                        ]
-                    );
-        
-                    // Jika cancel gagal karena transaksi ternyata sudah
-                    // berhasil dibayar, sinkronkan status sebelum refund.
                     try {
-                        $intent = app(
-                            \App\Services\StripePaymentService::class
-                        )->retrieve($payment->stripe_payment_intent_id);
+                        $paymentIntent = app(StripePaymentService::class)
+                            ->cancel($payment->stripe_payment_intent_id);
         
-                        if ($intent->status === 'succeeded') {
+                        if ($paymentIntent->status === 'succeeded') {
+                            /*
+                             * Stripe mengonfirmasi pembayaran berhasil.
+                             * Jangan menandainya canceled; arahkan ke refund.
+                             */
+                            $providerPaymentSucceeded = true;
+                        } elseif ($paymentIntent->status === 'canceled') {
+                            $stripeCancellationConfirmed = true;
+                        } else {
                             return back()->with(
                                 'error',
-                                'Pembayaran sudah berhasil. Segarkan data pembayaran dan ajukan pembatalan melalui proses refund.'
+                                'Status Stripe belum terminal. Pesanan dan stok tidak diubah.'
                             );
                         }
-                    } catch (\Throwable $verificationError) {
-                        \Illuminate\Support\Facades\Log::warning(
-                            'Status Stripe tidak dapat diverifikasi.',
-                            ['order_id' => $order->id]
+                    } catch (\Throwable $e) {
+                        Log::warning(
+                            'Admin failed to cancel Stripe PaymentIntent.',
+                            [
+                                'order_id' => $order->id,
+                                'exception' => get_class($e),
+                                'message' => $e->getMessage(),
+                            ]
+                        );
+        
+                        return back()->with(
+                            'error',
+                            'Pembatalan Stripe gagal atau hasilnya tidak pasti. Pesanan dan stok tidak diubah.'
                         );
                     }
+                } elseif ($payment->provider === 'midtrans') {
+                    try {
+                        $midtrans = app(MidtransService::class);
         
+                        /*
+                         * Periksa status terkini sebelum meminta pembatalan.
+                         */
+                        $providerStatus = $midtrans->getStatus(
+                            $order->order_number
+                        );
+        
+                        $transactionStatus = strtolower(
+                            (string) ($providerStatus->transaction_status ?? '')
+                        );
+        
+                        $statusCode = (string) (
+                            $providerStatus->status_code ?? ''
+                        );
+        
+                        $fraudStatus = strtolower(
+                            (string) ($providerStatus->fraud_status ?? '')
+                        );
+        
+                        $isSuccessfulPayment =
+                            $transactionStatus === 'settlement'
+                            || (
+                                $transactionStatus === 'capture'
+                                && ($statusCode === '' || $statusCode === '200')
+                                && ($fraudStatus === '' || $fraudStatus === 'accept')
+                            );
+        
+                        if ($isSuccessfulPayment) {
+                            /*
+                             * Transaksi sudah dibayar. Jangan panggil cancel.
+                             */
+                            $providerPaymentSucceeded = true;
+                        } elseif (in_array(
+                            $transactionStatus,
+                            ['cancel', 'expire', 'deny', 'failure'],
+                            true
+                        )) {
+                            // Provider sudah menyatakan transaksi tidak aktif.
+                        } elseif ($transactionStatus === 'pending') {
+                            /*
+                             * Hanya transaksi pending yang dimintakan
+                             * pembatalan di sini.
+                             */
+                            $midtrans->cancelTransaction(
+                                $order->order_number
+                            );
+        
+                            /*
+                             * Verifikasi ulang dari Midtrans, bukan hanya
+                             * mengandalkan respons cancel().
+                             */
+                            $verifiedStatus = $midtrans->verifyCancellation(
+                                $order->order_number
+                            );
+        
+                            $verifiedTransactionStatus = strtolower(
+                                (string) (
+                                    $verifiedStatus->transaction_status ?? ''
+                                )
+                            );
+        
+                            if (in_array(
+                                $verifiedTransactionStatus,
+                                ['cancel', 'expire', 'deny', 'failure'],
+                                true
+                            )) {
+                                $midtransCancellationConfirmed = true;
+                            } elseif (
+                                $verifiedTransactionStatus === 'settlement'
+                                || (
+                                    $verifiedTransactionStatus === 'capture'
+                                    && (
+                                        (string) ($verifiedStatus->status_code ?? '') === ''
+                                        || (string) $verifiedStatus->status_code === '200'
+                                    )
+                                    && in_array(
+                                        strtolower((string) (
+                                            $verifiedStatus->fraud_status ?? ''
+                                        )),
+                                        ['', 'accept'],
+                                        true
+                                    )
+                                )
+                            ) {
+                                /*
+                                 * Status berubah menjadi berhasil saat proses
+                                 * pembatalan berlangsung. Alihkan ke refund.
+                                 */
+                                $providerPaymentSucceeded = true;
+                            } else {
+                                return back()->with(
+                                    'error',
+                                    'Midtrans belum mengonfirmasi pembatalan. Pesanan dan stok tidak diubah.'
+                                );
+                            }
+                        } else {
+                            /*
+                             * Status tidak dikenal atau tidak aman.
+                             * Fail closed: jangan mengubah order maupun stok.
+                             */
+                            return back()->with(
+                                'error',
+                                'Status transaksi Midtrans belum dapat dipastikan. Pesanan dan stok tidak diubah.'
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning(
+                            'Admin failed to cancel Midtrans transaction.',
+                            [
+                                'order_id' => $order->id,
+                                'exception' => get_class($e),
+                                'message' => $e->getMessage(),
+                            ]
+                        );
+        
+                        return back()->with(
+                            'error',
+                            'Pembatalan Midtrans gagal atau hasilnya tidak pasti. Pesanan dan stok tidak diubah.'
+                        );
+                    }
+                } else {
+                    /*
+                     * Jangan membatalkan pembayaran dengan provider yang
+                     * tidak memiliki mekanisme pembatalan yang dikenali.
+                     */
                     return back()->with(
                         'error',
-                        'Status transaksi Stripe tidak dapat dipastikan. Pesanan dan stok tidak diubah.'
-                    );
-                }
-            } elseif (
-                $payment
-                && $payment->provider === 'midtrans'
-                && ! in_array(
-                    $payment->status,
-                    ['failed', 'expired', 'canceled'],
-                    true
-                )
-            ) {
-                try {
-                    $midtrans = app(
-                        \App\Services\MidtransService::class
-                    );
-        
-                    // Selalu cek status provider terlebih dahulu.
-                    $current = $midtrans->getStatus(
-                        $order->order_number
-                    );
-        
-                    $providerStatus = strtolower(
-                        (string) ($current->transaction_status ?? '')
-                    );
-        
-                    if (in_array($providerStatus, ['settlement', 'capture'], true)) {
-                        return back()->with(
-                            'error',
-                            'Transaksi Midtrans sudah dibayar atau ditangkap. Gunakan proses refund.'
-                        );
-                    }
-        
-                    if ($providerStatus !== 'pending') {
-                        return back()->with(
-                            'error',
-                            'Transaksi Midtrans tidak lagi berstatus pending. Periksa status pembayaran sebelum membatalkan pesanan.'
-                        );
-                    }
-        
-                    $midtrans->cancelTransaction($order->order_number);
-        
-                    // Verifikasi status aktual, jangan percaya respons cancel saja.
-                    $verified = $midtrans->verifyCancellation(
-                        $order->order_number
-                    );
-        
-                    $verifiedStatus = strtolower(
-                        (string) ($verified->transaction_status ?? '')
-                    );
-        
-                    if (! in_array(
-                        $verifiedStatus,
-                        ['cancel', 'canceled', 'expire', 'deny', 'failure'],
-                        true
-                    )) {
-                        return back()->with(
-                            'error',
-                            'Midtrans belum mengonfirmasi pembatalan. Pesanan dan stok tidak diubah.'
-                        );
-                    }
-        
-                    $midtransCancellationConfirmed = true;
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning(
-                        'Gagal membatalkan transaksi Midtrans.',
-                        [
-                            'order_id' => $order->id,
-                            'exception' => get_class($e),
-                        ]
-                    );
-        
-                    return back()->with(
-                        'error',
-                        'Status atau pembatalan Midtrans tidak dapat dipastikan. Pesanan dan stok tidak diubah.'
+                        'Pembatalan ditolak: provider pembayaran tidak didukung.'
                     );
                 }
             }
-        }
-    
+        }    
+        
         $result = DB::transaction(function () use (
             $order,
             $newStatus,
             $stripeCancellationConfirmed,
-            $midtransCancellationConfirmed
+            $midtransCancellationConfirmed,
+            $providerPaymentSucceeded
         ) {
             $lockedOrder = Order::query()
                 ->lockForUpdate()
@@ -296,9 +356,8 @@ class OrderController extends Controller
             )) {
                 return 'transition_blocked';
             }
-    
-            if (
-                $newStatus === 'canceled'
+            
+            if ($newStatus === 'canceled'
                 && in_array(
                     $lockedOrder->status,
                     ['pending', 'processing'],
@@ -308,39 +367,47 @@ class OrderController extends Controller
                 $payment = $lockedOrder->payment()
                     ->lockForUpdate()
                     ->first();
-    
+            
                 if ($payment) {
-                    if ($payment->provider === 'stripe') {
-                        $safeStatuses = [
-                            'failed',
-                            'expired',
-                            'canceled',
-                        ];
-                    
-                        if (
-                            $payment->status !== 'succeeded'
-                            && ! in_array($payment->status, $safeStatuses, true)
-                        ) {
-                            if (! $stripeCancellationConfirmed) {
-                                return 'payment_not_safe';
-                            }
-                    
-                            $payment->status = 'canceled';
-                            $payment->save();
+                    /*
+                     * Provider mengonfirmasi pembayaran berhasil.
+                     * Pertahankan status succeeded agar alur refund dapat berjalan.
+                     */
+                    if ($providerPaymentSucceeded) {
+                        $payment->status = 'succeeded';
+                        $payment->paid_at = $payment->paid_at ?? now();
+                        $payment->save();
+                    } elseif ($payment->status === 'succeeded') {
+                        /*
+                         * Jangan menurunkan status pembayaran yang sudah berhasil.
+                         * Refund ditangani setelah order berhasil dibatalkan.
+                         */
+                    } elseif (in_array(
+                        $payment->status,
+                        ['failed', 'expired', 'canceled'],
+                        true
+                    )) {
+                        // Status pembayaran sudah terminal; tidak perlu dibatalkan lagi.
+                    } elseif ($payment->provider === 'stripe') {
+                        if (! $stripeCancellationConfirmed) {
+                            return 'payment_not_safe';
                         }
-                    } elseif (
-                        $payment->provider === 'midtrans'
-                        && ! in_array(
-                            $payment->status,
-                            ['failed', 'expired', 'canceled', 'succeeded'],
-                            true
-                        )
-                    ) {
+            
+                        $payment->status = 'canceled';
+                        $payment->save();
+                    } elseif ($payment->provider === 'midtrans') {
+                        if (! $midtransCancellationConfirmed) {
+                            return 'payment_not_safe';
+                        }
+            
+                        $payment->status = 'canceled';
+                        $payment->save();
+                    } elseif ($payment->provider !== 'cod') {
                         return 'payment_not_safe';
                     }
                 }
             }
-    
+        
             /*
              * Stok dipulihkan hanya saat pesanan benar-benar
              * beralih dari pending/processing ke canceled.
