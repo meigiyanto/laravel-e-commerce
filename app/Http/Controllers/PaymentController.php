@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiErrorException;
 use App\Services\VariantInventoryService;
+use App\Services\RefundService;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use Throwable;
@@ -586,6 +587,30 @@ class PaymentController extends Controller
                 ),
             ]);
         });
+        
+        /**
+         * Jika pembayaran baru terkonfirmasi setelah order dibatalkan,
+         * gunakan mekanisme refund yang sudah ada.
+         *
+         * Pemanggilan aman diulang karena RefundService menggunakan
+         * idempotency key untuk pembayaran tersebut.
+         */
+        $order->refresh();
+
+        $payment = Payment::query()
+            ->whereKey($payment->getKey())
+            ->firstOrFail();
+
+        if (
+            $order->status === 'canceled'
+            && $payment->status === 'succeeded'
+        ) {
+            app(RefundService::class)
+                ->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment
+                );
+        }
     }
 
 

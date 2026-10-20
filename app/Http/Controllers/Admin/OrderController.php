@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Services\VariantInventoryService;
+use App\Services\RefundService;
 
 class OrderController extends Controller
 {
@@ -221,36 +222,23 @@ class OrderController extends Controller
                             'expired',
                             'canceled',
                         ];
-    
+                    
                         if (
-                            ! in_array(
-                                $payment->status,
-                                $safeStatuses,
-                                true
-                            )
+                            $payment->status !== 'succeeded'
+                            && ! in_array($payment->status, $safeStatuses, true)
                         ) {
                             if (! $stripeCancellationConfirmed) {
                                 return 'payment_not_safe';
                             }
-    
-                            $payment->update([
-                                'status' => 'canceled',
-                                'transaction_status' => 'canceled',
-                                'transaction_id' => $payment->stripe_payment_intent_id,
-                                'reference_id' => $payment->stripe_payment_intent_id,
-                                'metadata' => array_merge(
-                                    $payment->metadata ?? [],
-                                    [
-                                        'admin_cancellation_confirmed' => true,
-                                    ]
-                                ),
-                            ]);
+                    
+                            $payment->status = 'canceled';
+                            $payment->save();
                         }
                     } elseif (
                         $payment->provider === 'midtrans'
                         && ! in_array(
                             $payment->status,
-                            ['failed', 'expired', 'canceled'],
+                            ['failed', 'expired', 'canceled', 'succeeded'],
                             true
                         )
                     ) {
@@ -331,6 +319,23 @@ class OrderController extends Controller
                 'error',
                 'Perubahan status pesanan tidak diizinkan.'
             );
+        }
+        
+        if ($newStatus === 'canceled' && $result === 'updated') {
+            $order->refresh();
+
+            $payment = $order->payment()->first();
+
+            if (
+                $order->status === 'canceled'
+                && $payment?->status === 'succeeded'
+            ) {
+                app(RefundService::class)
+                    ->requestLateCanceledOrderRefund(
+                        $order,
+                        $payment
+                    );
+            }
         }
     
         return redirect()
