@@ -4,15 +4,39 @@
 <footer class="store-footer">
     {{-- Footer Top --}}
     <div class="store-footer-top">
-        <div class="container">
-            <div class="row g-2">
-                <div class="col-md-3">Left</div>
-                <div class="col-md-3">Middle</div>
-                <div class="col-md-3">Right</div>
+        <div class="container py-4">
+            <div class="d-flex flex-column flex-md-row
+                        justify-content-between align-items-md-center gap-3">
+                
+                <div class="flex-shrink-0">
+                    <h6 class="mb-1 fw-semibold">
+                        Top Kategori
+                    </h6>
+    
+                    <p class="mb-0 text-muted small">
+                        Jelajahi kategori produk terpopuler.
+                    </p>
+                </div>
+    
+                <div class="d-flex flex-wrap gap-2">
+                    @forelse ($storefrontTopCategories as $category)
+                        <a
+                            href="{{ route('storefront.category', $category->slug) }}"
+                            class="btn btn-outline-warning btn-sm rounded-pill"
+                        >
+                            {{ $category->name }}
+                        </a>
+                    @empty
+                        <span class="text-muted small">
+                            Belum ada kategori produk.
+                        </span>
+                    @endforelse
+                </div>
+    
             </div>
         </div>
     </div>
-
+    
     {{-- Footer Main --}}
     <div class="store-footer-main">
         <div class="container">
