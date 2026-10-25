@@ -623,73 +623,47 @@ class PaymentController extends Controller
         /*
          * Jangan memproses pembatalan pembayaran berulang.
          */
-        if (
-            in_array(
-                $payment->status,
-                ['failed', 'canceled'],
-                true
-            )
-        ) {
+        if (in_array($payment->status, ['failed', 'canceled'], true)) {
             return;
         }
-
+    
         /*
          * Pesanan yang sudah dikirim atau selesai tidak boleh
          * dibatalkan oleh notifikasi pembayaran yang terlambat.
          */
-        if (
-            in_array(
-                $order->status,
-                ['shipped', 'completed'],
-                true
-            )
-        ) {
+        if (in_array($order->status, ['shipped', 'completed'], true)) {
             return;
         }
-
+    
         $payment->update([
             'status' => $status,
             'transaction_status' => $paymentIntent->status,
-            'metadata' => [
-                'stripe_payment_intent_status' => $paymentIntent->status,
-            ],
+            'metadata' => array_merge(
+                $payment->metadata ?? [],
+                [
+                    'stripe_payment_intent_status' => $paymentIntent->status,
+                ]
+            ),
         ]);
-
+    
         /*
-         * Jika pesanan sudah dibatalkan sebelumnya, sinkronkan
-         * status pembayaran saja. Jangan kembalikan stok lagi.
+         * Jika pesanan sudah dibatalkan sebelumnya, jangan
+         * memulihkan stok untuk kedua kalinya.
          */
         if ($order->status === 'canceled') {
             return;
         }
-
+    
+        /*
+         * Pemanggil harus sudah berada dalam transaksi database
+         * dan mengunci Order dengan lockForUpdate().
+         */
         $order->update([
             'status' => 'canceled',
         ]);
-
-        $order->load('items');
-
-        $stockService = app(VariantInventoryService::class);
-        
-        foreach ($order->items as $item) {
-            $product = Product::query()
-                ->whereKey($item->product_id)
-                ->lockForUpdate()
-                ->first();
-        
-            if (! $product) {
-                continue;
-            }
-        
-            $stockService->restoreForOrder(
-                $product,
-                $item->product_variant_id
-                    ? (int) $item->product_variant_id
-                    : null,
-                (int) $item->quantity,
-                $order
-            );
-        }
+    
+        app(VariantInventoryService::class)
+            ->restoreItemsForOrder($order);
     }
 
     private function stripeAmount($amount): int

@@ -580,58 +580,12 @@ class MidtransPaymentController extends Controller
 
         $payment->update($data);
         
-        if (
-            in_array(
-                $paymentStatus,
-                ['failed', 'expired', 'canceled'],
-                true
-            )
-            && $order->status === 'pending'
-        ) {
-            // Transisi ini dan pemulihan stok harus berada
-            // dalam transaksi database yang sama.
+        if (in_array($paymentStatus,['failed', 'expired', 'canceled'],true) && $order->status === 'pending') {
             $order->update([
                 'status' => 'canceled',
             ]);
         
-            $order->load('items');
-        
-            $stockService = app(
-                \App\Services\VariantInventoryService::class
-            );
-        
-            foreach ($order->items as $item) {
-                $product = \App\Models\Product::query()
-                    ->whereKey($item->product_id)
-                    ->lockForUpdate()
-                    ->first();
-        
-                if (! $product) {
-                    continue;
-                }
-        
-                $stockService->restoreForOrder(
-                    $product,
-                    $item->product_variant_id
-                        ? (int) $item->product_variant_id
-                        : null,
-                    (int) $item->quantity,
-                    $order
-                );
-            }
-        }
-        
-        
-        if (in_array($paymentStatus, ['failed', 'expired', 'canceled'], true)
-            && $order->status === 'pending'
-        ) {
-            // Perubahan status dan pemulihan stok harus atomik.
-            $order->update([
-                'status' => 'canceled',
-            ]);
-
-            app(\App\Services\VariantInventoryService::class)
-                ->restoreItemsForOrder($order);
+            app(\App\Services\VariantInventoryService::class)->restoreItemsForOrder($order);
         }
     }
 

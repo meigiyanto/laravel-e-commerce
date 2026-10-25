@@ -440,7 +440,8 @@ class OrderController extends Controller
                     ->keyBy('id');
     
                 $stockService = app(VariantInventoryService::class);
-    
+                
+                /*
                 foreach ($items as $item) {
                     $product = $products->get($item->product_id);
     
@@ -449,12 +450,13 @@ class OrderController extends Controller
                             "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
                         );
                     }
-                    
-                    app(VariantInventoryService::class)->restoreItemsForOrder($lockedOrder);
 
-                    // $stockService->restoreForOrder($product,$item->product_variant_id ? (int) $item->product_variant_id : null,(int) $item->quantity,$lockedOrder);
+                    $stockService->restoreForOrder($product,$item->product_variant_id ? (int) $item->product_variant_id : null,(int) $item->quantity,$lockedOrder);
                 }
+                */
             }
+            
+            app(VariantInventoryService::class)->restoreItemsForOrder($lockedOrder);
     
             $lockedOrder->update([
                 'status' => $newStatus,
