@@ -555,16 +555,14 @@ class MidtransPaymentController extends Controller
             'fraud_status' => $fraudStatus,
             'status_code' => $statusCode,
             'gross_amount' => $transaction->gross_amount ?? $order->total,
-            'metadata' => [
-                'midtrans' => (array) $transaction,
-            ],
+            'metadata' => array_merge($payment->metadata ?? [], ['midtrans' => (array) $transaction]),
         ];
 
         /*
          * Simpan waktu pembayaran hanya sekali.
          */
         if ($paymentStatus === 'succeeded') {
-            $data['paid_at'] = now();
+            $data['paid_at'] = $payment->paid_at ?? now();
 
             if ($order->status === 'pending') {
                 $order->update([
@@ -622,24 +620,18 @@ class MidtransPaymentController extends Controller
                 );
             }
         }
-
-        if ($paymentStatus === 'succeeded'
-            && $order->status === 'canceled'
+        
+        
+        if (in_array($paymentStatus, ['failed', 'expired', 'canceled'], true)
+            && $order->status === 'pending'
         ) {
-            $refund = $this->refundService
-                ->requestLateCanceledOrderRefund(
-                    $order,
-                    $payment->fresh()
-                );
-            Log::warning(
-                'Midtrans payment succeeded for a canceled order.',
-                [
-                    'order_id' => $order->id,
-                    'payment_id' => $payment->id,
-                    'refund_id' => $refund?->id,
-                    'refund_status' => $refund?->status,
-                ]
-            );
+            // Perubahan status dan pemulihan stok harus atomik.
+            $order->update([
+                'status' => 'canceled',
+            ]);
+
+            app(\App\Services\VariantInventoryService::class)
+                ->restoreItemsForOrder($order);
         }
     }
 

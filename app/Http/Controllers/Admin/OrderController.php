@@ -449,15 +449,10 @@ class OrderController extends Controller
                             "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
                         );
                     }
-    
-                    $stockService->restoreForOrder(
-                        $product,
-                        $item->product_variant_id
-                            ? (int) $item->product_variant_id
-                            : null,
-                        (int) $item->quantity,
-                        $lockedOrder
-                    );
+                    
+                    app(VariantInventoryService::class)->restoreItemsForOrder($lockedOrder);
+
+                    // $stockService->restoreForOrder($product,$item->product_variant_id ? (int) $item->product_variant_id : null,(int) $item->quantity,$lockedOrder);
                 }
             }
     

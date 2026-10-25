@@ -505,20 +505,20 @@ class PaymentController extends Controller
             $payment,
             $paymentIntent
         ) {
-            // Kunci baris database yang sebenarnya.
-            $lockedPayment = Payment::query()
-                ->whereKey($payment->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
 
+            // Selalu kunci Order terlebih dahulu.
             $lockedOrder = Order::query()
                 ->whereKey($order->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Pastikan pembayaran memang milik pesanan ini.
-            if (
-                (int) $lockedPayment->order_id
+            // Setelah Order terkunci, baru kunci Payment.
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedPayment->order_id
                 !== (int) $lockedOrder->id
             ) {
                 throw new \RuntimeException(

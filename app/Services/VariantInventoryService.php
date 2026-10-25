@@ -235,4 +235,56 @@ class VariantInventoryService
             'stock' => (int) $totalQuantity,
         ]);
     }
+    
+    /**
+     * Memulihkan stok seluruh item pesanan.
+     *
+     * Pemanggil wajib:
+     * - berada di dalam DB transaction;
+     * - sudah mengunci baris Order dengan lockForUpdate();
+     * - hanya memanggil method ini ketika transisi ke canceled sah.
+     *
+     * Produk dikunci dalam urutan ID menaik agar konsisten
+     * di jalur admin, Stripe, dan Midtrans.
+     */
+    public function restoreItemsForOrder(Order $order): void
+    {
+        $items = $order->items()
+            ->orderBy('product_id')
+            ->orderBy('product_variant_id')
+            ->orderBy('id')
+            ->get();
+
+        $productIds = $items
+            ->pluck('product_id')
+            ->unique()
+            ->sort()
+            ->values();
+
+        $products = Product::query()
+            ->whereIn('id', $productIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($items as $item) {
+            $product = $products->get($item->product_id);
+
+            if (! $product) {
+                throw new \RuntimeException(
+                    "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
+                );
+            }
+
+            $this->restoreForOrder(
+                $product,
+                $item->product_variant_id
+                    ? (int) $item->product_variant_id
+                    : null,
+                (int) $item->quantity,
+                $order
+            );
+        }
+    }
 }
