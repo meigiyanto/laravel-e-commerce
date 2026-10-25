@@ -314,19 +314,168 @@ class CheckoutStockTest extends TestCase
         $this->assertSame($paymentsBefore, Payment::count());
     
         // Quantity 3 dikurangi reserved 1 berarti hanya tersedia 2.
-        $this->assertSame(
-            3,
-            (int) $selectedInventory->fresh()->quantity
-        );
+        $this->assertSame(3, (int) $selectedInventory->fresh()->quantity);
     
-        $this->assertSame(
-            1,
-            (int) $selectedInventory->fresh()->reserved_quantity
-        );
+        $this->assertSame(1, (int) $selectedInventory->fresh()->reserved_quantity);
     
-        $this->assertSame(
-            1,
-            $cart->items()->count()
-        );
+        $this->assertSame(1, $cart->items()->count());
+    }
+    
+    public function test_checkout_rejects_inactive_variant_without_creating_order(): void {
+        
+        $user = User::factory()->create();
+    
+        $product = Product::factory()->create([
+            'stock' => 10,
+        ]);
+    
+        $defaultVariant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'TEST-AVAILABLE-'.uniqid(),
+            'name' => 'Default',
+            'price' => 10000,
+            'is_default' => true,
+            'status' => 'inactive',
+        ]);
+    
+        $selectedVariant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'TEST-LOW-STOCK-'.uniqid(),
+            'name' => 'Limited',
+            'price' => 30000,
+            'is_default' => false,
+            'status' => 'inactive',
+        ]);
+    
+        Inventory::create([
+            'product_variant_id' => $defaultVariant->id,
+            'quantity' => 10,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+    
+        $selectedInventory = Inventory::create([
+            'product_variant_id' => $selectedVariant->id,
+            'quantity' => 3,
+            'reserved_quantity' => 1,
+            'reorder_level' => 0,
+        ]);
+    
+        $cart = Cart::create([
+            'user_id' => $user->id,
+        ]);
+    
+        CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $selectedVariant->id,
+            'quantity' => 3,
+        ]);
+        
+        $ordersBefore = Order::count();
+        $paymentsBefore = Payment::count();
+    
+        $response = $this->actingAs($user)
+            ->from(route('checkout.index'))
+            ->post(route('checkout.store'), [
+                'customer_name' => 'Test Customer',
+                'phone' => '08123456789',
+                'shipping_address' => 'Alamat pengujian',
+                'notes' => '',
+                'payment_method' => 'cod',
+            ]);
+    
+        $response->assertRedirect(route('checkout.index'));
+        $response->assertSessionHasErrors('stock');
+    
+        $this->assertSame($ordersBefore, Order::count());
+        $this->assertSame($paymentsBefore, Payment::count());
+    
+        // Quantity 3 dikurangi reserved 1 berarti hanya tersedia 2.
+        $this->assertSame(3, (int) $selectedInventory->fresh()->quantity);
+    
+        $this->assertSame(1, (int) $selectedInventory->fresh()->reserved_quantity);
+    
+        $this->assertSame(1, $cart->items()->count());
+    }
+    
+    public function test_checkout_rejects_combined_quantity_above_available_stock(): void {
+        
+        $user = User::factory()->create();
+    
+        $product = Product::factory()->create([
+            'stock' => 10,
+        ]);
+    
+        $firstVariant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'TEST-AVAILABLE-'.uniqid(),
+            'name' => 'Default',
+            'price' => 10000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+    
+        $secondVariant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'TEST-AVAILABLE-'.uniqid(),
+            'name' => 'Default',
+            'price' => 10000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+
+        $firstInventory = Inventory::create([
+            'product_variant_id' => $firstVariant->id,
+            'quantity' => 6,
+            'reserved_quantity' => 1,
+            'reorder_level' => 0,
+        ]);
+    
+        $secondInventory = Inventory::create([
+            'product_variant_id' => $secondVariant->id,
+            'quantity' => 6,
+            'reserved_quantity' => 1,
+            'reorder_level' => 0,
+        ]);
+
+        $cart = Cart::create([
+            'user_id' => $user->id,
+        ]);
+    
+        CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $firstVariant->id,
+            'quantity' => 6,
+        ], [
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $secondVariant->id,
+            'quantity' => 6,
+        ]);
+        
+        $ordersBefore = Order::count();
+        $paymentsBefore = Payment::count();
+    
+        $response = $this->actingAs($user)
+            ->from(route('checkout.index'))
+            ->post(route('checkout.store'), [
+                'customer_name' => 'Test Customer',
+                'phone' => '08123456789',
+                'shipping_address' => 'Alamat pengujian',
+                'notes' => '',
+                'payment_method' => 'cod',
+            ]);
+    
+        $response->assertRedirect(route('checkout.index'));
+        $response->assertSessionHasErrors('stock');
+    
+        $this->assertSame($ordersBefore, Order::count());
+        $this->assertSame($paymentsBefore, Payment::count());
+    
+        $this->assertSame(6, (int) $firstInventory->fresh()->quantity);
+    
+        $this->assertSame(1, (int) $secondInventory->fresh()->reserved_quantity);
     }
 }

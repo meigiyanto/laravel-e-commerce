@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\Exception\ApiErrorException;
 use App\Services\VariantInventoryService;
+use App\Services\RefundService;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use Throwable;
@@ -504,20 +505,20 @@ class PaymentController extends Controller
             $payment,
             $paymentIntent
         ) {
-            // Kunci baris database yang sebenarnya.
-            $lockedPayment = Payment::query()
-                ->whereKey($payment->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
 
+            // Selalu kunci Order terlebih dahulu.
             $lockedOrder = Order::query()
                 ->whereKey($order->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            // Pastikan pembayaran memang milik pesanan ini.
-            if (
-                (int) $lockedPayment->order_id
+            // Setelah Order terkunci, baru kunci Payment.
+            $lockedPayment = Payment::query()
+                ->whereKey($payment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $lockedPayment->order_id
                 !== (int) $lockedOrder->id
             ) {
                 throw new \RuntimeException(
@@ -586,6 +587,30 @@ class PaymentController extends Controller
                 ),
             ]);
         });
+        
+        /**
+         * Jika pembayaran baru terkonfirmasi setelah order dibatalkan,
+         * gunakan mekanisme refund yang sudah ada.
+         *
+         * Pemanggilan aman diulang karena RefundService menggunakan
+         * idempotency key untuk pembayaran tersebut.
+         */
+        $order->refresh();
+
+        $payment = Payment::query()
+            ->whereKey($payment->getKey())
+            ->firstOrFail();
+
+        if (
+            $order->status === 'canceled'
+            && $payment->status === 'succeeded'
+        ) {
+            app(RefundService::class)
+                ->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment
+                );
+        }
     }
 
 
@@ -598,73 +623,47 @@ class PaymentController extends Controller
         /*
          * Jangan memproses pembatalan pembayaran berulang.
          */
-        if (
-            in_array(
-                $payment->status,
-                ['failed', 'canceled'],
-                true
-            )
-        ) {
+        if (in_array($payment->status, ['failed', 'canceled'], true)) {
             return;
         }
-
+    
         /*
          * Pesanan yang sudah dikirim atau selesai tidak boleh
          * dibatalkan oleh notifikasi pembayaran yang terlambat.
          */
-        if (
-            in_array(
-                $order->status,
-                ['shipped', 'completed'],
-                true
-            )
-        ) {
+        if (in_array($order->status, ['shipped', 'completed'], true)) {
             return;
         }
-
+    
         $payment->update([
             'status' => $status,
             'transaction_status' => $paymentIntent->status,
-            'metadata' => [
-                'stripe_payment_intent_status' => $paymentIntent->status,
-            ],
+            'metadata' => array_merge(
+                $payment->metadata ?? [],
+                [
+                    'stripe_payment_intent_status' => $paymentIntent->status,
+                ]
+            ),
         ]);
-
+    
         /*
-         * Jika pesanan sudah dibatalkan sebelumnya, sinkronkan
-         * status pembayaran saja. Jangan kembalikan stok lagi.
+         * Jika pesanan sudah dibatalkan sebelumnya, jangan
+         * memulihkan stok untuk kedua kalinya.
          */
         if ($order->status === 'canceled') {
             return;
         }
-
+    
+        /*
+         * Pemanggil harus sudah berada dalam transaksi database
+         * dan mengunci Order dengan lockForUpdate().
+         */
         $order->update([
             'status' => 'canceled',
         ]);
-
-        $order->load('items');
-
-        $stockService = app(VariantInventoryService::class);
-        
-        foreach ($order->items as $item) {
-            $product = Product::query()
-                ->whereKey($item->product_id)
-                ->lockForUpdate()
-                ->first();
-        
-            if (! $product) {
-                continue;
-            }
-        
-            $stockService->restoreForOrder(
-                $product,
-                $item->product_variant_id
-                    ? (int) $item->product_variant_id
-                    : null,
-                (int) $item->quantity,
-                $order
-            );
-        }
+    
+        app(VariantInventoryService::class)
+            ->restoreItemsForOrder($order);
     }
 
     private function stripeAmount($amount): int

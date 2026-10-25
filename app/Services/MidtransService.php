@@ -166,4 +166,25 @@ class MidtransService
             $params
         );
     }
+    
+    
+    /**
+     * Meminta pembatalan transaksi Midtrans.
+     *
+     * Gunakan order_id internal yang dikirim saat membuat Snap Token.
+     * Pembatalan hanya dianggap berhasil setelah status provider
+     * diperiksa kembali dan menunjukkan status terminal yang sesuai.
+     */
+    public function cancelTransaction(string $orderNumber): object
+    {
+        return Transaction::cancel($orderNumber);
+    }
+
+    /**
+     * Membaca status terbaru setelah permintaan pembatalan.
+     */
+    public function verifyCancellation(string $orderNumber): object
+    {
+        return $this->getStatus($orderNumber);
+    }
 }

@@ -380,14 +380,21 @@ class MidtransPaymentController extends Controller
                 ], 422);
             }
 
-            // Notifikasi duplikat: jika sudah berhasil, jangan proses ulang.
+            // Notifikasi duplikat: pastikan refund terlambat juga tertangani.
             if ($payment->status === 'succeeded') {
+                if ($order->status === 'canceled') {
+                    $this->refundService->requestLateCanceledOrderRefund(
+                        $order,
+                        $payment
+                    );
+                }
+            
                 return response()->json([
                     'success' => true,
                     'message' => 'Pembayaran sudah diproses sebelumnya.',
                 ]);
             }
-
+            
             // 5. Ambil status terbaru dari API Midtrans.
             // Jangan menggunakan payload webhook sebagai satu-satunya
             // sumber status pembayaran.
@@ -433,10 +440,7 @@ class MidtransPaymentController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $lockedPayment = Payment::where(
-                    'order_id',
-                    $lockedOrder->id
-                )->lockForUpdate()->first();
+                $lockedPayment = Payment::where('order_id',$lockedOrder->id)->lockForUpdate()->first();
 
                 if (! $lockedPayment) {
                     throw new \RuntimeException(
@@ -459,34 +463,35 @@ class MidtransPaymentController extends Controller
                 // akibat notifikasi lama atau status gateway yang belum final.
                 $incomingStatus = $this->resolvePaymentStatus(
                     strtolower((string) ($transaction->transaction_status ?? 'pending')),
-                    isset($transaction->status_code)
-                        ? (string) $transaction->status_code
-                        : null,
-                    isset($transaction->fraud_status)
-                        ? strtolower((string) $transaction->fraud_status)
-                        : null
+                    isset($transaction->status_code) ? (string) $transaction->status_code : null,
+                    isset($transaction->fraud_status) ? strtolower((string) $transaction->fraud_status) : null
                 );
 
-                if (
-                    in_array(
-                        $lockedPayment->status,
-                        ['failed', 'expired', 'canceled'],
-                        true
-                    )
+                if (in_array($lockedPayment->status,['failed', 'expired', 'canceled'],true)
                     && $incomingStatus === 'pending'
                 ) {
                     return 'ignored_stale';
                 }
 
                 // 8. Satu-satunya tempat sinkronisasi dilakukan.
-                $this->syncPaymentFromMidtrans(
-                    $lockedOrder,
-                    $lockedPayment,
-                    $transaction
-                );
+                $this->syncPaymentFromMidtrans($lockedOrder,$lockedPayment,$transaction);
 
                 return 'processed';
             });
+            
+            // Muat ulang status terbaru setelah transaksi selesai.
+            $order->refresh();
+            
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->first();
+            
+            if ( $payment && $order->status === 'canceled' && $payment->status === 'succeeded') {
+                $this->refundService->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment
+                );
+            }
 
             if ($result === 'ignored_stale') {
                 Log::warning('Ignored stale Midtrans notification.', [
@@ -555,16 +560,14 @@ class MidtransPaymentController extends Controller
             'fraud_status' => $fraudStatus,
             'status_code' => $statusCode,
             'gross_amount' => $transaction->gross_amount ?? $order->total,
-            'metadata' => [
-                'midtrans' => (array) $transaction,
-            ],
+            'metadata' => array_merge($payment->metadata ?? [], ['midtrans' => (array) $transaction]),
         ];
 
         /*
          * Simpan waktu pembayaran hanya sekali.
          */
         if ($paymentStatus === 'succeeded') {
-            $data['paid_at'] = now();
+            $data['paid_at'] = $payment->paid_at ?? now();
 
             if ($order->status === 'pending') {
                 $order->update([
@@ -582,66 +585,12 @@ class MidtransPaymentController extends Controller
 
         $payment->update($data);
         
-        if (
-            in_array(
-                $paymentStatus,
-                ['failed', 'expired', 'canceled'],
-                true
-            )
-            && $order->status === 'pending'
-        ) {
-            // Transisi ini dan pemulihan stok harus berada
-            // dalam transaksi database yang sama.
+        if (in_array($paymentStatus,['failed', 'expired', 'canceled'],true) && $order->status === 'pending') {
             $order->update([
                 'status' => 'canceled',
             ]);
         
-            $order->load('items');
-        
-            $stockService = app(
-                \App\Services\VariantInventoryService::class
-            );
-        
-            foreach ($order->items as $item) {
-                $product = \App\Models\Product::query()
-                    ->whereKey($item->product_id)
-                    ->lockForUpdate()
-                    ->first();
-        
-                if (! $product) {
-                    continue;
-                }
-        
-                $stockService->restoreForOrder(
-                    $product,
-                    $item->product_variant_id
-                        ? (int) $item->product_variant_id
-                        : null,
-                    (int) $item->quantity,
-                    $order
-                );
-            }
-        }
-
-        if (
-            $paymentStatus === 'succeeded'
-            && $order->status === 'canceled'
-        ) {
-            $refund = $this->refundService
-                ->requestLateCanceledOrderRefund(
-                    $order,
-                    $payment->fresh()
-                );
-
-            Log::warning(
-                'Midtrans payment succeeded for a canceled order.',
-                [
-                    'order_id' => $order->id,
-                    'payment_id' => $payment->id,
-                    'refund_id' => $refund?->id,
-                    'refund_status' => $refund?->status,
-                ]
-            );
+            app(\App\Services\VariantInventoryService::class)->restoreItemsForOrder($order);
         }
     }
 

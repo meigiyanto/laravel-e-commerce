@@ -351,7 +351,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'pending',
+            'status' => 'canceled',
         ]);
     }
 
@@ -601,7 +601,7 @@ class StripeWebhookTest extends TestCase
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'pending',
+            'status' => 'canceled',
         ]);
     }
 

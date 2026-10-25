@@ -6,6 +6,10 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,13 +29,63 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectGuestsTo(
-            fn (Request $request) => $request->is('admin/*')
-                ? route('admin.login')
-                : route('login')
+            fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login')
         );
     })
+    /*
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) =>
+                $request->is('api/*') || $request->expectsJson()
         );
-    })->create();
+    })
+    ->create();
+    */
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->shouldRenderJsonWhen(
+            fn (Request $request) => $request->is('api/*')
+                || $request->expectsJson(),
+        );
+
+        $exceptions->render(function (
+            \Throwable $e,
+            Request $request
+        ) {
+            if ($e instanceof ValidationException
+                || $e instanceof AuthenticationException
+            ) {
+                return null;
+            }
+            
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+    
+            $status = $e instanceof AuthorizationException ? 403 : ($e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500);
+    
+            $area = $request->is('admin') || $request->is('admin/*') ? 'dashboard' : 'storefront';
+    
+            $specificView = "errors.{$area}.{$status}";
+    
+            if (view()->exists($specificView)) {
+                return response()->view(
+                    $specificView,
+                    ['exception' => $e],
+                    $status
+                );
+            }
+    
+            $fallbackView = $status >= 500 ? "errors.{$area}.5xx" : "errors.{$area}.4xx";
+    
+            if (view()->exists($fallbackView)) {
+                return response()->view(
+                    $fallbackView,
+                    ['exception' => $e],
+                    $status
+                );
+            }
+    
+            return null;
+        });
+    })
+    ->create();

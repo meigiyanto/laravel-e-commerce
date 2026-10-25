@@ -28,10 +28,29 @@
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
                     @php
-                        $pendingCancellationNotifications = Auth::user()->unreadNotifications()
-                            ->where('type', \App\Notifications\OrderCancellationRequestedNotification::class)
-                            ->count();
+                        $currentUser = Auth::user();
+                    
+                        $pendingCancellationNotifications = $currentUser
+                            ? $currentUser->unreadNotifications()
+                                ->where(
+                                    'type',
+                                    \App\Notifications\OrderCancellationRequestedNotification::class
+                                )
+                                ->count()
+                            : 0;
+                    
+                        $recentCancellationNotifications = $currentUser
+                            ? $currentUser->unreadNotifications()
+                                ->where(
+                                    'type',
+                                    \App\Notifications\OrderCancellationRequestedNotification::class
+                                )
+                                ->latest()
+                                ->take(5)
+                                ->get()
+                            : collect();
                     @endphp
+                    
                     <li class="dropdown notification-dropdown me-n1">
                         <a href="#" class="dropdown-toggle nk-quick-nav-icon" data-bs-toggle="dropdown">
                             <div class="icon-status icon-status-info">
@@ -44,30 +63,55 @@
                         
                         <div class="dropdown-menu dropdown-menu-xl dropdown-menu-end">
                             <div class="dropdown-head">
-                                <span class="sub-title nk-dropdown-title">Notifications</span>
-                                <a href="#">Mark All as Read</a>
+                                <span class="sub-title nk-dropdown-title">
+                                    Permintaan Pembatalan
+                                </span>
                             </div>
+                    
                             <div class="dropdown-body">
                                 <div class="nk-notification">
-                                    <div class="nk-notification-item dropdown-inner">
-                                        @if($pendingCancellationNotifications > 0)
-                                            <div class="nk-notification-icon">
-                                                <em class="icon icon-circle bg-warning-dim ni ni-curve-down-right"></em>
-                                            </div>
-                                            <div class="nk-notification-content">
-                                                <div class="nk-notification-text">
-                                                    You have requested to <span>Widthdrawl</span>
+                                    @forelse ($recentCancellationNotifications as $notification)
+                                        @php
+                                            $requestId = $notification->data['cancellation_request_id'] ?? null;
+                                        @endphp
+                    
+                                        @if ($requestId)
+                                            <a class="nk-notification-item dropdown-inner" href="{{ route('admin.order-cancellation-requests.show', $requestId) }}">
+                                                <div class="nk-notification-icon">
+                                                    <em class="icon icon-circle bg-warning-dim ni ni-curve-down-right"></em>
                                                 </div>
-                                                <div class="nk-notification-time">
-                                                    2 hrs ago
+                    
+                                                <div class="nk-notification-content">
+                                                    <div class="nk-notification-text">
+                                                        {{ $notification->data['message'] ?? 'Permintaan pembatalan baru.' }}
+                                                    </div>
+                    
+                                                    <div class="nk-notification-text">
+                                                        Pesanan #{{ $notification->data['order_number'] ?? $notification->data['order_id'] ?? '-' }}
+                                                    </div>
+                    
+                                                    <div class="nk-notification-time">
+                                                        {{ $notification->created_at?->diffForHumans() }}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </a>
                                         @endif
-                                    </div>
+                                    @empty
+                                        <div class="dropdown-inner">
+                                            <div class="nk-notification-content">
+                                                <div class="nk-notification-text text-soft">
+                                                    Tidak ada notifikasi pembatalan baru.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforelse
                                 </div>
                             </div>
+                    
                             <div class="dropdown-foot center">
-                                <a href="{{ route('admin.order-cancellation-requests.index') }}">Lihat Semua</a>
+                                <a href="{{ route('admin.order-cancellation-requests.index') }}">
+                                    Lihat Semua Permintaan
+                                </a>
                             </div>
                         </div>
                     </li>

@@ -3021,29 +3021,29 @@ class RefundServiceTest extends TestCase
             $secondResult->processed_at
         );
     }
-
+    
     public function test_expired_recovery_lock_can_allow_second_stripe_recovery(): void
     {
         $user = User::factory()->create();
-
+    
         $order = Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'completed',
-            'total' => 150000,
+            'total' => 500000,
         ]);
-
+    
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'stripe',
             'status' => 'succeeded',
-            'gross_amount' => 150000,
+            'gross_amount' => 500000,
             'stripe_payment_intent_id' => 'pi_test_123',
         ]);
-
+    
         $refund = Refund::create([
             'order_id' => $order->id,
             'payment_id' => $payment->id,
-            'amount' => 50000,
+            'amount' => 500000,
             'currency' => 'IDR',
             'reason' => 'Refund expired lock recovery',
             'status' => Refund::STATUS_PROCESSING,
@@ -3051,71 +3051,58 @@ class RefundServiceTest extends TestCase
             'requested_at' => now()->subMinutes(30),
             'processing_at' => now()->subMinutes(20),
         ]);
-
+    
         $stripeRefund = \Stripe\Refund::constructFrom([
             'id' => 're_test_123',
             'status' => 'succeeded',
         ]);
-
+    
         $stripe = Mockery::mock(StripePaymentService::class);
-
-        $this->app->instance(
-            StripePaymentService::class,
-            $stripe
-        );
-
-        $service = app(RefundService::class);
-
+    
+        $this->app->instance(StripePaymentService::class, $stripe);
+    
         $firstLock = Mockery::mock(
             \Illuminate\Contracts\Cache\Lock::class
         );
-
+    
         $secondLock = Mockery::mock(
             \Illuminate\Contracts\Cache\Lock::class
         );
-
+    
         $firstLock
             ->shouldReceive('get')
             ->once()
             ->andReturn(true);
-
+    
         $firstLock
             ->shouldReceive('release')
             ->once();
-
+    
         $secondLock
             ->shouldReceive('get')
             ->once()
             ->andReturn(true);
-
+    
         $secondLock
             ->shouldReceive('release')
             ->once();
-
+    
         Cache::shouldReceive('lock')
-            ->once()
+            ->twice()
             ->with(
                 'refund-recovery:'.$refund->id,
-                (int) config(
-                    'services.refund.recovery_lock_ttl_seconds'
-                )
+                (int) config('services.refund.recovery_lock_ttl_seconds')
             )
-            ->andReturn($firstLock);
-
-        Cache::shouldReceive('lock')
-            ->once()
-            ->with(
-                'refund-recovery:'.$refund->id,
-                (int) config(
-                    'services.refund.recovery_lock_ttl_seconds'
-                )
-            )
-            ->andReturn($secondLock);$stripe
+            ->andReturn($firstLock, $secondLock);
+    
+        $service = app(RefundService::class);
+    
+        $stripe
             ->shouldReceive('refund')
             ->twice()
             ->with(
                 'pi_test_123',
-                5000000,
+                50000000,
                 'requested_by_customer',
                 'refund-'.$refund->id
             )
@@ -3126,34 +3113,28 @@ class RefundServiceTest extends TestCase
                     $stripeRefund
                 ) {
                     static $callCount = 0;
-
                     $callCount++;
-
+    
                     if ($callCount === 1) {
-                        /*
-                        * Recovery pertama masih berada
-                        * di dalam provider call.
-                        *
-                        * Simulasikan lock pertama sudah
-                        * expired sehingga recovery kedua
-                        * berhasil memperoleh lock.
-                        */
-                        $service->recoverRefund(
-                            $refund->fresh()
-                        );
+                        $service->recoverRefund($refund->fresh());
                     }
-
+    
                     return $stripeRefund;
                 }
             );
-
+    
         $result = $service->recoverRefund($refund);
-
+    
         $this->assertSame(
             Refund::STATUS_COMPLETED,
             $result->status
         );
-    }
+    
+        $this->assertSame(
+            're_test_123',
+            $result->fresh()->reference_id
+        );
+    }    
 
     public function test_recovery_lock_ttl_is_greater_than_provider_timeout(): void
     {
@@ -3227,5 +3208,113 @@ class RefundServiceTest extends TestCase
             30,
             $client->getConnectTimeout()
         );
+    }
+    
+    public function test_refund_remains_processing_when_provider_outcome_is_ambiguous(): void
+    {
+        // Siapkan order canceled, payment succeeded, dan refund requested.
+        [$order, $payment] = $this->createCanceledOrderWithSucceededPayment();
+    
+        $refund = \App\Models\Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 100000,
+            'currency' => 'IDR',
+            'reason' => 'Late payment after cancellation',
+            'status' => \App\Models\Refund::STATUS_REQUESTED,
+            'provider' => 'midtrans',
+            'idempotency_key' => 'late-canceled-order-payment-'.$payment->id,
+            'requested_at' => now(),
+        ]);
+    
+        $this->mock(\App\Services\MidtransService::class, function ($mock) {
+            $mock->shouldReceive('refund')
+                ->once()
+                ->andThrow(new \RuntimeException('Provider timeout'));
+        });
+        
+        $service = app(\App\Services\RefundService::class);
+
+        $this->assertSame(
+            100000.0,
+            (float) $payment->refunds()
+                ->whereIn('status', [
+                    \App\Models\Refund::STATUS_REQUESTED,
+                    \App\Models\Refund::STATUS_APPROVED,
+                    \App\Models\Refund::STATUS_PROCESSING,
+                    \App\Models\Refund::STATUS_COMPLETED,
+                ])
+                ->sum('amount')
+        );
+    
+        $result = $service->process($refund);
+    
+        $this->assertSame(
+            \App\Models\Refund::STATUS_PROCESSING,
+            $result->fresh()->status
+        );
+    
+        $this->assertNotNull(
+            $result->fresh()->processing_at
+        );
+    
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'canceled',
+        ]);
+    
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'succeeded',
+        ]);
+    }
+    
+    public function test_late_payment_refund_is_not_marked_completed_before_provider_confirms(): void
+    {
+        [$order, $payment] = $this->createCanceledOrderWithSucceededPayment();
+    
+        $refundService = app(\App\Services\RefundService::class);
+    
+        $refund = $refundService->requestLateCanceledOrderRefund(
+            $order,
+            $payment
+        );
+    
+        $this->assertNotNull($refund);
+    
+        $this->assertSame(
+            \App\Models\Refund::STATUS_REQUESTED,
+            $refund->status
+        );
+    
+        $this->assertNull($refund->processed_at);
+    
+        $this->assertSame(
+            1,
+            \App\Models\Refund::query()
+                ->where('idempotency_key', 'late-canceled-order-payment-'.$payment->id)
+                ->count()
+        );
+    }
+    
+    private function createCanceledOrderWithSucceededPayment(): array
+    {
+        $user = User::factory()->create();
+    
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'canceled',
+            'total' => 150000,
+        ]);
+    
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'succeeded',
+            'transaction_id' => 'transaction-123',
+            'gross_amount' => 150000,
+        ]);
+    
+        return [$order, $payment];
     }
 }

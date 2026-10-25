@@ -16,10 +16,21 @@ class StorefrontComposer
                 'name',
                 'slug',
             ]);
-
-        $view->with(
-            'storefrontCategories',
-            $storefrontCategories
-        );
+    
+        $storefrontTopCategories = Category::query()
+            ->withCount('products')
+            ->orderByDesc('products_count')
+            ->orderBy('name')
+            ->limit(6)
+            ->get([
+                'id',
+                'name',
+                'slug',
+            ]);
+    
+        $view->with([
+            'storefrontCategories' => $storefrontCategories,
+            'storefrontTopCategories' => $storefrontTopCategories,
+        ]);
     }
 } 

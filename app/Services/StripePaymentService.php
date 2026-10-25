@@ -82,4 +82,19 @@ class StripePaymentService
             $options
         );
     }
+    
+    public function cancel(string $paymentIntentId): PaymentIntent
+    {
+        $paymentIntent = PaymentIntent::retrieve($paymentIntentId);
+    
+        // Status terminal tidak boleh diproses ulang.
+        if (in_array($paymentIntent->status, [
+            'canceled',
+            'succeeded',
+        ], true)) {
+            return $paymentIntent;
+        }
+    
+        return $paymentIntent->cancel();
+    }
 }

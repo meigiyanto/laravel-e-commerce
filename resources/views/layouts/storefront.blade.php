@@ -32,7 +32,7 @@
     <main class="store-page">
         @yield('content')
     </main>
-
+    
     @include('layouts.partials.storefront.footer')
     {{-- Back to Top --}}
     <button

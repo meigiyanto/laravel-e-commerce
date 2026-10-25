@@ -4,8 +4,11 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Inventory;
+use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+
 
 class InventoryControllerTest extends TestCase
 {
@@ -190,5 +193,58 @@ class InventoryControllerTest extends TestCase
             'id' => $product->id,
             'stock' => 10,
         ]);
+    }
+    
+    public function test_updating_one_variant_keeps_product_stock_equal_to_all_variant_stock(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+    
+        $product = Product::factory()->create(['stock' => 20]);
+    
+        $variantA = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'INV-A-' . uniqid(),
+            'name' => 'Varian A',
+            'price' => 100000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+    
+        $variantB = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'INV-B-' . uniqid(),
+            'name' => 'Varian B',
+            'price' => 120000,
+            'is_default' => false,
+            'status' => 'active',
+        ]);
+    
+        $inventoryA = Inventory::create([
+            'product_variant_id' => $variantA->id,
+            'quantity' => 8,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+    
+        $inventoryB = Inventory::create([
+            'product_variant_id' => $variantB->id,
+            'quantity' => 12,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+    
+        $response = $this
+            ->actingAs($admin)
+            ->patch(route('admin.inventory.update-stock', $product), [
+                'stock' => 5,
+            ]);
+    
+        $response
+            ->assertRedirect(route('admin.inventory.index'))
+            ->assertSessionHas('success');
+    
+        $this->assertSame(5, (int) $inventoryA->fresh()->quantity);
+        $this->assertSame(12, (int) $inventoryB->fresh()->quantity);
+        $this->assertSame(17, (int) $product->fresh()->stock);
     }
 }

@@ -301,4 +301,117 @@ class CartServiceConsistencyTest extends TestCase
             app(CartService::class)->total(),
         );
     }
+    
+    public function test_guest_cart_quantity_is_capped_to_available_stock(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant(
+            $product,
+            'Limited',
+            '12000.00',
+            5,
+        );
+
+        $variant->inventory->update([
+            'quantity' => 5,
+            'reserved_quantity' => 2,
+        ]);
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 5,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame(3, $cart['variant_'.$variant->id]['quantity']);
+        $this->assertSame(3, session('cart.variant_'.$variant->id.'.quantity'));
+    }
+
+    public function test_guest_cart_discards_inactive_variant(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant(
+            $product,
+            'Inactive',
+            '12000.00',
+        );
+
+        $variant->update(['status' => 'inactive']);
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 2,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame([], $cart);
+        $this->assertSame([], session('cart'));
+    }
+
+    public function test_guest_cart_discards_variant_with_no_available_stock(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant(
+            $product,
+            'Sold out',
+            '12000.00',
+            5,
+        );
+
+        $variant->inventory->update([
+            'quantity' => 5,
+            'reserved_quantity' => 5,
+        ]);
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 2,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame([], $cart);
+        $this->assertSame([], session('cart'));
+    }
+
+    public function test_duplicate_guest_variant_quantities_are_capped_after_merging(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant(
+            $product,
+            'Duplicate',
+            '12000.00',
+            4,
+        );
+
+        session()->put('cart', [
+            'variant_'.$variant->id => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 3,
+            ],
+            'legacy-alias' => [
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 3,
+            ],
+        ]);
+
+        $cart = app(CartService::class)->getGuestCart();
+
+        $this->assertSame(['variant_'.$variant->id], array_keys($cart));
+        $this->assertSame(4, $cart['variant_'.$variant->id]['quantity']);
+    }
+
 }

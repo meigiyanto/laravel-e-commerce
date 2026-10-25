@@ -9,6 +9,8 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\StripePaymentService;
+use Mockery;
 use ReflectionMethod;
 use Stripe\PaymentIntent;
 use Tests\TestCase;
@@ -53,22 +55,44 @@ class StockRestorationIdempotencyTest extends TestCase
         ]);
 
         // Tahap 1: admin membatalkan pesanan.
-        $this->actingAs(
+
+        // PaymentIntent simulasi untuk tes; tidak memanggil API Stripe sungguhan.
+        $paymentIntent = PaymentIntent::constructFrom([
+            'id' => 'pi_stock_cancel_test',
+            'object' => 'payment_intent',
+            'status' => 'canceled',
+            'amount' => 20000000,
+            'currency' => 'idr',
+            'metadata' => [
+                'order_id' => (string) $order->id,
+            ],
+        ]);
+
+        $stripeService = Mockery::mock(StripePaymentService::class);
+
+        $stripeService
+            ->shouldReceive('cancel')
+            ->once()
+            ->with('pi_stock_cancel_test')
+            ->andReturn($paymentIntent);
+
+        $this->app->instance(
+            StripePaymentService::class,
+            $stripeService
+        );
+
+        // Tahap 1: admin membatalkan pesanan satu kali.
+        $response = $this->actingAs(
             User::factory()->create(['role' => 'admin'])
         )->patch(
             route('admin.orders.status', $order),
             ['status' => 'canceled']
         );
 
-        $this->assertSame(
-            'canceled',
-            $order->fresh()->status
-        );
+        $response->assertSessionHas('success');
 
-        $this->assertSame(
-            10,
-            $product->fresh()->stock
-        );
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(10, $product->fresh()->stock);
 
         // Tahap 2: Stripe kemudian melaporkan canceled.
         $paymentIntent = PaymentIntent::constructFrom([

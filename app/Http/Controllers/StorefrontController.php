@@ -31,10 +31,7 @@ class StorefrontController extends Controller
             ->take(8)
             ->get();
 
-        return view('storefront.home', compact(
-            'categories',
-            'latestProducts'
-        ));
+        return view('storefront.home', compact('categories','latestProducts'));
     }
 
     public function shop(Request $request)
@@ -66,7 +63,7 @@ class StorefrontController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('storefront.shop', compact('products', 'categories'));
+        return view('storefront.shop', compact('products','categories'));
     }
 
     public function product(string $slug)
@@ -128,12 +125,6 @@ class StorefrontController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        return view(
-            'storefront.category',
-            compact(
-                'category',
-                'products'
-            )
-        );
+        return view('storefront.category', compact('category','products'));
     }
 }
