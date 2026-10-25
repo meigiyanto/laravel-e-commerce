@@ -28,23 +28,27 @@
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
                     @php
-                        $pendingCancellationNotifications = Auth::user()
-                            ->unreadNotifications()
-                            ->where(
-                                'type',
-                                \App\Notifications\OrderCancellationRequestedNotification::class
-                            )
-                            ->count();
+                        $currentUser = Auth::user();
                     
-                        $recentCancellationNotifications = Auth::user()
-                            ->unreadNotifications()
-                            ->where(
-                                'type',
-                                \App\Notifications\OrderCancellationRequestedNotification::class
-                            )
-                            ->latest()
-                            ->take(5)
-                            ->get();
+                        $pendingCancellationNotifications = $currentUser
+                            ? $currentUser->unreadNotifications()
+                                ->where(
+                                    'type',
+                                    \App\Notifications\OrderCancellationRequestedNotification::class
+                                )
+                                ->count()
+                            : 0;
+                    
+                        $recentCancellationNotifications = $currentUser
+                            ? $currentUser->unreadNotifications()
+                                ->where(
+                                    'type',
+                                    \App\Notifications\OrderCancellationRequestedNotification::class
+                                )
+                                ->latest()
+                                ->take(5)
+                                ->get()
+                            : collect();
                     @endphp
                     
                     <li class="dropdown notification-dropdown me-n1">

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Inventory;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use App\Models\Inventory;
-use App\Models\ProductVariant;
+use App\Services\VariantInventoryService;
+
 
 class InventoryController extends Controller
 {
@@ -165,19 +167,29 @@ class InventoryController extends Controller
     
             // Migrasikan stok legacy, bukan menganggap stok awal selalu nol.
             if (! $inventory) {
-                $legacyStock = max(0, (int) $lockedProduct->stock);
-    
+                $hasAnyInventory = Inventory::query()
+                    ->whereHas('variant', function ($query) use ($lockedProduct) {
+                        $query->where('product_id', $lockedProduct->id);
+                    })
+                    ->exists();
+            
+                // Stok legacy hanya dialokasikan saat belum ada
+                // inventaris untuk varian mana pun dari produk.
+                $initialQuantity = $hasAnyInventory
+                    ? 0
+                    : max(0, (int) $lockedProduct->stock);
+            
                 $inventory = Inventory::create([
                     'product_variant_id' => $variant->id,
-                    'quantity' => $legacyStock,
+                    'quantity' => $initialQuantity,
                     'reserved_quantity' => 0,
                     'reorder_level' => 0,
                 ]);
-    
-                if ($legacyStock > 0) {
+            
+                if ($initialQuantity > 0) {
                     $variant->inventoryMovements()->create([
                         'type' => 'opening_stock',
-                        'quantity' => $legacyStock,
+                        'quantity' => $initialQuantity,
                         'note' => 'Migrasi stok legacy produk ke inventaris varian.',
                         'created_by' => auth()->id(),
                     ]);
@@ -216,7 +228,7 @@ class InventoryController extends Controller
                 $inventory->update([
                     'quantity' => $newQuantity,
                 ]);
-    
+                
                 $variant->inventoryMovements()->create([
                     'type' => 'adjustment',
                     'quantity' => $difference,
@@ -230,6 +242,9 @@ class InventoryController extends Controller
                 'stock' => $newQuantity,
                 'price' => $variant->price,
             ]);
+            
+            // products.stock selalu dihitung dari seluruh inventaris varian.
+            app(VariantInventoryService::class)->syncLegacyStock($lockedProduct);
         });
     }
 }

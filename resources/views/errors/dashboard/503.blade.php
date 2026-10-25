@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.errors.dashboard')
 
 @section('title', 'Layanan Sementara Tidak Tersedia')
 

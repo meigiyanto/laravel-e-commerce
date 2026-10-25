@@ -4,28 +4,19 @@
             <div class="col-12 col-md-9 col-lg-7">
                 <div class="card border-0 shadow-sm text-center">
                     <div class="card-body p-4 p-md-5">
-                        <div class="display-1 fw-bold text-primary mb-2">
-                            {{ $status }}
-                        </div>
+                        <div class="display-1 fw-bold text-primary mb-2">{{ $status }}</div>
 
-                        <h1 class="h3 fw-bold mb-3">
-                            {{ $title }}
-                        </h1>
-
-                        <p class="text-muted mb-4">
-                            {{ $message }}
-                        </p>
-
+                        <h1 class="h3 fw-bold mb-3">{{ $title }}</h1>
+                        <p class="text-muted mb-4">{{ $message }}</p>
+                        
                         <div class="d-flex flex-wrap justify-content-center gap-2">
                             <a href="{{ route('storefront.home') }}"
-                               class="btn btn-primary">
+                               class="store-btn-primary">
                                 <i class="bi bi-house me-1"></i>
                                 Kembali ke Beranda
                             </a>
 
-                            <button type="button"
-                                    class="btn btn-outline-secondary"
-                                    onclick="window.history.back()">
+                            <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
                                 <i class="bi bi-arrow-left me-1"></i>
                                 Halaman Sebelumnya
                             </button>

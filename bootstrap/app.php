@@ -32,7 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login')
         );
     })
-    
     /*
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -41,7 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->create();
-
     */
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -55,19 +53,15 @@ return Application::configure(basePath: dirname(__DIR__))
         ) {
             if ($e instanceof ValidationException
                 || $e instanceof AuthenticationException
-                || $e instanceof AuthorizationException
             ) {
                 return null;
             }
             
-            if (
-                $request->is('api/*')
-                || $request->expectsJson()
-            ) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return null;
             }
     
-            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+            $status = $e instanceof AuthorizationException ? 403 : ($e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500);
     
             $area = $request->is('admin') || $request->is('admin/*') ? 'dashboard' : 'storefront';
     

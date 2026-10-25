@@ -223,7 +223,7 @@ class VariantInventoryService
      * Kolom legacy mencerminkan total quantity seluruh varian.
      * Nilai ini untuk kompatibilitas, bukan validasi pembelian.
      */
-    private function syncLegacyStock(Product $product): void
+    public function syncLegacyStock(Product $product): void
     {
         $totalQuantity = Inventory::query()
             ->whereHas('variant', function ($query) use ($product) {

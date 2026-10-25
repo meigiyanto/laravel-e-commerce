@@ -6,17 +6,17 @@
 
             <h3 class="nk-error-title">{{ $title }}</h3>
             <p class="nk-error-text">{{ $message }}</p>
+            
             <div class="d-flex flex-wrap justify-content-center gap-2">
-                <a href="{{ route('admin.dashboard') }}" class="btn btn-lg btn-outline-primary mt-2">
-                    <i class="bi bi-house me-1"></i>
+                <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-primary">
+                    <i class="ni ni-home me-1"></i>
                     Kembali ke Dashboard</a>
-                <button type="button"
-                    class="btn btn-outline-secondary"
-                    onclick="window.history.back()">
-                    <i class="bi bi-arrow-left me-1"></i>
+                <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                    <i class="ni ni-arrow-left me-1"></i>
                     Halaman Sebelumnya
                 </button>
             </div>
+            
         </div>
     </div>
 </div>
