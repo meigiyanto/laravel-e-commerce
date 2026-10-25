@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -67,16 +68,20 @@ class ProfileController extends Controller
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);
-
+    
         $user = $request->user();
-
+    
+        // FK orders.user_id akan melepaskan referensi ke akun
+        // tanpa menghapus riwayat pesanan.
+        DB::transaction(function () use ($user) {
+            $user->delete();
+        });
+    
         Auth::logout();
-
-        $user->delete();
-
+    
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
+    
         return Redirect::to('/');
     }
 }
