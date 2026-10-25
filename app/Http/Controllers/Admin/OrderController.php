@@ -407,8 +407,8 @@ class OrderController extends Controller
                     }
                 }
             }
-        
-            /*
+            
+            /**
              * Stok dipulihkan hanya saat pesanan benar-benar
              * beralih dari pending/processing ke canceled.
              */
@@ -420,48 +420,14 @@ class OrderController extends Controller
                     true
                 )
             ) {
-                $items = $lockedOrder->items()
-                    ->orderBy('product_id')
-                    ->orderBy('product_variant_id')
-                    ->orderBy('id')
-                    ->get();
-    
-                $productIds = $items
-                    ->pluck('product_id')
-                    ->unique()
-                    ->sort()
-                    ->values();
-    
-                $products = Product::query()
-                    ->whereIn('id', $productIds)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get()
-                    ->keyBy('id');
-    
-                $stockService = app(VariantInventoryService::class);
-                
-                /*
-                foreach ($items as $item) {
-                    $product = $products->get($item->product_id);
-    
-                    if (! $product) {
-                        throw new \RuntimeException(
-                            "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
-                        );
-                    }
-
-                    $stockService->restoreForOrder($product,$item->product_variant_id ? (int) $item->product_variant_id : null,(int) $item->quantity,$lockedOrder);
-                }
-                */
+                app(VariantInventoryService::class)
+                    ->restoreItemsForOrder($lockedOrder);
             }
             
-            app(VariantInventoryService::class)->restoreItemsForOrder($lockedOrder);
-    
             $lockedOrder->update([
                 'status' => $newStatus,
             ]);
-    
+
             return 'updated';
         });
     
