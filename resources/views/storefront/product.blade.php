@@ -187,6 +187,78 @@
                                         name="product_id"
                                         value="{{ $product->id }}"
                                     >
+                                    @php
+                                        $variantOptions = $product->variants
+                                            ->filter(fn ($variant) => $variant->status === 'active')
+                                            ->map(fn ($variant) => [
+                                                'id' => $variant->id,
+                                                'name' => $variant->name,
+                                                'price' => (float) $variant->price,
+                                                'stock' => max(
+                                                    0,
+                                                    (int) ($variant->inventory?->quantity ?? 0)
+                                                    - (int) ($variant->inventory?->reserved_quantity ?? 0)
+                                                ),
+                                                'attributes' => $variant->attributeValues
+                                                    ->map(fn ($value) => [
+                                                        'name' => $value->attribute?->name,
+                                                        'value' => $value->value,
+                                                        'hex_color' => $value->hex_color,
+                                                    ])
+                                                    ->filter(fn ($attribute) => $attribute['name'] && $attribute['value'] !== null)
+                                                    ->values(),
+                                            ])
+                                            ->values();
+                                    
+                                        $attributeNames = $variantOptions
+                                            ->flatMap(fn ($variant) => collect($variant['attributes'])->pluck('name'))
+                                            ->unique()
+                                            ->values();
+                                    
+                                        $hasVariantAttributes = $variantOptions->contains(
+                                            fn ($variant) => count($variant['attributes']) > 0
+                                        );
+                                    @endphp
+                                    
+                                    @if ($hasVariantAttributes)
+                                        <div id="productVariantSelector" class="product-variant-selector mb-3">
+                                            <input
+                                                type="hidden"
+                                                name="product_variant_id"
+                                                id="product_variant_id"
+                                                value=""
+                                            >
+                                    
+                                            @foreach ($attributeNames as $attributeName)
+                                                <fieldset class="product-variant-group mb-3">
+                                                    <legend class="product-variant-label">
+                                                        {{ $attributeName }}
+                                                    </legend>
+                                    
+                                                    <div
+                                                        class="product-variant-options"
+                                                        data-options-for="{{ $attributeName }}"
+                                                    ></div>
+                                                </fieldset>
+                                            @endforeach
+                                    
+                                            <p
+                                                id="productVariantFeedback"
+                                                class="small mb-0"
+                                                aria-live="polite"
+                                            >Pilih semua opsi produk terlebih dahulu.</p>
+                                        </div>
+                                    @else
+                                        <input
+                                            type="hidden"
+                                            name="product_variant_id"
+                                            id="product_variant_id"
+                                            value="{{ $variantOptions->first()['id'] ?? '' }}"
+                                        >
+                                    @endif
+                                    
+                                    <script type="application/json" id="productVariantData">@json($variantOptions)</script>
+
 
                                     <div class="purchase-row">
 
@@ -977,3 +1049,7 @@
         </section>
     @endif
 @endsection
+
+@push('scripts')
+    @vite('resources/js/product-variant-selector.js')
+@endpush

@@ -26,49 +26,132 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderVariants(variants) {
         const container = el('storeQuickViewVariants');
         container.replaceChildren();
-        const activeVariants = variants.filter(variant => variant.status === 'active');
-        setText('storeQuickViewVariantCount', activeVariants.length + ' varian');
+    
+        const activeVariants = variants.filter(
+            variant => variant.status === 'active'
+        );
+    
+        setText(
+            'storeQuickViewVariantCount',
+            activeVariants.length + ' varian'
+        );
+    
         if (!activeVariants.length) {
-            container.append(makeElement('p', 'store-quick-view-empty', 'Belum ada varian aktif untuk produk ini.'));
+            container.append(
+                makeElement(
+                    'p',
+                    'store-quick-view-empty',
+                    'Belum ada varian aktif untuk produk ini.'
+                )
+            );
             return;
         }
-        activeVariants.forEach(function(variant) {
-            const card = makeElement('article', 'store-quick-view-variant');
+    
+        // Bungkus seluruh kolom varian dalam satu row Bootstrap.
+        const row = makeElement('div', 'row g-3');
+    
+        activeVariants.forEach(function (variant) {
+            // Setiap varian memiliki kolomnya sendiri.
+            const col = makeElement('div', 'col-12 col-md-6 col-lg-4');
+    
+            const card = makeElement(
+                'article',
+                'store-quick-view-variant h-100'
+            );
+    
             const top = makeElement('div', 'store-quick-view-variant-top');
-            const name = makeElement('h4', 'store-quick-view-variant-name', variant.name || 'Varian');
+            const name = makeElement(
+                'h4',
+                'store-quick-view-variant-name',
+                variant.name || 'Varian'
+            );
+    
             const stock = Number(variant.stock || 0);
-            const stockNode = makeElement('span', stock > 0 ? 'store-quick-view-stock is-available' : 'store-quick-view-stock is-empty', stock > 0 ? stock + ' tersedia' : 'Stok habis');
+    
+            const stockNode = makeElement(
+                'span',
+                stock > 0
+                    ? 'store-quick-view-stock is-available'
+                    : 'store-quick-view-stock is-empty',
+                stock > 0 ? stock + ' tersedia' : 'Stok habis'
+            );
+    
             top.append(name, stockNode);
             card.append(top);
-            
+    
+            // Tampilkan atribut seperti ukuran, warna, atau kapasitas.
             if (variant.attributes?.length) {
-                const attributes = makeElement('div', 'store-quick-view-attributes');
-                variant.attributes.forEach(function(attribute) {
-                    const row = makeElement('div', 'store-quick-view-attribute');
-                    row.append(makeElement('span', '', attribute.name || 'Atribut'));
-                    const valueWrap = makeElement('strong', 'store-quick-view-attribute-value');
+                const attributes = makeElement(
+                    'div',
+                    'store-quick-view-attributes'
+                );
+    
+                variant.attributes.forEach(function (attribute) {
+                    const attributeRow = makeElement(
+                        'div',
+                        'store-quick-view-attribute'
+                    );
+    
+                    attributeRow.append(
+                        makeElement('span', '', attribute.name || 'Atribut')
+                    );
+    
+                    const valueWrap = makeElement(
+                        'strong',
+                        'store-quick-view-attribute-value'
+                    );
+    
                     if (attribute.hex_color) {
-                        const swatch = makeElement('span', 'store-quick-view-color-swatch');
+                        const swatch = makeElement(
+                            'span',
+                            'store-quick-view-color-swatch'
+                        );
+    
                         swatch.style.backgroundColor = attribute.hex_color;
                         swatch.setAttribute('aria-hidden', 'true');
                         valueWrap.append(swatch);
                     }
-                    valueWrap.append(document.createTextNode(attribute.value || '-'));
-                    row.append(valueWrap);
-                    attributes.append(row);
+    
+                    valueWrap.append(
+                        document.createTextNode(attribute.value || '-')
+                    );
+    
+                    attributeRow.append(valueWrap);
+                    attributes.append(attributeRow);
                 });
+    
                 card.append(attributes);
             }
-            
+    
+            // Tampilkan SKU dan harga.
             const meta = makeElement('div', 'store-quick-view-variant-meta');
-            meta.append(makeElement('span', '', 'SKU: ' + (variant.sku || '-')), makeElement('strong', '', formatRupiah(variant.price)));
-            if (variant.compare_at_price && Number(variant.compare_at_price) > Number(variant.price)) {
-                meta.append(makeElement('del', 'store-quick-view-old-price', formatRupiah(variant.compare_at_price)));
+    
+            meta.append(
+                makeElement('span', '', 'SKU: ' + (variant.sku || '-')),
+                makeElement('strong', '', formatRupiah(variant.price))
+            );
+    
+            if (
+                variant.compare_at_price &&
+                Number(variant.compare_at_price) > Number(variant.price)
+            ) {
+                meta.append(
+                    makeElement(
+                        'del',
+                        'store-quick-view-old-price',
+                        formatRupiah(variant.compare_at_price)
+                    )
+                );
             }
+    
             card.append(meta);
-            container.append(card);
+            col.append(card);
+            row.append(col);
         });
+    
+        container.append(row);
     }
+
 
     function renderSpecifications(specifications) {
         const container = el('storeQuickViewSpecifications');
@@ -95,7 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         table.append(thead);
         table.append(tbody);
-        console.log(table);
         container.append(table);
     }
     if (!modalElement) {
