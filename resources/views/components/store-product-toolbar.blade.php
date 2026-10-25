@@ -35,7 +35,7 @@
 
             <div class="row g-3">
                 {{-- Search --}}
-                <div class="col-12 col-md-6 col-lg-4">
+                <div class="col-12">
                     <label for="store-filter-search" class="form-label" >Search Product</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white">
@@ -44,9 +44,11 @@
                         <input type="search" id="store-filter-search" name="q" class="form-control" value="{{ $selectedSearch }}" placeholder="Name or description product...">
                     </div>
                 </div>
-
+            </div>
+            
+            <div class="row g-3">
                 {{-- Category --}}
-                <div class="col-12 col-md-6 col-lg-2">
+                <div class="col-12 col-md-6 col-lg-6">
                     <label for="store-filter-category" class="form-label">Category</label>
                     @if ($isCategoryContext)
                         <div class="store-filter-context">
@@ -66,7 +68,7 @@
                 </div>
 
                 {{-- Subcategory --}}
-                <div class="col-12 col-md-6 col-lg-2">
+                <div class="col-12 col-md-6 col-lg-6">
                     <label for="store-filter-subcategory" class="form-label">Sub Category</label>
                     <select id="store-filter-subcategory" name="subcategory" class="form-select" data-filter-subcategory @disabled(! $selectedCategorySlug)>
                         <option value="">{{ $selectedCategorySlug ? 'All Subcategory' : 'Choose category first' }}</option>
@@ -84,9 +86,11 @@
                         @endif
                     </select>
                 </div>
-
+            </div>
+            
+            <div class="row g-3">
                 {{-- Sorting --}}
-                <div class="col-12 col-md-6 col-lg-2">
+                <div class="col-12 col-md-6 col-lg-6">
                     <label for="store-filter-sort" class="form-label">Sorting</label>
                     <select id="store-filter-sort" name="sort" class="form-select">
                         <option value="" @selected(! $selectedSort)>Newest</option>
@@ -99,7 +103,7 @@
                 </div>
 
                 {{-- Actions --}}
-                <div class="col-12 col-md-6 col-lg-2">
+                <div class="col-12 col-md-6 col-lg-6">
                     <label class="form-label d-block">&nbsp;</label>
                     <div class="d-flex gap-2">
                         <button type="submit" class="store-add-cart flex-grow-1">

@@ -60,4 +60,9 @@ class Order extends Model
     {
         return $this->hasMany(\App\Models\OrderCancellationRequest::class);
     }
+    
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
+    }
 }

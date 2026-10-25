@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\DB;
 
 class ProfileTest extends TestCase
 {
@@ -76,7 +77,11 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $this->assertGuest();
+
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
+        ]);
     }
 
     public function test_correct_password_must_be_provided_to_delete_account(): void

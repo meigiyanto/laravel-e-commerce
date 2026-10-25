@@ -13,7 +13,7 @@ return new class extends Migration
 
             $table->foreignId('order_id')
                 ->constrained('orders')
-                ->cascadeOnDelete();
+                ->restrictOnDelete();
 
             $table->foreignId('payment_id')
                 ->constrained('payments')

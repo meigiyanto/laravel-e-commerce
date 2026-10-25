@@ -111,8 +111,10 @@ class StorefrontController extends Controller
         $query = Product::with([
             'category',
             'subCategory',
-        ])
-            ->withAvg('reviews', 'rating')
+            'specifications',
+            'variants.inventory',
+            'variants.attributeValues.attribute',
+        ])->withAvg('reviews', 'rating')
             ->withCount('reviews')
             ->where('category_id', $category->id);
 
