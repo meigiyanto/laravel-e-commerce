@@ -13,7 +13,7 @@ return new class extends Migration
 
             $table->foreignId('user_id')
                 ->constrained('users')
-                ->cascadeOnDelete();
+                ->nullOnDelete();
 
             $table->string('order_number')->unique();
 

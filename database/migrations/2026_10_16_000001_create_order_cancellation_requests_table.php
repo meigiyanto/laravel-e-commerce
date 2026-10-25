@@ -10,8 +10,14 @@ return new class extends Migration
     {
         Schema::create('order_cancellation_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('order_id')
+                ->constrained('orders')
+                ->restrictOnDelete();
+
+            $table->foreignId('user_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->string('status')->default('pending')->index();
             $table->text('reason');
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();

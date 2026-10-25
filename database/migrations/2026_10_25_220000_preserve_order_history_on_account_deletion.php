@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Hapus FK sebelum mengubah nullability kolom.
         Schema::table('orders', function (Blueprint $table) {
             $table->dropForeign('orders_user_id_foreign');
@@ -82,6 +86,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Rollback ke user_id NOT NULL tidak aman jika ada transaksi
         // yang sudah terlepas dari akun. Tolak rollback dalam kondisi itu.
         if (DB::table('orders')->whereNull('user_id')->exists()) {

@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
             AdditionalCatalogSeeder::class,
             DemoCatalogSeeder::class,
             ReviewSeeder::class,
+            ComplexVariantCatalogSeeder::class,
+            ProductSpecificationSeeder::class,
         ]);
     }
 }
