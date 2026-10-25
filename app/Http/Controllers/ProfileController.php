@@ -71,17 +71,16 @@ class ProfileController extends Controller
     
         $user = $request->user();
     
-        // FK orders.user_id akan melepaskan referensi ke akun
-        // tanpa menghapus riwayat pesanan.
+        Auth::logout();
+    
         DB::transaction(function () use ($user) {
             $user->delete();
         });
-    
-        Auth::logout();
     
         $request->session()->invalidate();
         $request->session()->regenerateToken();
     
         return Redirect::to('/');
     }
+
 }
