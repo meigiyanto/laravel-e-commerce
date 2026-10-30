@@ -413,5 +413,72 @@ class CartServiceConsistencyTest extends TestCase
         $this->assertSame(['variant_'.$variant->id], array_keys($cart));
         $this->assertSame(4, $cart['variant_'.$variant->id]['quantity']);
     }
+    
+    public function test_authenticated_cart_item_can_be_removed_by_cart_item_id(): void
+    {
+        $user = User::factory()->create();
+        $product = Product::factory()->create(['stock' => 10]);
+    
+        $first = $this->createVariant($product, 'Red', '12000.00', 10, true);
+        $second = $this->createVariant($product, 'Green', '13000.00', 10);
+    
+        $cart = Cart::create(['user_id' => $user->id]);
+    
+        $firstItem = CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $first->id,
+            'quantity' => 1,
+        ]);
+    
+        $secondItem = CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $second->id,
+            'quantity' => 2,
+        ]);
+    
+        $this->actingAs($user);
+    
+        app(CartService::class)->remove($firstItem->id);
+    
+        $this->assertDatabaseMissing('cart_items', [
+            'id' => $firstItem->id,
+        ]);
+    
+        $this->assertDatabaseHas('cart_items', [
+            'id' => $secondItem->id,
+            'product_variant_id' => $second->id,
+        ]);
+    }
+    
+    public function test_authenticated_user_cannot_remove_another_users_cart_item(): void
+    {
+        $owner = User::factory()->create();
+        $anotherUser = User::factory()->create();
+    
+        $product = Product::factory()->create(['stock' => 10]);
+        $variant = $this->createVariant($product, 'Default', '12000.00', 10, true);
+    
+        $cart = Cart::create(['user_id' => $owner->id]);
+    
+        $item = CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
+    
+        $this->actingAs($anotherUser);
+    
+        try {
+            app(CartService::class)->remove($item->id);
+            $this->fail('Seharusnya item milik pengguna lain tidak dapat dihapus.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->assertDatabaseHas('cart_items', [
+                'id' => $item->id,
+            ]);
+        }
+    }
 
 }

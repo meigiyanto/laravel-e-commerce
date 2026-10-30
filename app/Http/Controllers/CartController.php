@@ -260,36 +260,11 @@ class CartController extends Controller
      */
     public function destroy(Request $request, int $cartItem)
     {
-        if (! auth()->check()) {
-            $this->cartService->remove($cartItem);
-            
-            if ($request->expectsJson()) {
-                $count = $this->cartService->count();
-            
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Produk berhasil dihapus dari keranjang.',
-                    'cart_count' => $count,
-                    'item_count' => $count,
-                    'total' => $this->cartService->total(),
-                ]);
-            }
-        
-            return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
-        }
-        
-        $item = CartItem::query()
-            ->whereKey($cartItem)
-            ->whereHas('cart', function ($query) {
-                $query->where('user_id', auth()->id());
-            })
-            ->firstOrFail();
-    
-        $item->delete();
+        $this->cartService->remove($cartItem);
     
         if ($request->expectsJson()) {
             $count = $this->cartService->count();
-        
+    
             return response()->json([
                 'success' => true,
                 'message' => 'Produk berhasil dihapus dari keranjang.',
@@ -299,7 +274,10 @@ class CartController extends Controller
             ]);
         }
     
-        return back()->with('success', 'Produk berhasil dihapus dari keranjang.');
+        return back()->with(
+            'success',
+            'Produk berhasil dihapus dari keranjang.'
+        );
     }
     
     private function buildGuestCartItems(): Collection

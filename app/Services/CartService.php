@@ -512,41 +512,71 @@ class CartService
     }
 
     /**
-     * Hapus produk dari cart.
+     * Hapus item keranjang.
+     *
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
      */
-    public function remove(int $productId): void
+    public function remove(int $itemId): void
     {
         if (auth()->check()) {
-            $cart = $this->getUserCart(auth()->id());
-    
-            $cartItem = CartItem::where('cart_id', $cart->id)
-                ->where('product_id', $productId)
-                ->first();
-    
-            if ($cartItem) {
-                $cartItem->delete();
-            }
-    
+            $this->removeUserCartItem($itemId, (int) auth()->id());
             return;
         }
     
+        $this->removeGuestCartVariant($itemId);
+    }
+    
+    /**
+     * Hapus item database berdasarkan CartItem.id dan pemilik cart.
+     */
+    public function removeUserCartItem(int $cartItemId, int $userId): void
+    {
+        DB::transaction(function () use ($cartItemId, $userId) {
+            $cart = Cart::query()
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item = CartItem::query()
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item->delete();
+        });
+    }
+    
+    /**
+     * Hapus guest cart berdasarkan ProductVariant.id.
+     *
+     * Kompatibilitas URL lama:
+     * Jika ID tidak ditemukan sebagai variant ID, izinkan
+     * pencarian berdasarkan product ID hanya jika hasilnya
+     * tepat satu item.
+     */
+    public function removeGuestCartVariant(int $variantId): void
+    {
         $cart = $this->getGuestCart();
-        $key = 'variant_'.$productId;
+        $key = 'variant_'.$variantId;
     
         if (! isset($cart[$key])) {
             $matches = [];
     
             foreach ($cart as $cartKey => $item) {
-                if ((int) ($item['product_id'] ?? 0) === $productId) {
+                if ((int) ($item['product_id'] ?? 0) === $variantId) {
                     $matches[] = $cartKey;
                 }
             }
     
-            // Jangan menghapus varian yang salah jika produk punya
-            // lebih dari satu varian di keranjang.
             if (count($matches) === 1) {
                 $key = $matches[0];
             }
+        }
+    
+        if (! isset($cart[$key])) {
+            return;
         }
     
         unset($cart[$key]);
