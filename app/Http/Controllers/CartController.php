@@ -168,8 +168,19 @@ class CartController extends Controller
                 'quantity' => $e->getMessage(),
             ]);
         }
-        
-        return back()->with('success', 'Keranjang berhasil diperbarui.');
+    
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Jumlah produk berhasil diperbarui.',
+                ...$result,
+            ]);
+        }
+    
+        return back()->with(
+            'success',
+            'Keranjang berhasil diperbarui.'
+        );
     }
     
     /**
