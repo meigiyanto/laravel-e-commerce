@@ -357,30 +357,51 @@ class CartService
      * Authenticated menggunakan CartItem.id.
      * Guest menggunakan ProductVariant.id.
      */
-    public function update(int $itemId, int $quantity): void
+    public function update(int $itemId, int $quantity): array
     {
         if ($quantity < 1) {
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
     
         if (auth()->check()) {
-            $this->updateUserCartItem($itemId, (int) auth()->id(), $quantity);
-            return;
+            $item = $this->updateUserCartItem(
+                $itemId,
+                (int) auth()->id(),
+                $quantity
+            );
+    
+            return $this->buildUpdatedItemResponse(
+                $item->id,
+                $item->id,
+                $item->variant,
+                (int) $item->quantity
+            );
         }
     
-        $this->updateGuestCartVariant($itemId, $quantity);
+        $variant = $this->updateGuestCartVariant($itemId, $quantity);
+    
+        return $this->buildUpdatedItemResponse(
+            $variant->id,
+            null,
+            $variant,
+            $quantity
+        );
     }
+
     
     /**
      * Update item database berdasarkan CartItem.id dan pemilik cart.
      */
-    public function updateUserCartItem(int $cartItemId, int $userId, int $quantity): void
-    {
+    public function updateUserCartItem(
+        int $cartItemId,
+        int $userId,
+        int $quantity
+    ): CartItem {
         if ($quantity < 1) {
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
     
-        DB::transaction(function () use ($cartItemId, $userId, $quantity) {
+        return DB::transaction(function () use ($cartItemId, $userId, $quantity) {
             $cart = Cart::query()
                 ->where('user_id', $userId)
                 ->lockForUpdate()
@@ -399,15 +420,12 @@ class CartService
                     ->lockForUpdate()
                     ->firstOrFail();
             } else {
-                // Kompatibilitas item lama tanpa product_variant_id.
                 $resolved = app(VariantInventoryService::class)
                     ->resolve($item->product);
     
                 $variant = $resolved['variant'];
     
-                $item->update([
-                    'product_variant_id' => $variant->id,
-                ]);
+                $item->product_variant_id = $variant->id;
             }
     
             $inventory = Inventory::query()
@@ -415,19 +433,26 @@ class CartService
                 ->lockForUpdate()
                 ->first();
     
-            $this->assertVariantCanContainQuantity($variant, $inventory, $quantity);
+            $this->assertVariantCanContainQuantity(
+                $variant,
+                $inventory,
+                $quantity
+            );
     
-            $item->update([
-                'quantity' => $quantity,
-            ]);
+            $item->quantity = $quantity;
+            $item->save();
+    
+            return $item->load(['product', 'variant.product']);
         });
     }
     
     /**
      * Update guest cart berdasarkan ProductVariant.id.
      */
-    public function updateGuestCartVariant(int $variantId, int $quantity): void
-    {
+    public function updateGuestCartVariant(
+        int $variantId,
+        int $quantity
+    ): ProductVariant {
         if ($quantity < 1) {
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
@@ -453,12 +478,18 @@ class CartService
                 ->lockForUpdate()
                 ->first();
     
-            $this->assertVariantCanContainQuantity($variant, $inventory, $quantity);
+            $this->assertVariantCanContainQuantity(
+                $variant,
+                $inventory,
+                $quantity
+            );
     
             $cart[$key]['quantity'] = $quantity;
         });
     
         session()->put('cart', $cart);
+    
+        return ProductVariant::with('product')->findOrFail($variantId);
     }
     
     /**
@@ -816,5 +847,31 @@ class CartService
         }
 
         return !$cart->items()->exists();
+    }
+    
+    private function buildUpdatedItemResponse(
+        int $itemKey,
+        ?int $cartItemId,
+        ProductVariant $variant,
+        int $quantity
+    ): array {
+        $count = $this->count();
+        $price = (float) ($variant->price ?? $variant->product->price);
+    
+        $response = [
+            'cart_item_key' => (string) $itemKey,
+            'variant_id' => $variant->id,
+            'quantity' => $quantity,
+            'subtotal' => $price * $quantity,
+            'total' => $this->total(),
+            'cart_count' => $count,
+            'item_count' => $count,
+        ];
+    
+        if ($cartItemId !== null) {
+            $response['cart_item_id'] = $cartItemId;
+        }
+    
+        return $response;
     }
 }
