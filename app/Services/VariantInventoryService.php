@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
+use App\Models\InventoryMovement;
 use Illuminate\Validation\ValidationException;
 
 class VariantInventoryService
@@ -155,29 +156,51 @@ class VariantInventoryService
             ->whereKey($inventory->id)
             ->lockForUpdate()
             ->firstOrFail();
-
+    
+        if ($quantity < 1) {
+            throw ValidationException::withMessages([
+                'stock' => 'Jumlah pengurangan stok tidak valid.',
+            ]);
+        }
+    
+        $idempotencyKey = sprintf(
+            'order:%d:variant:%d:sale',
+            $order->id,
+            $variant->id
+        );
+    
+        if ($this->hasRecordedMovement(
+            $idempotencyKey,
+            $variant->id,
+            'sale',
+            -$quantity
+        )) {
+            return;
+        }
+    
         $available = (int) $lockedInventory->quantity
             - (int) $lockedInventory->reserved_quantity;
-
-        if ($quantity < 1 || $quantity > $available) {
+    
+        if ($quantity > $available) {
             throw ValidationException::withMessages([
                 'stock' => "Stok varian {$variant->name} tidak mencukupi.",
             ]);
         }
-
+    
         $lockedInventory->update([
             'quantity' => (int) $lockedInventory->quantity - $quantity,
         ]);
-
+    
         $variant->inventoryMovements()->create([
             'type' => 'sale',
             'quantity' => -$quantity,
             'reference_type' => Order::class,
             'reference_id' => $order->id,
+            'idempotency_key' => $idempotencyKey,
             'note' => 'Stok dikurangi saat checkout.',
             'created_by' => auth()->id(),
         ]);
-
+    
         $this->syncLegacyStock($product);
     }
 
@@ -191,31 +214,54 @@ class VariantInventoryService
         Product $product,
         ?int $variantId,
         int $quantity,
-        Order $order
+        Order $order,
+        ?int $orderItemId = null
     ): void {
         if ($quantity < 1) {
             return;
         }
-
+    
         $resolved = $this->resolve($product, $variantId);
-
+    
         $lockedProduct = $resolved['product'];
         $variant = $resolved['variant'];
         $inventory = $resolved['inventory'];
-
+    
+        $idempotencyKey = $orderItemId !== null
+            ? sprintf(
+                'order:%d:item:%d:return',
+                $order->id,
+                $orderItemId
+            )
+            : sprintf(
+                'order:%d:variant:%d:return',
+                $order->id,
+                $variant->id
+            );
+    
+        if ($this->hasRecordedMovement(
+            $idempotencyKey,
+            $variant->id,
+            'return',
+            $quantity
+        )) {
+            return;
+        }
+    
         $inventory->update([
             'quantity' => (int) $inventory->quantity + $quantity,
         ]);
-
+    
         $variant->inventoryMovements()->create([
             'type' => 'return',
             'quantity' => $quantity,
             'reference_type' => Order::class,
             'reference_id' => $order->id,
+            'idempotency_key' => $idempotencyKey,
             'note' => 'Stok dikembalikan karena pesanan dibatalkan.',
             'created_by' => auth()->id(),
         ]);
-
+    
         $this->syncLegacyStock($lockedProduct);
     }
 
@@ -283,8 +329,37 @@ class VariantInventoryService
                     ? (int) $item->product_variant_id
                     : null,
                 (int) $item->quantity,
-                $order
+                $order,
+                (int) $item->id,
             );
         }
+    }
+    
+    private function hasRecordedMovement(
+        string $idempotencyKey,
+        int $variantId,
+        string $type,
+        int $quantity
+    ): bool {
+        $movement = InventoryMovement::query()
+            ->where('idempotency_key', $idempotencyKey)
+            ->lockForUpdate()
+            ->first();
+    
+        if (! $movement) {
+            return false;
+        }
+    
+        if (
+            (int) $movement->product_variant_id !== $variantId
+            || $movement->type !== $type
+            || (int) $movement->quantity !== $quantity
+        ) {
+            throw new \LogicException(
+                'Inventory movement idempotency key digunakan dengan data yang berbeda.'
+            );
+        }
+    
+        return true;
     }
 }

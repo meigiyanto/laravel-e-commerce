@@ -433,7 +433,8 @@ class StripeWebhookController extends Controller
                         ? (int) $item->product_variant_id
                         : null,
                     (int) $item->quantity,
-                    $order
+                    $order,
+                    (int) $item->id,
                 );
             }
         
