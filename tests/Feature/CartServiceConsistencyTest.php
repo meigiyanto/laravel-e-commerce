@@ -203,7 +203,7 @@ class CartServiceConsistencyTest extends TestCase
             (string) $product->id => 3,
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertArrayHasKey('variant_'.$variant->id, $cart);
         $this->assertSame(
@@ -238,7 +238,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame(['variant_'.$variant->id], array_keys($cart));
         $this->assertSame(5, $cart['variant_'.$variant->id]['quantity']);
@@ -259,7 +260,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame([], $cart);
         $this->assertSame([], session('cart'));
@@ -325,7 +327,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame(3, $cart['variant_'.$variant->id]['quantity']);
         $this->assertSame(3, session('cart.variant_'.$variant->id.'.quantity'));
@@ -350,7 +353,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame([], $cart);
         $this->assertSame([], session('cart'));
@@ -379,7 +383,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame([], $cart);
         $this->assertSame([], session('cart'));
@@ -408,7 +413,8 @@ class CartServiceConsistencyTest extends TestCase
             ],
         ]);
 
-        $cart = app(CartService::class)->getGuestCart();
+        // $cart = app(CartService::class)->getGuestCart();
+        $cart = app(CartService::class)->normalizeGuestCart();
 
         $this->assertSame(['variant_'.$variant->id], array_keys($cart));
         $this->assertSame(4, $cart['variant_'.$variant->id]['quantity']);
@@ -479,6 +485,64 @@ class CartServiceConsistencyTest extends TestCase
                 'id' => $item->id,
             ]);
         }
+    }
+    
+    public function test_reading_legacy_guest_cart_does_not_create_variant_inventory_or_movement(): void
+    {
+        $product = Product::factory()->create([
+            'stock' => 10,
+        ]);
+    
+        session()->put('cart', [
+            (string) $product->id => 3,
+        ]);
+    
+        $originalSession = session('cart');
+    
+        $service = app(CartService::class);
+    
+        $this->assertSame($originalSession, $service->getGuestCart());
+        $this->assertSame(3, $service->count());
+        $this->assertSame(
+            (float) $product->price * 3,
+            $service->total()
+        );
+    
+        $this->assertSame($originalSession, session('cart'));
+    
+        $this->assertDatabaseMissing('product_variants', [
+            'product_id' => $product->id,
+        ]);
+    
+        $this->assertDatabaseCount('inventories', 0);
+        $this->assertDatabaseCount('inventory_movements', 0);
+    }
+    
+    public function test_explicit_normalization_migrates_legacy_guest_cart(): void
+    {
+        $product = Product::factory()->create([
+            'stock' => 10,
+        ]);
+    
+        session()->put('cart', [
+            (string) $product->id => 3,
+        ]);
+    
+        $cart = app(CartService::class)->normalizeGuestCart();
+    
+        $this->assertCount(1, $cart);
+    
+        $item = array_values($cart)[0];
+    
+        $this->assertSame($product->id, $item['product_id']);
+        $this->assertSame(3, $item['quantity']);
+    
+        $this->assertDatabaseHas('product_variants', [
+            'id' => $item['product_variant_id'],
+            'product_id' => $product->id,
+        ]);
+    
+        $this->assertSame($cart, session('cart'));
     }
 
 }

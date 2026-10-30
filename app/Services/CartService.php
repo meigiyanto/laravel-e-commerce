@@ -48,6 +48,7 @@ class CartService
      */
     public function getGuestCart(): array
     {
+        /*
         $cart = session()->get('cart', []);
         $normalized = [];
         $inventoryService = app(VariantInventoryService::class);
@@ -162,6 +163,128 @@ class CartService
         }
     
         return $normalized;
+        */
+        return session()->get('cart', []);
+    }
+
+    public function normalizeGuestCart(): array
+    {
+        $cart = $this->getGuestCart();
+    
+        $normalized = DB::transaction(function () use ($cart) {
+            $normalized = [];
+            $inventoryService = app(VariantInventoryService::class);
+    
+            foreach ($cart as $key => $item) {
+                if (is_array($item) && isset($item['product_variant_id'], $item['product_id'])) {
+                    $variantId = (int) $item['product_variant_id'];
+                    $productId = (int) $item['product_id'];
+                    $quantity = (int) ($item['quantity'] ?? 0);
+    
+                    if ($variantId < 1 || $productId < 1 || $quantity < 1) {
+                        continue;
+                    }
+    
+                    $variant = ProductVariant::query()
+                        ->whereKey($variantId)
+                        ->where('product_id', $productId)
+                        ->first();
+    
+                    if (! $variant) {
+                        continue;
+                    }
+    
+                    $variantKey = 'variant_'.$variantId;
+                    $normalized[$variantKey] = [
+                        'product_id' => $productId,
+                        'product_variant_id' => $variantId,
+                        'quantity' => $quantity + (int) ($normalized[$variantKey]['quantity'] ?? 0),
+                    ];
+    
+                    continue;
+                }
+    
+                // Format lama: product_id => quantity.
+                $productId = is_numeric((string) $key) ? (int) $key : 0;
+                $quantity = is_array($item)
+                    ? (int) ($item['quantity'] ?? 0)
+                    : (int) $item;
+    
+                if ($productId < 1 || $quantity < 1) {
+                    continue;
+                }
+    
+                $product = Product::query()->find($productId);
+    
+                if (! $product) {
+                    continue;
+                }
+    
+                // resolve() hanya dipanggil di dalam transaksi ini.
+                $resolved = $inventoryService->resolve($product);
+                $variant = $resolved['variant'];
+                $variantKey = 'variant_'.$variant->id;
+    
+                $normalized[$variantKey] = [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $quantity + (int) ($normalized[$variantKey]['quantity'] ?? 0),
+                ];
+            }
+    
+            foreach ($normalized as $key => $item) {
+                $variant = ProductVariant::query()
+                    ->with('inventory')
+                    ->whereKey($item['product_variant_id'])
+                    ->where('product_id', $item['product_id'])
+                    ->first();
+    
+                $inventory = $variant?->inventory;
+    
+                if (! $variant || $variant->status !== 'active' || ! $inventory) {
+                    unset($normalized[$key]);
+                    continue;
+                }
+    
+                $available = max(
+                    0,
+                    (int) $inventory->quantity - (int) $inventory->reserved_quantity
+                );
+    
+                if ($available < 1) {
+                    unset($normalized[$key]);
+                    continue;
+                }
+    
+                $normalized[$key]['quantity'] = min(
+                    (int) $item['quantity'],
+                    $available
+                );
+            }
+    
+            return $normalized;
+        });
+    
+        if ($cart !== $normalized) {
+            session()->put('cart', $normalized);
+        }
+    
+        return $normalized;
+    }
+    
+    private function guestCartNeedsNormalization(array $cart): bool
+    {
+        foreach ($cart as $key => $item) {
+            if (
+                ! is_array($item)
+                || ! isset($item['product_id'], $item['product_variant_id'], $item['quantity'])
+                || (string) $key !== 'variant_'.(int) $item['product_variant_id']
+            ) {
+                return true;
+            }
+        }
+    
+        return false;
     }
 
     /**
@@ -183,7 +306,14 @@ class CartService
                 'Jumlah produk minimal 1.'
             );
         }
-    
+        
+        $guestCart = null;
+
+        if (! auth()->check()) {
+            $rawCart = $this->getGuestCart();
+            $guestCart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+        }
+        
         DB::transaction(function () use (
             $product,
             $quantity,
@@ -260,7 +390,11 @@ class CartService
                 return;
             }
     
-            $cart = $this->getGuestCart();
+            // $cart = $this->getGuestCart();
+            // $key = 'variant_'.$variant->id;
+            $rawCart = $this->getGuestCart();
+            $cart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+            
             $key = 'variant_'.$variant->id;
     
             $currentQuantity = (int) (
@@ -457,7 +591,10 @@ class CartService
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
     
-        $cart = $this->getGuestCart();
+        // $cart = $this->getGuestCart();
+        $rawCart = $this->getGuestCart();
+        $cart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+        
         $key = 'variant_'.$variantId;
     
         if (! isset($cart[$key])) {
@@ -717,7 +854,8 @@ class CartService
      */
     public function mergeGuestCartIntoUserCart(int $userId): void
     {
-        $guestCart = $this->getGuestCart();
+        // $guestCart = $this->getGuestCart();
+        $guestCart = $this->normalizeGuestCart();
     
         if (empty($guestCart)) {
             return;

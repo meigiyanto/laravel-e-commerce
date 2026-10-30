@@ -204,39 +204,70 @@ class CartController extends Controller
     private function buildGuestCartItems(): Collection
     {
         $guestCart = $this->cartService->getGuestCart();
+        $items = collect();
     
-        $variantIds = collect($guestCart)
-            ->pluck('product_variant_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        foreach ($guestCart as $key => $entry) {
+            $isLegacy = ! is_array($entry)
+                || ! isset($entry['product_variant_id']);
     
-        $variants = ProductVariant::with([
-            'product.category',
-            'product.subCategory',
-            'inventory',
-            'attributeValues.attribute',
-        ])->whereIn('id', $variantIds)->get()->keyBy('id');
+            $quantity = is_array($entry)
+                ? (int) ($entry['quantity'] ?? 0)
+                : (int) $entry;
     
-        return collect($guestCart)->map(function ($entry) use ($variants) {
-            $variant = $variants->get(
-                (int) ($entry['product_variant_id'] ?? 0)
-            );
-    
-            if (! $variant || ! $variant->product) {
-                return null;
+            if ($quantity < 1) {
+                continue;
             }
     
-            return (object) [
+            if ($isLegacy) {
+                $productId = is_numeric((string) $key) ? (int) $key : 0;
+                $product = $productId > 0
+                    ? Product::with(['category', 'subCategory'])->find($productId)
+                    : null;
+    
+                if (! $product) {
+                    continue;
+                }
+    
+                $items->push((object) [
+                    'id' => null,
+                    'product_id' => $product->id,
+                    'product_variant_id' => null,
+                    'quantity' => $quantity,
+                    'product' => $product,
+                    'variant' => null,
+                ]);
+    
+                continue;
+            }
+    
+            $variantId = (int) $entry['product_variant_id'];
+            $productId = (int) ($entry['product_id'] ?? 0);
+    
+            $variant = ProductVariant::with([
+                'product.category',
+                'product.subCategory',
+                'inventory',
+                'attributeValues.attribute',
+            ])
+                ->whereKey($variantId)
+                ->where('product_id', $productId)
+                ->first();
+    
+            if (! $variant || ! $variant->product) {
+                continue;
+            }
+    
+            $items->push((object) [
                 'id' => null,
                 'product_id' => $variant->product_id,
                 'product_variant_id' => $variant->id,
-                'quantity' => (int) $entry['quantity'],
+                'quantity' => $quantity,
                 'product' => $variant->product,
                 'variant' => $variant,
-            ];
-        })->filter()->values();
+            ]);
+        }
+    
+        return $items;
     }
 
 }
