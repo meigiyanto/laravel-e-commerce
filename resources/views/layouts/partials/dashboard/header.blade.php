@@ -1,30 +1,23 @@
 <div class="nk-header nk-header-fixed is-light">
     <div class="container-fluid">
         <div class="nk-header-wrap">
-            
             <div class="nk-menu-trigger d-xl-none ms-n1">
-                <a href="#" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu">
+                <a href="{{ route('admin.dashboard') }}" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu">
                     <em class="icon ni ni-menu"></em>
                 </a>
             </div>
-            
-            <!--
             <div class="nk-header-brand d-xl-none">
                 <a href="{{ route('admin.dashboard') }}" class="logo-link">
-                    <img class="logo-light logo-img" src="{{ asset('images/logo.png') }}" srcset="{{ asset('images/logo2x.png 2x') }}" alt="logo">
-                    <img class="logo-dark logo-img" src="{{ asset('/images/logo-dark.png') }}" srcset="{{ asset('images/logo-dark2x.png 2x') }}" alt="logo-dark">
+                    <img class="logo-light logo-img" src="/demo2/images/logo.png" srcset="/demo2/images/logo2x.png 2x" alt="logo">
+                    <img class="logo-dark logo-img" src="/demo2/images/logo-dark.png" srcset="/demo2/images/logo-dark2x.png 2x" alt="logo-dark">
                 </a>
+            </div>
+            <!--
+            <div class="nk-header-search ms-3 ms-xl-0">
+                <em class="icon ni ni-search"></em>
+                <input type="text" class="form-control border-transparent form-focus-none" placeholder="Search anything">
             </div>
             -->
-            
-            <div class="nk-header-brand">
-                <a href="{{ route('storefront.home') }}" title="Visit Store">
-                    <span class="nk-menu-icon">
-                        <em class="icon ni ni-home"></em>
-                    </span>
-                </a>
-            </div>
-
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
                     @php
@@ -191,7 +184,6 @@
                     </li>
                 </ul>
             </div>
-            
         </div>
     </div>
 </div>

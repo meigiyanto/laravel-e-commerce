@@ -135,8 +135,8 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     // Gallery management
     Route::get('/product-gallery', [ProductGalleryController::class,'index'])->name('product-gallery.index');
     Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
-    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]')->name('product-gallery.replace');
-    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]')->name('product-gallery.destroy');
+    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]+')->name('product-gallery.replace');
+    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]+')->name('product-gallery.destroy');
 
     // Refund management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');

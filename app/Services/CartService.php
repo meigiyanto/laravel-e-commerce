@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\Inventory;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductVariant;
 use App\Services\VariantInventoryService;
@@ -351,70 +352,141 @@ class CartService
         session()->put('cart', $cart);
     }
 
-    public function update(int $productId, int $quantity): void
+    /**
+     * Update item keranjang.
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
+     */
+    public function update(int $itemId, int $quantity): void
     {
         if ($quantity < 1) {
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
     
         if (auth()->check()) {
-            $product = Product::findOrFail($productId);
-    
-            if ($quantity > $product->stock) {
-                throw new \RuntimeException(
-                    'Jumlah produk melebihi stok yang tersedia.'
-                );
-            }
-    
-            $this->updateUserCart(auth()->id(), $product, $quantity);
-    
+            $this->updateUserCartItem($itemId, (int) auth()->id(), $quantity);
             return;
         }
     
+        $this->updateGuestCartVariant($itemId, $quantity);
+    }
+    
+    /**
+     * Update item database berdasarkan CartItem.id dan pemilik cart.
+     */
+    public function updateUserCartItem(int $cartItemId, int $userId, int $quantity): void
+    {
+        if ($quantity < 1) {
+            throw new \RuntimeException('Jumlah produk minimal 1.');
+        }
+    
+        DB::transaction(function () use ($cartItemId, $userId, $quantity) {
+            $cart = Cart::query()
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item = CartItem::query()
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($item->product_variant_id) {
+                $variant = ProductVariant::query()
+                    ->whereKey($item->product_variant_id)
+                    ->where('product_id', $item->product_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            } else {
+                // Kompatibilitas item lama tanpa product_variant_id.
+                $resolved = app(VariantInventoryService::class)
+                    ->resolve($item->product);
+    
+                $variant = $resolved['variant'];
+    
+                $item->update([
+                    'product_variant_id' => $variant->id,
+                ]);
+            }
+    
+            $inventory = Inventory::query()
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
+    
+            $this->assertVariantCanContainQuantity($variant, $inventory, $quantity);
+    
+            $item->update([
+                'quantity' => $quantity,
+            ]);
+        });
+    }
+    
+    /**
+     * Update guest cart berdasarkan ProductVariant.id.
+     */
+    public function updateGuestCartVariant(int $variantId, int $quantity): void
+    {
+        if ($quantity < 1) {
+            throw new \RuntimeException('Jumlah produk minimal 1.');
+        }
+    
         $cart = $this->getGuestCart();
-        $key = 'variant_'.$productId;
-    
-        // Kompatibilitas dengan pemanggilan lama berbasis product ID,
-        // hanya jika produk tersebut memiliki satu item keranjang.
-        if (! isset($cart[$key])) {
-            $matches = [];
-    
-            foreach ($cart as $cartKey => $item) {
-                if ((int) ($item['product_id'] ?? 0) === $productId) {
-                    $matches[$cartKey] = $item;
-                }
-            }
-    
-            if (count($matches) === 1) {
-                $key = array_key_first($matches);
-            }
-        }
+        $key = 'variant_'.$variantId;
     
         if (! isset($cart[$key])) {
-            throw new \RuntimeException(
-                'Produk tidak ditemukan di keranjang.'
-            );
+            throw new \RuntimeException('Varian tidak ditemukan di keranjang.');
         }
     
-        $variantId = (int) $cart[$key]['product_variant_id'];
-        $variant = ProductVariant::with('inventory')->findOrFail($variantId);
-        $inventory = $variant->inventory;
+        DB::transaction(function () use (&$cart, $key, $variantId, $quantity) {
+            $item = $cart[$key];
+    
+            $variant = ProductVariant::query()
+                ->whereKey($variantId)
+                ->where('product_id', (int) $item['product_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $inventory = Inventory::query()
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
+    
+            $this->assertVariantCanContainQuantity($variant, $inventory, $quantity);
+    
+            $cart[$key]['quantity'] = $quantity;
+        });
+    
+        session()->put('cart', $cart);
+    }
+    
+    /**
+     * Validasi status varian dan stok tersedia.
+     */
+    private function assertVariantCanContainQuantity(
+        ProductVariant $variant,
+        ?Inventory $inventory,
+        int $quantity
+    ): void {
+        if ($variant->status !== 'active') {
+            throw new \RuntimeException('Varian ini tidak tersedia.');
+        }
     
         if (! $inventory) {
             throw new \RuntimeException('Stok varian tidak ditemukan.');
         }
     
-        $available = (int) $inventory->quantity
-            - (int) $inventory->reserved_quantity;
+        $available = max(
+            0,
+            (int) $inventory->quantity - (int) $inventory->reserved_quantity
+        );
     
         if ($quantity > $available) {
             throw new \RuntimeException(
                 'Jumlah melebihi stok varian yang tersedia.'
             );
         }
-    
-        $cart[$key]['quantity'] = $quantity;
-        session()->put('cart', $cart);
     }
 
     /**
