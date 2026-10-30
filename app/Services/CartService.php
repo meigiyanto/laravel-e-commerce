@@ -758,20 +758,22 @@ class CartService
     public function count(): int
     {
         if (auth()->check()) {
-            return (int) CartItem::whereHas('cart', function ($query) {
-                $query->where('user_id', auth()->id());
-            })->sum('quantity');
+            return (int) CartItem::query()
+                ->whereHas('cart', function ($query) {
+                    $query->where('user_id', auth()->id());
+                })
+                ->sum('quantity');
         }
     
-        return collect($this->getGuestCart())->sum(function ($item) {
-            // Format cart guest baru: item berisi data varian dan quantity.
-            if (is_array($item)) {
-                return (int) ($item['quantity'] ?? 0);
-            }
+        $count = 0;
     
-            // Kompatibilitas dengan format lama: product_id => quantity.
-            return (int) $item;
-        });
+        foreach ($this->getGuestCart() as $item) {
+            $count += is_array($item)
+                ? (int) ($item['quantity'] ?? 0)
+                : (int) $item;
+        }
+    
+        return $count;
     }
 
     /**
@@ -780,13 +782,23 @@ class CartService
     public function total(): float
     {
         if (auth()->check()) {
-            $cart = $this->getUserCartWithItems(auth()->id());
+            $cart = Cart::query()
+                ->where('user_id', auth()->id())
+                ->with([
+                    'items.product',
+                    'items.variant.product',
+                    'items.variant.inventory',
+                ])
+                ->first();
+    
+            if (! $cart) {
+                return 0.0;
+            }
     
             return (float) $cart->items->sum(function ($item) {
-                $price = $item->variant?->price
-                    ?? $item->product->price;
+                $price = $item->variant?->price ?? $item->product?->price ?? 0;
     
-                return (float) $price * $item->quantity;
+                return (float) $price * (int) $item->quantity;
             });
         }
     
@@ -796,41 +808,89 @@ class CartService
             return 0.0;
         }
     
-        $total = 0.0;
+        $items = [];
+        $variantIds = [];
     
         foreach ($cart as $key => $item) {
-            // Format baru: variant_{id} => data item.
             if (is_array($item)) {
-                $variantId = $item['product_variant_id'] ?? null;
-                $productId = $item['product_id'] ?? null;
                 $quantity = (int) ($item['quantity'] ?? 0);
+                $variantId = (int) ($item['product_variant_id'] ?? 0);
+                $productId = (int) ($item['product_id'] ?? 0);
     
                 if ($quantity < 1) {
                     continue;
                 }
     
-                $variant = $variantId
-                    ? ProductVariant::with('product')->find($variantId)
-                    : null;
-    
-                $product = $variant?->product
-                    ?? ($productId ? Product::find($productId) : null);
-    
-                if ($product) {
-                    $price = $variant?->price ?? $product->price;
-                    $total += (float) $price * $quantity;
+                if ($variantId > 0) {
+                    $variantIds[] = $variantId;
                 }
+    
+                $items[] = [
+                    'variant_id' => $variantId,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                ];
     
                 continue;
             }
     
-            // Format lama: product_id => quantity.
-            $product = Product::find($key);
+            $productId = is_numeric((string) $key) ? (int) $key : 0;
             $quantity = (int) $item;
     
-            if ($product && $quantity > 0) {
-                $total += (float) $product->price * $quantity;
+            if ($productId > 0 && $quantity > 0) {
+                $items[] = [
+                    'variant_id' => 0,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                ];
             }
+        }
+    
+        if (empty($items)) {
+            return 0.0;
+        }
+    
+        $variants = empty($variantIds) ? collect() : ProductVariant::query()
+                ->with(['product', 'inventory'])
+                ->whereIn('id', array_unique($variantIds))
+                ->get()
+                ->keyBy('id');
+    
+        $fallbackProductIds = [];
+    
+        foreach ($items as $item) {
+            if ($item['variant_id'] < 1) {
+                $fallbackProductIds[] = $item['product_id'];
+                continue;
+            }
+    
+            $variant = $variants->get($item['variant_id']);
+    
+            if (! $variant?->product && $item['product_id'] > 0) {
+                $fallbackProductIds[] = $item['product_id'];
+            }
+        }
+    
+        $products = empty($fallbackProductIds) ? collect() : Product::query()
+                ->whereIn('id', array_unique($fallbackProductIds))
+                ->get()
+                ->keyBy('id');
+    
+        $total = 0.0;
+    
+        foreach ($items as $item) {
+            $variant = $item['variant_id'] > 0 ? $variants->get($item['variant_id']) : null;
+    
+            $product = $variant?->product
+                ?? $products->get($item['product_id']);
+    
+            if (! $product) {
+                continue;
+            }
+    
+            $price = $variant?->price ?? $product->price;
+    
+            $total += (float) $price * $item['quantity'];
         }
     
         return $total;
