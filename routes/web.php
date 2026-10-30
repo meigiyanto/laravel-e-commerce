@@ -135,7 +135,9 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     // Gallery management
     Route::get('/product-gallery', [ProductGalleryController::class,'index'])->name('product-gallery.index');
     Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
-    
+    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]')->name('product-gallery.replace');
+    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]')->name('product-gallery.destroy');
+
     // Refund management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
     Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
@@ -167,6 +169,8 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
+        Route::patch('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
+        Route::put('/profile/password', [AdminController::class, 'updatePassword'])->name('profile.password.update');
     });
 });
 
