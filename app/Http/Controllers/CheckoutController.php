@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use App\Services\VariantInventoryService;
+use App\Services\CartService;
 
 class CheckoutController extends Controller
 {
@@ -87,11 +88,7 @@ class CheckoutController extends Controller
                 abort(404, 'Cart not found.');
             }
         
-            $cartItems = $cart->items()
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->with(['product', 'variant'])
-                ->get();
+            $cartItems = app(CartService::class)->normalizeLegacyUserCartItems($cart);
         
             if ($cartItems->isEmpty()) {
                 abort(422, 'Keranjang masih kosong.');
@@ -137,9 +134,7 @@ class CheckoutController extends Controller
                     ]);
                 }
         
-                $requestedVariantId = $cartItem->product_variant_id
-                    ? (int) $cartItem->product_variant_id
-                    : null;
+                $requestedVariantId = $cartItem->product_variant_id ? (int) $cartItem->product_variant_id : null;
         
                 $resolved = $stockService->resolve(
                     $product,
@@ -155,15 +150,7 @@ class CheckoutController extends Controller
                         'stock' => "Varian {$variant->name} tidak tersedia.",
                     ]);
                 }
-        
-                // Simpan varian default yang berhasil di-resolve
-                // jika item keranjang lama belum memiliki variant ID.
-                if (! $cartItem->product_variant_id) {
-                    $cartItem->update([
-                        'product_variant_id' => $variant->id,
-                    ]);
-                }
-        
+
                 $quantity = (int) $cartItem->quantity;
                 $variantId = (int) $variant->id;
         

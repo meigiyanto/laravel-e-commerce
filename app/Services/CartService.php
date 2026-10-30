@@ -6,9 +6,10 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\Inventory;
-use Illuminate\Support\Facades\DB;
 use App\Models\ProductVariant;
+use Illuminate\Support\Facades\DB;
 use App\Services\VariantInventoryService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
 class CartService
@@ -36,6 +37,69 @@ class CartService
             'items.variant.inventory',
             'items.variant.attributeValues.attribute',
         ]);
+    }
+    
+    /**
+     * Migrasikan item cart user lama yang belum memiliki variant ID.
+     *
+     * Method ini aman dipanggil di dalam transaksi checkout.
+     * Produk dikunci berdasarkan ID secara berurutan sebelum
+     * resolusi varian dan inventory dilakukan.
+     */
+    public function normalizeLegacyUserCartItems(Cart $cart): Collection
+    {
+        return DB::transaction(function () use ($cart) {
+            $items = $cart->items()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+    
+            $legacyItems = $items->whereNull('product_variant_id');
+    
+            if ($legacyItems->isEmpty()) {
+                return $items->load([
+                    'product',
+                    'variant.inventory',
+                    'variant.attributeValues.attribute',
+                ]);
+            }
+    
+            $productIds = $legacyItems
+                ->pluck('product_id')
+                ->unique()
+                ->sort()
+                ->values();
+    
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+    
+            $inventoryService = app(VariantInventoryService::class);
+    
+            foreach ($legacyItems as $item) {
+                $product = $products->get($item->product_id);
+    
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Produk di keranjang tidak lagi tersedia.',
+                    ]);
+                }
+    
+                $resolved = $inventoryService->resolve($product);
+    
+                $item->product_variant_id = $resolved['variant']->id;
+                $item->save();
+            }
+    
+            return $items->load([
+                'product',
+                'variant.inventory',
+                'variant.attributeValues.attribute',
+            ]);
+        });
     }
 
     /**

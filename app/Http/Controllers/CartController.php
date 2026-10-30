@@ -7,6 +7,8 @@ use App\Services\CartService;
 use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
@@ -159,20 +161,14 @@ class CartController extends Controller
                 $cartItem,
                 (int) $validated['quantity']
             );
+        } catch (ModelNotFoundException $e) {
+            throw $e;
         } catch (\RuntimeException $e) {
             throw ValidationException::withMessages([
                 'quantity' => $e->getMessage(),
             ]);
         }
-    
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Jumlah produk berhasil diperbarui.',
-                ...$result,
-            ]);
-        }
-    
+        
         return back()->with('success', 'Keranjang berhasil diperbarui.');
     }
     
