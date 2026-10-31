@@ -4,8 +4,8 @@
         ['route' => 'profile.edit', 'label' => 'Profile Settings', 'icon' => 'bi-person'],
         ['route' => 'orders.index', 'label' => 'My Orders', 'icon' => 'bi-bag'],
         ['route' => 'account.addresses.index', 'label' => 'My Addresses', 'icon' => 'bi-geo-alt'],
-        ['route' => 'wishlist.index', 'label' => 'Wishlist', 'icon' => 'bi-heart'],
-        ['route' => 'compare.index', 'label' => 'Compare Products', 'icon' => 'bi-arrow-left-right'],
+        ['route' => 'wishlist.index', 'label' => 'My Wishlist', 'icon' => 'bi-heart'],
+        ['route' => 'compare.index', 'label' => 'Compare Products', 'icon' => 'bi-bar-chart-line'],
     ];
 @endphp
 

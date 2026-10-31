@@ -128,7 +128,7 @@
 
                         <div class="store-profile-form-actions">
                             <a href="{{ route('account.addresses.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="store-btn-primary">
                                 <i class="bi bi-check2 me-1"></i>
                                 {{ $isEditing ? 'Save Address' : 'Add Address' }}
                             </button>

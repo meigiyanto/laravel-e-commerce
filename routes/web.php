@@ -63,30 +63,11 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name
 */
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Cancel Orders
-    Route::post('/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
-    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
-    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
-
-    // Refund
-    Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
-
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
     Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
     Route::get('/payment/midtrans/{order}', [MidtransPaymentController::class, 'show'])->name('payment.midtrans.show');
     Route::post('/payment/midtrans/{order}/confirm', [MidtransPaymentController::class, 'confirm'])->name('payment.midtrans.confirm');
-
-    // Wishlist
-    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
-    Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
-    Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
-
-    // Product comparison
-    Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
-    Route::post('/compare/{product}', [CompareController::class, 'store'])->name('compare.store');
-    Route::delete('/compare/{product}', [CompareController::class, 'destroy'])->name('compare.destroy');
-    Route::delete('/compare', [CompareController::class, 'clear'])->name('compare.clear');
 
     // Product reviews
     Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
@@ -97,19 +78,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
-
-    // Customer orders
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     
-    // Account profile
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
     Route::get('/account', [AccountController::class, 'index'])->name('account.index');
     
+    // Profile
+    Route::get('account/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('account/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('account/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Address
     Route::prefix('account/addresses')->name('account.addresses.')->controller(UserAddressController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->name('create');
@@ -120,6 +97,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{address}', 'destroy')->name('destroy');
         Route::patch('/{address}/default', 'makeDefault')->name('default');
     });
+    
+    // Wishlist
+    Route::get('account/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('account/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
+    Route::delete('account/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
+
+    // Product comparison
+    Route::get('account/compare', [CompareController::class, 'index'])->name('compare.index');
+    Route::post('account/compare/{product}', [CompareController::class, 'store'])->name('compare.store');
+    Route::delete('account/compare/{product}', [CompareController::class, 'destroy'])->name('compare.destroy');
+    Route::delete('account/compare', [CompareController::class, 'clear'])->name('compare.clear');
+    
+    // Orders
+    Route::get('account/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('account/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
+    // Cancel Orders
+    Route::post('account/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
+    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
+
+    // Refund
+    Route::post('account/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
 });
 
 /*

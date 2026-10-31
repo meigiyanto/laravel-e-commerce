@@ -19,7 +19,7 @@
     'title' => 'My Addresses',
     'description' => 'Manage your saved shipping addresses and choose your default destination.',
     'eyebrow' => 'My Account',
-    'action' => '<a href="' . route('account.addresses.create') . '" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Add Address</a>',
+    'action' => '<a href="' . route('account.addresses.create') . '" class="store-btn-primary"><i class="bi bi-plus-lg me-1"></i> Add Address</a>',
 ])
 
 <section class="pb-5">
@@ -97,7 +97,7 @@
                         <p class="store-account-card-text mb-4">
                             Add a shipping address to make your checkout process faster.
                         </p>
-                        <a href="{{ route('account.addresses.create') }}" class="btn btn-primary">
+                        <a href="{{ route('account.addresses.create') }}" class="store-btn-primary">
                             <i class="bi bi-plus-lg me-1"></i> Add Your First Address
                         </a>
                     </div>

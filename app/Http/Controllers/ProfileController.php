@@ -18,7 +18,7 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
-        return view('profile.edit', [
+        return view('account.profile.edit', [
             'user' => $request->user(),
         ]);
     }
@@ -58,7 +58,7 @@ class ProfileController extends Controller
             Storage::disk('public')->delete($oldAvatar);
         }
     
-        return Redirect::route('profile.edit')
+        return Redirect::route('account.profile.edit')
             ->with('status', 'profile-updated');
     }
 
@@ -84,5 +84,4 @@ class ProfileController extends Controller
     
         return Redirect::to('/');
     }
-
 }

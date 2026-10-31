@@ -19,10 +19,7 @@ class UserAddressController extends Controller
             ->orderByDesc('updated_at')
             ->get();
     
-        return view('storefront.account.addresses.index', compact(
-            'user',
-            'addresses'
-        ));
+        return view('storefront.account.addresses.index', compact('user', 'addresses'));
     }
 
     public function create(Request $request): View

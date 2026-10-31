@@ -4,18 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class WishlistController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
+        $user = $request->user();
         $products = $request->user()
             ->wishlistProducts()
             ->with('category')
             ->latest('wishlists.created_at')
             ->get();
 
-        return view('storefront.wishlist', compact('products'));
+        return view('storefront.account.wishlist', compact('user', 'products'));
     }
 
     public function store(Request $request, Product $product)

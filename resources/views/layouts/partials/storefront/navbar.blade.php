@@ -96,41 +96,6 @@
                 Shop
             </a>
 
-            {{-- AUTHENTICATED CUSTOMER LINKS --}}
-            @auth
-
-                <a
-                    href="{{ route('wishlist.index') }}"
-                    class="store-nav-link {{ request()->routeIs('wishlist.index') ? 'active' : '' }}"
-                    @if(request()->routeIs('wishlist.index'))
-                        aria-current="page"
-                    @endif
-                >
-                    Wishlist
-                </a>
-
-                <a
-                    href="{{ route('compare.index') }}"
-                    class="store-nav-link {{ request()->routeIs('compare.index') ? 'active' : '' }}"
-                    @if(request()->routeIs('compare.index'))
-                        aria-current="page"
-                    @endif
-                >
-                    Compare
-                </a>
-
-                <a
-                    href="{{ route('orders.index') }}"
-                    class="store-nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}"
-                    @if(request()->routeIs('orders.index'))
-                        aria-current="page"
-                    @endif
-                >
-                    Order
-                </a>
-
-            @endauth
-
             {{-- PROMO --}}
             <div class="ms-auto d-flex align-items-center">
                 <a

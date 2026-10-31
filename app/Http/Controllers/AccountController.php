@@ -22,9 +22,6 @@ class AccountController extends Controller
             ->limit(5)
             ->get();
 
-        return view('storefront.account.index', compact(
-            'user',
-            'recentOrders'
-        ));
+        return view('storefront.account.index', compact('user', 'recentOrders'));
     }
 }

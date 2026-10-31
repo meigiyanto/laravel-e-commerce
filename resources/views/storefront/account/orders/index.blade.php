@@ -13,7 +13,7 @@
                         Home
                     </a>
                 </li>
-
+                <li class="breadcrumb-item">Account</li>
                 <li class="breadcrumb-item active" aria-current="page">
                     My Orders
                 </li>
@@ -22,74 +22,61 @@
     </div>
 </div>
 
-<section class="store-section store-orders-section">
+@include('components.account.page-header', [
+    'title' => 'My Orders',
+    'description' => 'View and manage your previous orders.',
+    'eyebrow' => 'Order History',
+        'action' => '<a href="' . route('storefront.shop') . '" class="store-btn-primary"><i class="bi bi-bag me-2"></i>Continue Shopping</a>',
+])
+
+<section class="pb-5">
     <div class="container">
-        {{-- HEADER --}}
-        <div class="store-section-header store-orders-header">
-            <div>
-                <span class="store-section-eyebrow">
-                    Order History
-                </span>
-
-                <h1 class="store-section-title">
-                    My Orders
-                </h1>
-
-                <p class="store-section-subtitle">
-                    View and manage your previous orders.
-                </p>
+        <div class="row g-4">
+            {{-- Sidebar --}}
+            <div class="col-lg-4">
+                @include('components.account.sidebar')
             </div>
-        </div>
-        
-        <div class="row">
-            @if ($orders->count())
-            <div class="col-md-3">
-                <a
-                    href="{{ route('storefront.shop') }}"
-                    class="store-btn-primary mb-3"
-                >
-                    <i class="bi bi-bag"></i>
-                    Continue Shopping
-                </a>
-
-                {{-- ORDER SUMMARY --}}
-                <div class="store-orders-summary">
-                    <div class="store-orders-summary-item">
-                        <span class="store-orders-summary-icon">
-                            <i class="bi bi-receipt"></i>
-                        </span>
-    
-                        <div>
-                            <span class="store-orders-summary-label">
-                                Total Orders
-                            </span>
-    
-                            <strong>
-                                {{ $orders->total() }}
-                            </strong>
+            <div class="col-lg-8">
+                @if ($orders->count())
+                    <div class="store-orders-summary mt-2">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="store-orders-summary-item">
+                                <span class="store-orders-summary-icon">
+                                    <i class="bi bi-receipt"></i>
+                                </span>
+            
+                                <div>
+                                    <span class="store-orders-summary-label">
+                                        Total Orders
+                                    </span>
+            
+                                    <strong>
+                                        {{ $orders->total() }}
+                                    </strong>
+                                </div>
+                            </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="store-orders-summary-item">
+                                <span class="store-orders-summary-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </span>
+            
+                                <div>
+                                    <span class="store-orders-summary-label">
+                                        Showing
+                                    </span>
+            
+                                    <strong>
+                                        {{ $orders->count() }}
+                                        {{ Str::plural('order', $orders->count()) }}
+                                    </strong>
+                                </div>
+                            </div>
+                            </div>
                         </div>
                     </div>
-    
-                    <div class="store-orders-summary-item">
-                        <span class="store-orders-summary-icon">
-                            <i class="bi bi-clock-history"></i>
-                        </span>
-    
-                        <div>
-                            <span class="store-orders-summary-label">
-                                Showing
-                            </span>
-    
-                            <strong>
-                                {{ $orders->count() }}
-                                {{ Str::plural('order', $orders->count()) }}
-                            </strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-9">
-                    {{-- ORDER LIST --}}
                     <div class="store-orders-list">
                         <div class="row">
                         @foreach ($orders as $order)
@@ -262,46 +249,41 @@
                             @endforeach
                         </div>
                     </div>
-        
                     {{-- PAGINATION --}}
                     @if ($orders->hasPages())
                         <div class="store-orders-pagination">
                             {{ $orders->links() }}
                         </div>
                     @endif
-            @else
-                {{-- EMPTY STATE --}}
-                <div class="store-empty-state store-orders-empty">
-                    <div class="store-empty-icon">
-                        <i class="bi bi-receipt"></i>
+                @else
+                    {{-- EMPTY STATE --}}
+                    <div class="store-empty-state store-orders-empty">
+                        <div class="store-empty-icon">
+                            <i class="bi bi-receipt"></i>
+                        </div>
+        
+                        <span class="store-section-eyebrow">
+                            Order History
+                        </span>
+        
+                        <h2>
+                            No Orders Yet
+                        </h2>
+        
+                        <p>
+                            You haven't placed any orders yet.
+                            Start shopping and your orders will appear here.
+                        </p>
+        
+                        <a href="{{ route('storefront.shop') }}" class="store-btn-primary">
+                            <i class="bi bi-bag me-2"></i>
+                            Start Shopping
+                        </a>
+        
                     </div>
-    
-                    <span class="store-section-eyebrow">
-                        Order History
-                    </span>
-    
-                    <h2>
-                        No Orders Yet
-                    </h2>
-    
-                    <p>
-                        You haven't placed any orders yet.
-                        Start shopping and your orders will appear here.
-                    </p>
-    
-                    <a
-                        href="{{ route('storefront.shop') }}"
-                        class="store-btn-primary"
-                    >
-                        <i class="bi bi-bag me-2"></i>
-                        Start Shopping
-                    </a>
-    
-                </div>
-            @endif
+                @endif
             </div>
         </div>
-        
     </div>
 </section>
 @endsection
