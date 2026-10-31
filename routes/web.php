@@ -82,9 +82,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account', [AccountController::class, 'index'])->name('account.index');
     
     // Profile
-    Route::get('account/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('account/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('account/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Address
     Route::prefix('account/addresses')->name('account.addresses.')->controller(UserAddressController::class)->group(function () {
