@@ -12,22 +12,27 @@ class UserAddressController extends Controller
 {
     public function index(Request $request): View
     {
-        $addresses = $request->user()
-            ->addresses()
+        $user = $request->user();
+    
+        $addresses = $user->addresses()
             ->orderByDesc('is_default')
             ->orderByDesc('updated_at')
             ->get();
-
-        return view('storefront.account.addresses.index', compact('addresses'));
+    
+        return view('storefront.account.addresses.index', compact(
+            'user',
+            'addresses'
+        ));
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         return view('storefront.account.addresses.form', [
+            'user' => $request->user(),
             'address' => new UserAddress(),
         ]);
     }
-
+    
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate($this->rules());
@@ -57,9 +62,13 @@ class UserAddressController extends Controller
 
     public function edit(Request $request, int $address): View
     {
+        $user = $request->user();
         $address = $this->findOwnedAddress($request, $address);
-
-        return view('storefront.account.addresses.form', compact('address'));
+    
+        return view('storefront.account.addresses.form', compact(
+            'user',
+            'address'
+        ));
     }
 
     public function update(Request $request, int $address): RedirectResponse
