@@ -1,6 +1,6 @@
 # Laravel E-Commerce
 
-[![Laravel Tests](https://github.com/meigiyanto/laravel-e-commerce/actions/workflows/test.yml/badge.svg)](https://github.com/meigiyanto/laravel-e-commerce/actions/workflows/laravel.yml)
+[![Laravel Tests](https://github.com/meigiyanto/laravel-e-commerce/actions/workflows/laravel.yml/badge.svg)](https://github.com/meigiyanto/laravel-e-commerce/actions/workflows/laravel.yml)
 
 A full-stack e-commerce web application built with Laravel 13, PHP, MySQL/MariaDB, Bootstrap 5, and Vite. This project is designed as a portfolio application demonstrating authentication, storefront functionality, shopping cart management, checkout, order processing, inventory administration, product reviews, wishlist and comparison features, and online payment integration.
 
