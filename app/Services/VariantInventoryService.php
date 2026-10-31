@@ -364,6 +364,92 @@ class VariantInventoryService
             return $reservation->fresh();
         });
     }
+    
+    /**
+     * Commit seluruh reservasi milik order.
+     *
+     * Hanya reservasi dengan status reserved yang diproses.
+     * Pemanggil harus mengunci Order dan menjalankan operasi
+     * ini dalam transaksi checkout atau transisi pembayaran.
+     */
+    public function commitReservationsForOrder(Order $order): void
+    {
+        DB::transaction(function () use ($order): void {
+            $reservations = $order->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+    
+            foreach ($reservations as $reservation) {
+                if (
+                    $reservation->status ===
+                    InventoryReservation::STATUS_COMMITTED
+                ) {
+                    continue;
+                }
+    
+                if (
+                    $reservation->status ===
+                    InventoryReservation::STATUS_RELEASED
+                ) {
+                    throw new \LogicException(
+                        'Order memiliki reservasi yang sudah dilepas.'
+                    );
+                }
+    
+                $this->commitReservation(
+                    $reservation->idempotency_key
+                );
+            }
+        });
+    }
+    
+    /**
+     * Release seluruh reservasi aktif milik order.
+     *
+     * Reservasi committed tidak boleh dilepas karena stok fisiknya
+     * sudah berkurang. Pemulihannya dilakukan melalui operasi return.
+     */
+    public function releaseReservationsForOrder(Order $order): void
+    {
+        DB::transaction(function () use ($order): void {
+            $reservations = $order->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+    
+            foreach ($reservations as $reservation) {
+                if (
+                    $reservation->status ===
+                    InventoryReservation::STATUS_RELEASED
+                ) {
+                    continue;
+                }
+    
+                if (
+                    $reservation->status ===
+                    InventoryReservation::STATUS_COMMITTED
+                ) {
+                    continue;
+                }
+    
+                if (
+                    $reservation->status !==
+                    InventoryReservation::STATUS_RESERVED
+                ) {
+                    throw new \LogicException(
+                        'Status reservasi tidak dikenal.'
+                    );
+                }
+    
+                $this->releaseReservation(
+                    $reservation->idempotency_key
+                );
+            }
+        });
+    }
 
 
     /**

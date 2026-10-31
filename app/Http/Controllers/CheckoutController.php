@@ -263,24 +263,50 @@ class CheckoutController extends Controller
                 ]);
             }
         
-            /*
-             * 5. Kurangi stok sekali untuk setiap varian,
-             * dengan jumlah gabungan seluruh baris keranjang.
+            /**
+             * 5. Buat reservasi sekali untuk setiap varian.
+             *
+             * Semua metode pembayaran melakukan reservasi.
+             * COD akan melakukan commit setelah seluruh reservasi berhasil dibuat.
              */
-            foreach ($rowsByVariant as $variantRows) {
+            $reservations = [];
+            
+            foreach ($rowsByVariant->sortKeys() as $variantId => $variantRows) {
                 $first = $variantRows->first();
-        
+            
                 $totalQuantity = $variantRows->sum(
                     fn ($row) => (int) $row['quantity']
                 );
-        
-                $stockService->deductForOrder(
-                    $first['product'],
-                    $first['variant'],
-                    $first['inventory'],
-                    $totalQuantity,
-                    $order
+            
+                $idempotencyKey = sprintf(
+                    'order:%d:variant:%d:reserve',
+                    $order->id,
+                    $variantId
                 );
+            
+                $reservation = $stockService->reserve(
+                    $first['variant'],
+                    $totalQuantity,
+                    $idempotencyKey,
+                    Order::class,
+                    (int) $order->id
+                );
+            
+                $reservations[] = $reservation;
+            }
+            
+            /*
+             * 6. COD langsung commit seluruh reservasi.
+             *
+             * Stripe dan Midtrans tetap berstatus reserved sampai
+             * pembayaran berhasil dikonfirmasi oleh payment gateway.
+             */
+            if ($validated['payment_method'] === 'cod') {
+                foreach ($reservations as $reservation) {
+                    $stockService->commitReservation(
+                        $reservation->idempotency_key
+                    );
+                }
             }
         
             // 6. Kosongkan keranjang setelah order dan stok diproses.
