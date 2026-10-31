@@ -28,6 +28,13 @@
             {{ session('success') }}
         </div>
     @endif
+    
+    @if (session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+
 
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -121,12 +128,29 @@
                                     <p class="title mb-1">Belum terhubung ke produk</p>
                                 @endif
 
-
-                                @if ($image['is_used'])
-                                    <span class="badge bg-success">Used by a product</span>
-                                @else
-                                    <span class="badge bg-light text-dark">Not used</span>
-                                @endif
+                                 @if ($image['is_used'])
+                                    <span class="badge bg-success">Used by a product or variant</span>
+                                 @else
+                                     <span class="badge bg-light text-dark">Not used</span>
+                                 @endif
+ 
+                                <div class="border-top mt-3 pt-3">
+                                    <form method="POST" action="{{ route('admin.product-gallery.replace', ['filename' => $image['filename']]) }}" enctype="multipart/form-data" class="mb-2">
+                                        @csrf
+                                        @method('PUT')
+                                        <label class="form-label small" for="replace-{{ md5($image['path']) }}">Replace image</label>
+                                        <input type="file" name="image" id="replace-{{ md5($image['path']) }}" class="form-control form-control-sm mb-2" accept=".jpg,.jpeg,.png,.webp" required>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Replace</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.product-gallery.destroy', ['filename' => $image['filename']]) }}" onsubmit="return confirm('Delete this image permanently?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100" @disabled($image['is_used'])>Delete</button>
+                                        @if ($image['is_used'])
+                                            <small class="text-soft d-block mt-1">Cannot delete while this image is in use.</small>
+                                        @endif
+                                    </form>
+                                </div>
 
                                 
                             </div>

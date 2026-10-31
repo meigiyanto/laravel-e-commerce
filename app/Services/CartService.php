@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
-use Illuminate\Support\Facades\DB;
+use App\Models\Inventory;
 use App\Models\ProductVariant;
+use Illuminate\Support\Facades\DB;
 use App\Services\VariantInventoryService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
 class CartService
@@ -36,6 +38,69 @@ class CartService
             'items.variant.attributeValues.attribute',
         ]);
     }
+    
+    /**
+     * Migrasikan item cart user lama yang belum memiliki variant ID.
+     *
+     * Method ini aman dipanggil di dalam transaksi checkout.
+     * Produk dikunci berdasarkan ID secara berurutan sebelum
+     * resolusi varian dan inventory dilakukan.
+     */
+    public function normalizeLegacyUserCartItems(Cart $cart): Collection
+    {
+        return DB::transaction(function () use ($cart) {
+            $items = $cart->items()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+    
+            $legacyItems = $items->whereNull('product_variant_id');
+    
+            if ($legacyItems->isEmpty()) {
+                return $items->load([
+                    'product',
+                    'variant.inventory',
+                    'variant.attributeValues.attribute',
+                ]);
+            }
+    
+            $productIds = $legacyItems
+                ->pluck('product_id')
+                ->unique()
+                ->sort()
+                ->values();
+    
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+    
+            $inventoryService = app(VariantInventoryService::class);
+    
+            foreach ($legacyItems as $item) {
+                $product = $products->get($item->product_id);
+    
+                if (! $product) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Produk di keranjang tidak lagi tersedia.',
+                    ]);
+                }
+    
+                $resolved = $inventoryService->resolve($product);
+    
+                $item->product_variant_id = $resolved['variant']->id;
+                $item->save();
+            }
+    
+            return $items->load([
+                'product',
+                'variant.inventory',
+                'variant.attributeValues.attribute',
+            ]);
+        });
+    }
 
     /**
      * Ambil cart guest dari session.
@@ -47,6 +112,7 @@ class CartService
      */
     public function getGuestCart(): array
     {
+        /*
         $cart = session()->get('cart', []);
         $normalized = [];
         $inventoryService = app(VariantInventoryService::class);
@@ -161,6 +227,128 @@ class CartService
         }
     
         return $normalized;
+        */
+        return session()->get('cart', []);
+    }
+
+    public function normalizeGuestCart(): array
+    {
+        $cart = $this->getGuestCart();
+    
+        $normalized = DB::transaction(function () use ($cart) {
+            $normalized = [];
+            $inventoryService = app(VariantInventoryService::class);
+    
+            foreach ($cart as $key => $item) {
+                if (is_array($item) && isset($item['product_variant_id'], $item['product_id'])) {
+                    $variantId = (int) $item['product_variant_id'];
+                    $productId = (int) $item['product_id'];
+                    $quantity = (int) ($item['quantity'] ?? 0);
+    
+                    if ($variantId < 1 || $productId < 1 || $quantity < 1) {
+                        continue;
+                    }
+    
+                    $variant = ProductVariant::query()
+                        ->whereKey($variantId)
+                        ->where('product_id', $productId)
+                        ->first();
+    
+                    if (! $variant) {
+                        continue;
+                    }
+    
+                    $variantKey = 'variant_'.$variantId;
+                    $normalized[$variantKey] = [
+                        'product_id' => $productId,
+                        'product_variant_id' => $variantId,
+                        'quantity' => $quantity + (int) ($normalized[$variantKey]['quantity'] ?? 0),
+                    ];
+    
+                    continue;
+                }
+    
+                // Format lama: product_id => quantity.
+                $productId = is_numeric((string) $key) ? (int) $key : 0;
+                $quantity = is_array($item)
+                    ? (int) ($item['quantity'] ?? 0)
+                    : (int) $item;
+    
+                if ($productId < 1 || $quantity < 1) {
+                    continue;
+                }
+    
+                $product = Product::query()->find($productId);
+    
+                if (! $product) {
+                    continue;
+                }
+    
+                // resolve() hanya dipanggil di dalam transaksi ini.
+                $resolved = $inventoryService->resolve($product);
+                $variant = $resolved['variant'];
+                $variantKey = 'variant_'.$variant->id;
+    
+                $normalized[$variantKey] = [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $quantity + (int) ($normalized[$variantKey]['quantity'] ?? 0),
+                ];
+            }
+    
+            foreach ($normalized as $key => $item) {
+                $variant = ProductVariant::query()
+                    ->with('inventory')
+                    ->whereKey($item['product_variant_id'])
+                    ->where('product_id', $item['product_id'])
+                    ->first();
+    
+                $inventory = $variant?->inventory;
+    
+                if (! $variant || $variant->status !== 'active' || ! $inventory) {
+                    unset($normalized[$key]);
+                    continue;
+                }
+    
+                $available = max(
+                    0,
+                    (int) $inventory->quantity - (int) $inventory->reserved_quantity
+                );
+    
+                if ($available < 1) {
+                    unset($normalized[$key]);
+                    continue;
+                }
+    
+                $normalized[$key]['quantity'] = min(
+                    (int) $item['quantity'],
+                    $available
+                );
+            }
+    
+            return $normalized;
+        });
+    
+        if ($cart !== $normalized) {
+            session()->put('cart', $normalized);
+        }
+    
+        return $normalized;
+    }
+    
+    private function guestCartNeedsNormalization(array $cart): bool
+    {
+        foreach ($cart as $key => $item) {
+            if (
+                ! is_array($item)
+                || ! isset($item['product_id'], $item['product_variant_id'], $item['quantity'])
+                || (string) $key !== 'variant_'.(int) $item['product_variant_id']
+            ) {
+                return true;
+            }
+        }
+    
+        return false;
     }
 
     /**
@@ -182,7 +370,14 @@ class CartService
                 'Jumlah produk minimal 1.'
             );
         }
-    
+        
+        $guestCart = null;
+
+        if (! auth()->check()) {
+            $rawCart = $this->getGuestCart();
+            $guestCart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+        }
+        
         DB::transaction(function () use (
             $product,
             $quantity,
@@ -259,7 +454,11 @@ class CartService
                 return;
             }
     
-            $cart = $this->getGuestCart();
+            // $cart = $this->getGuestCart();
+            // $key = 'variant_'.$variant->id;
+            $rawCart = $this->getGuestCart();
+            $cart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+            
             $key = 'variant_'.$variant->id;
     
             $currentQuantity = (int) (
@@ -351,70 +550,175 @@ class CartService
         session()->put('cart', $cart);
     }
 
-    public function update(int $productId, int $quantity): void
+    /**
+     * Update item keranjang.
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
+     */
+    public function update(int $itemId, int $quantity): array
     {
         if ($quantity < 1) {
             throw new \RuntimeException('Jumlah produk minimal 1.');
         }
     
         if (auth()->check()) {
-            $product = Product::findOrFail($productId);
+            $item = $this->updateUserCartItem(
+                $itemId,
+                (int) auth()->id(),
+                $quantity
+            );
     
-            if ($quantity > $product->stock) {
-                throw new \RuntimeException(
-                    'Jumlah produk melebihi stok yang tersedia.'
-                );
-            }
-    
-            $this->updateUserCart(auth()->id(), $product, $quantity);
-    
-            return;
-        }
-    
-        $cart = $this->getGuestCart();
-        $key = 'variant_'.$productId;
-    
-        // Kompatibilitas dengan pemanggilan lama berbasis product ID,
-        // hanya jika produk tersebut memiliki satu item keranjang.
-        if (! isset($cart[$key])) {
-            $matches = [];
-    
-            foreach ($cart as $cartKey => $item) {
-                if ((int) ($item['product_id'] ?? 0) === $productId) {
-                    $matches[$cartKey] = $item;
-                }
-            }
-    
-            if (count($matches) === 1) {
-                $key = array_key_first($matches);
-            }
-        }
-    
-        if (! isset($cart[$key])) {
-            throw new \RuntimeException(
-                'Produk tidak ditemukan di keranjang.'
+            return $this->buildUpdatedItemResponse(
+                $item->id,
+                $item->id,
+                $item->variant,
+                (int) $item->quantity
             );
         }
     
-        $variantId = (int) $cart[$key]['product_variant_id'];
-        $variant = ProductVariant::with('inventory')->findOrFail($variantId);
-        $inventory = $variant->inventory;
+        $variant = $this->updateGuestCartVariant($itemId, $quantity);
+    
+        return $this->buildUpdatedItemResponse(
+            $variant->id,
+            null,
+            $variant,
+            $quantity
+        );
+    }
+
+    
+    /**
+     * Update item database berdasarkan CartItem.id dan pemilik cart.
+     */
+    public function updateUserCartItem(
+        int $cartItemId,
+        int $userId,
+        int $quantity
+    ): CartItem {
+        if ($quantity < 1) {
+            throw new \RuntimeException('Jumlah produk minimal 1.');
+        }
+    
+        return DB::transaction(function () use ($cartItemId, $userId, $quantity) {
+            $cart = Cart::query()
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item = CartItem::query()
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($item->product_variant_id) {
+                $variant = ProductVariant::query()
+                    ->whereKey($item->product_variant_id)
+                    ->where('product_id', $item->product_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            } else {
+                $resolved = app(VariantInventoryService::class)
+                    ->resolve($item->product);
+    
+                $variant = $resolved['variant'];
+    
+                $item->product_variant_id = $variant->id;
+            }
+    
+            $inventory = Inventory::query()
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
+    
+            $this->assertVariantCanContainQuantity(
+                $variant,
+                $inventory,
+                $quantity
+            );
+    
+            $item->quantity = $quantity;
+            $item->save();
+    
+            return $item->load(['product', 'variant.product']);
+        });
+    }
+    
+    /**
+     * Update guest cart berdasarkan ProductVariant.id.
+     */
+    public function updateGuestCartVariant(
+        int $variantId,
+        int $quantity
+    ): ProductVariant {
+        if ($quantity < 1) {
+            throw new \RuntimeException('Jumlah produk minimal 1.');
+        }
+    
+        // $cart = $this->getGuestCart();
+        $rawCart = $this->getGuestCart();
+        $cart = $this->guestCartNeedsNormalization($rawCart) ? $this->normalizeGuestCart() : $rawCart;
+        
+        $key = 'variant_'.$variantId;
+    
+        if (! isset($cart[$key])) {
+            throw new \RuntimeException('Varian tidak ditemukan di keranjang.');
+        }
+    
+        DB::transaction(function () use (&$cart, $key, $variantId, $quantity) {
+            $item = $cart[$key];
+    
+            $variant = ProductVariant::query()
+                ->whereKey($variantId)
+                ->where('product_id', (int) $item['product_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $inventory = Inventory::query()
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
+    
+            $this->assertVariantCanContainQuantity(
+                $variant,
+                $inventory,
+                $quantity
+            );
+    
+            $cart[$key]['quantity'] = $quantity;
+        });
+    
+        session()->put('cart', $cart);
+    
+        return ProductVariant::with('product')->findOrFail($variantId);
+    }
+    
+    /**
+     * Validasi status varian dan stok tersedia.
+     */
+    private function assertVariantCanContainQuantity(
+        ProductVariant $variant,
+        ?Inventory $inventory,
+        int $quantity
+    ): void {
+        if ($variant->status !== 'active') {
+            throw new \RuntimeException('Varian ini tidak tersedia.');
+        }
     
         if (! $inventory) {
             throw new \RuntimeException('Stok varian tidak ditemukan.');
         }
     
-        $available = (int) $inventory->quantity
-            - (int) $inventory->reserved_quantity;
+        $available = max(
+            0,
+            (int) $inventory->quantity - (int) $inventory->reserved_quantity
+        );
     
         if ($quantity > $available) {
             throw new \RuntimeException(
                 'Jumlah melebihi stok varian yang tersedia.'
             );
         }
-    
-        $cart[$key]['quantity'] = $quantity;
-        session()->put('cart', $cart);
     }
 
     /**
@@ -440,41 +744,71 @@ class CartService
     }
 
     /**
-     * Hapus produk dari cart.
+     * Hapus item keranjang.
+     *
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
      */
-    public function remove(int $productId): void
+    public function remove(int $itemId): void
     {
         if (auth()->check()) {
-            $cart = $this->getUserCart(auth()->id());
-    
-            $cartItem = CartItem::where('cart_id', $cart->id)
-                ->where('product_id', $productId)
-                ->first();
-    
-            if ($cartItem) {
-                $cartItem->delete();
-            }
-    
+            $this->removeUserCartItem($itemId, (int) auth()->id());
             return;
         }
     
+        $this->removeGuestCartVariant($itemId);
+    }
+    
+    /**
+     * Hapus item database berdasarkan CartItem.id dan pemilik cart.
+     */
+    public function removeUserCartItem(int $cartItemId, int $userId): void
+    {
+        DB::transaction(function () use ($cartItemId, $userId) {
+            $cart = Cart::query()
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item = CartItem::query()
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $item->delete();
+        });
+    }
+    
+    /**
+     * Hapus guest cart berdasarkan ProductVariant.id.
+     *
+     * Kompatibilitas URL lama:
+     * Jika ID tidak ditemukan sebagai variant ID, izinkan
+     * pencarian berdasarkan product ID hanya jika hasilnya
+     * tepat satu item.
+     */
+    public function removeGuestCartVariant(int $variantId): void
+    {
         $cart = $this->getGuestCart();
-        $key = 'variant_'.$productId;
+        $key = 'variant_'.$variantId;
     
         if (! isset($cart[$key])) {
             $matches = [];
     
             foreach ($cart as $cartKey => $item) {
-                if ((int) ($item['product_id'] ?? 0) === $productId) {
+                if ((int) ($item['product_id'] ?? 0) === $variantId) {
                     $matches[] = $cartKey;
                 }
             }
     
-            // Jangan menghapus varian yang salah jika produk punya
-            // lebih dari satu varian di keranjang.
             if (count($matches) === 1) {
                 $key = $matches[0];
             }
+        }
+    
+        if (! isset($cart[$key])) {
+            return;
         }
     
         unset($cart[$key]);
@@ -488,20 +822,22 @@ class CartService
     public function count(): int
     {
         if (auth()->check()) {
-            return (int) CartItem::whereHas('cart', function ($query) {
-                $query->where('user_id', auth()->id());
-            })->sum('quantity');
+            return (int) CartItem::query()
+                ->whereHas('cart', function ($query) {
+                    $query->where('user_id', auth()->id());
+                })
+                ->sum('quantity');
         }
     
-        return collect($this->getGuestCart())->sum(function ($item) {
-            // Format cart guest baru: item berisi data varian dan quantity.
-            if (is_array($item)) {
-                return (int) ($item['quantity'] ?? 0);
-            }
+        $count = 0;
     
-            // Kompatibilitas dengan format lama: product_id => quantity.
-            return (int) $item;
-        });
+        foreach ($this->getGuestCart() as $item) {
+            $count += is_array($item)
+                ? (int) ($item['quantity'] ?? 0)
+                : (int) $item;
+        }
+    
+        return $count;
     }
 
     /**
@@ -510,13 +846,23 @@ class CartService
     public function total(): float
     {
         if (auth()->check()) {
-            $cart = $this->getUserCartWithItems(auth()->id());
+            $cart = Cart::query()
+                ->where('user_id', auth()->id())
+                ->with([
+                    'items.product',
+                    'items.variant.product',
+                    'items.variant.inventory',
+                ])
+                ->first();
+    
+            if (! $cart) {
+                return 0.0;
+            }
     
             return (float) $cart->items->sum(function ($item) {
-                $price = $item->variant?->price
-                    ?? $item->product->price;
+                $price = $item->variant?->price ?? $item->product?->price ?? 0;
     
-                return (float) $price * $item->quantity;
+                return (float) $price * (int) $item->quantity;
             });
         }
     
@@ -526,41 +872,89 @@ class CartService
             return 0.0;
         }
     
-        $total = 0.0;
+        $items = [];
+        $variantIds = [];
     
         foreach ($cart as $key => $item) {
-            // Format baru: variant_{id} => data item.
             if (is_array($item)) {
-                $variantId = $item['product_variant_id'] ?? null;
-                $productId = $item['product_id'] ?? null;
                 $quantity = (int) ($item['quantity'] ?? 0);
+                $variantId = (int) ($item['product_variant_id'] ?? 0);
+                $productId = (int) ($item['product_id'] ?? 0);
     
                 if ($quantity < 1) {
                     continue;
                 }
     
-                $variant = $variantId
-                    ? ProductVariant::with('product')->find($variantId)
-                    : null;
-    
-                $product = $variant?->product
-                    ?? ($productId ? Product::find($productId) : null);
-    
-                if ($product) {
-                    $price = $variant?->price ?? $product->price;
-                    $total += (float) $price * $quantity;
+                if ($variantId > 0) {
+                    $variantIds[] = $variantId;
                 }
+    
+                $items[] = [
+                    'variant_id' => $variantId,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                ];
     
                 continue;
             }
     
-            // Format lama: product_id => quantity.
-            $product = Product::find($key);
+            $productId = is_numeric((string) $key) ? (int) $key : 0;
             $quantity = (int) $item;
     
-            if ($product && $quantity > 0) {
-                $total += (float) $product->price * $quantity;
+            if ($productId > 0 && $quantity > 0) {
+                $items[] = [
+                    'variant_id' => 0,
+                    'product_id' => $productId,
+                    'quantity' => $quantity,
+                ];
             }
+        }
+    
+        if (empty($items)) {
+            return 0.0;
+        }
+    
+        $variants = empty($variantIds) ? collect() : ProductVariant::query()
+                ->with(['product', 'inventory'])
+                ->whereIn('id', array_unique($variantIds))
+                ->get()
+                ->keyBy('id');
+    
+        $fallbackProductIds = [];
+    
+        foreach ($items as $item) {
+            if ($item['variant_id'] < 1) {
+                $fallbackProductIds[] = $item['product_id'];
+                continue;
+            }
+    
+            $variant = $variants->get($item['variant_id']);
+    
+            if (! $variant?->product && $item['product_id'] > 0) {
+                $fallbackProductIds[] = $item['product_id'];
+            }
+        }
+    
+        $products = empty($fallbackProductIds) ? collect() : Product::query()
+                ->whereIn('id', array_unique($fallbackProductIds))
+                ->get()
+                ->keyBy('id');
+    
+        $total = 0.0;
+    
+        foreach ($items as $item) {
+            $variant = $item['variant_id'] > 0 ? $variants->get($item['variant_id']) : null;
+    
+            $product = $variant?->product
+                ?? $products->get($item['product_id']);
+    
+            if (! $product) {
+                continue;
+            }
+    
+            $price = $variant?->price ?? $product->price;
+    
+            $total += (float) $price * $item['quantity'];
         }
     
         return $total;
@@ -584,7 +978,7 @@ class CartService
      */
     public function mergeGuestCartIntoUserCart(int $userId): void
     {
-        $guestCart = $this->getGuestCart();
+        $guestCart = $this->normalizeGuestCart();
     
         if (empty($guestCart)) {
             return;
@@ -592,6 +986,56 @@ class CartService
     
         DB::transaction(function () use ($userId, $guestCart) {
             $cart = $this->getUserCart($userId);
+    
+            $cart = Cart::query()
+                ->whereKey($cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            // Kunci item cart lebih dahulu, dengan urutan yang stabil.
+            $cartItems = $cart->items()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+    
+            $productIds = collect($guestCart)
+                ->pluck('product_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->sort()
+                ->values();
+    
+            $variantIds = collect($guestCart)
+                ->pluck('product_variant_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->sort()
+                ->values();
+    
+            // Urutan lock mengikuti jalur checkout: product -> variant -> inventory.
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+    
+            $variants = ProductVariant::query()
+                ->whereIn('id', $variantIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+    
+            // Inventory harus dikunci sebelum available quantity dibaca.
+            $inventories = Inventory::query()
+                ->whereIn('product_variant_id', $variantIds)
+                ->orderBy('product_variant_id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_variant_id');
     
             foreach ($guestCart as $item) {
                 if (! is_array($item)) {
@@ -602,33 +1046,24 @@ class CartService
                 $variantId = (int) ($item['product_variant_id'] ?? 0);
                 $quantity = (int) ($item['quantity'] ?? 0);
     
-                if ($productId < 1 || $quantity < 1) {
+                if ($productId < 1 || $variantId < 1 || $quantity < 1) {
                     continue;
                 }
     
-                $product = Product::find($productId);
+                $product = $products->get($productId);
+                $variant = $variants->get($variantId);
+                $inventory = $inventories->get($variantId);
     
-                if (! $product) {
+                if (
+                    ! $product
+                    || ! $variant
+                    || (int) $variant->product_id !== $product->id
+                    || $variant->status !== 'active'
+                    || ! $inventory
+                ) {
                     continue;
                 }
     
-                $variant = $variantId > 0
-                    ? ProductVariant::with('inventory')->find($variantId)
-                    : null;
-    
-                if (! $variant || (int) $variant->product_id !== $product->id) {
-                    $resolved = app(VariantInventoryService::class)
-                        ->resolve($product);
-    
-                    $variant = $resolved['variant'];
-                    $variant->loadMissing('inventory');
-                }
-    
-                if ($variant->status !== 'active' || ! $variant->inventory) {
-                    continue;
-                }
-    
-                $inventory = $variant->inventory;
                 $available = max(
                     0,
                     (int) $inventory->quantity
@@ -639,23 +1074,21 @@ class CartService
                     continue;
                 }
     
-                $cartItem = CartItem::where('cart_id', $cart->id)
-                    ->where('product_variant_id', $variant->id)
-                    ->lockForUpdate()
-                    ->first();
+                $cartItem = $cartItems->first(
+                    fn (CartItem $existing) =>
+                        (int) $existing->product_variant_id === $variant->id
+                );
     
-                // Kompatibilitas dengan item lama tanpa product_variant_id.
+                // Migrasikan item lama tanpa variant ID jika varian default cocok.
                 if (! $cartItem && $variant->is_default) {
-                    $cartItem = CartItem::where('cart_id', $cart->id)
-                        ->where('product_id', $product->id)
-                        ->whereNull('product_variant_id')
-                        ->lockForUpdate()
-                        ->first();
+                    $cartItem = $cartItems->first(
+                        fn (CartItem $existing) =>
+                            (int) $existing->product_id === $product->id
+                            && $existing->product_variant_id === null
+                    );
     
                     if ($cartItem) {
-                        $cartItem->update([
-                            'product_variant_id' => $variant->id,
-                        ]);
+                        $cartItem->product_variant_id = $variant->id;
                     }
                 }
     
@@ -670,21 +1103,25 @@ class CartService
                 }
     
                 if ($cartItem) {
-                    $cartItem->update(['quantity' => $newQuantity]);
+                    $cartItem->quantity = $newQuantity;
+                    $cartItem->save();
                 } else {
-                    CartItem::create([
+                    $cartItem = CartItem::create([
                         'cart_id' => $cart->id,
                         'product_id' => $product->id,
                         'product_variant_id' => $variant->id,
                         'quantity' => $newQuantity,
                     ]);
+    
+                    // Pastikan item baru ikut diperhitungkan selama proses merge.
+                    $cartItems->push($cartItem);
                 }
             }
         });
     
+        // Session hanya dihapus setelah transaksi database berhasil.
         session()->forget('cart');
     }
-
 
     /**
      * Bersihkan cart guest.
@@ -714,5 +1151,31 @@ class CartService
         }
 
         return !$cart->items()->exists();
+    }
+    
+    private function buildUpdatedItemResponse(
+        int $itemKey,
+        ?int $cartItemId,
+        ProductVariant $variant,
+        int $quantity
+    ): array {
+        $count = $this->count();
+        $price = (float) ($variant->price ?? $variant->product->price);
+    
+        $response = [
+            'cart_item_key' => (string) $itemKey,
+            'variant_id' => $variant->id,
+            'quantity' => $quantity,
+            'subtotal' => $price * $quantity,
+            'total' => $this->total(),
+            'cart_count' => $count,
+            'item_count' => $count,
+        ];
+    
+        if ($cartItemId !== null) {
+            $response['cart_item_id'] = $cartItemId;
+        }
+    
+        return $response;
     }
 }

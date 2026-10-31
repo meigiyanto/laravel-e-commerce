@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 use App\Services\VariantInventoryService;
+use App\Services\CartService;
 
 class CheckoutController extends Controller
 {
@@ -87,11 +88,7 @@ class CheckoutController extends Controller
                 abort(404, 'Cart not found.');
             }
         
-            $cartItems = $cart->items()
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->with(['product', 'variant'])
-                ->get();
+            $cartItems = app(CartService::class)->normalizeLegacyUserCartItems($cart);
         
             if ($cartItems->isEmpty()) {
                 abort(422, 'Keranjang masih kosong.');
@@ -137,9 +134,7 @@ class CheckoutController extends Controller
                     ]);
                 }
         
-                $requestedVariantId = $cartItem->product_variant_id
-                    ? (int) $cartItem->product_variant_id
-                    : null;
+                $requestedVariantId = $cartItem->product_variant_id ? (int) $cartItem->product_variant_id : null;
         
                 $resolved = $stockService->resolve(
                     $product,
@@ -155,15 +150,7 @@ class CheckoutController extends Controller
                         'stock' => "Varian {$variant->name} tidak tersedia.",
                     ]);
                 }
-        
-                // Simpan varian default yang berhasil di-resolve
-                // jika item keranjang lama belum memiliki variant ID.
-                if (! $cartItem->product_variant_id) {
-                    $cartItem->update([
-                        'product_variant_id' => $variant->id,
-                    ]);
-                }
-        
+
                 $quantity = (int) $cartItem->quantity;
                 $variantId = (int) $variant->id;
         
@@ -276,24 +263,50 @@ class CheckoutController extends Controller
                 ]);
             }
         
-            /*
-             * 5. Kurangi stok sekali untuk setiap varian,
-             * dengan jumlah gabungan seluruh baris keranjang.
+            /**
+             * 5. Buat reservasi sekali untuk setiap varian.
+             *
+             * Semua metode pembayaran melakukan reservasi.
+             * COD akan melakukan commit setelah seluruh reservasi berhasil dibuat.
              */
-            foreach ($rowsByVariant as $variantRows) {
+            $reservations = [];
+            
+            foreach ($rowsByVariant->sortKeys() as $variantId => $variantRows) {
                 $first = $variantRows->first();
-        
+            
                 $totalQuantity = $variantRows->sum(
                     fn ($row) => (int) $row['quantity']
                 );
-        
-                $stockService->deductForOrder(
-                    $first['product'],
-                    $first['variant'],
-                    $first['inventory'],
-                    $totalQuantity,
-                    $order
+            
+                $idempotencyKey = sprintf(
+                    'order:%d:variant:%d:reserve',
+                    $order->id,
+                    $variantId
                 );
+            
+                $reservation = $stockService->reserve(
+                    $first['variant'],
+                    $totalQuantity,
+                    $idempotencyKey,
+                    Order::class,
+                    (int) $order->id
+                );
+            
+                $reservations[] = $reservation;
+            }
+            
+            /*
+             * 6. COD langsung commit seluruh reservasi.
+             *
+             * Stripe dan Midtrans tetap berstatus reserved sampai
+             * pembayaran berhasil dikonfirmasi oleh payment gateway.
+             */
+            if ($validated['payment_method'] === 'cod') {
+                foreach ($reservations as $reservation) {
+                    $stockService->commitReservation(
+                        $reservation->idempotency_key
+                    );
+                }
             }
         
             // 6. Kosongkan keranjang setelah order dan stok diproses.

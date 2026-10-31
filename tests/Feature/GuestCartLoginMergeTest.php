@@ -317,4 +317,54 @@ class GuestCartLoginMergeTest extends TestCase
     
         $response->assertSessionMissing('cart');
     }
+    
+    public function test_guest_cart_merge_respects_reserved_stock(): void
+    {
+        $user = User::factory()->create();
+    
+        $product = Product::factory()->create([
+            'stock' => 10,
+        ]);
+    
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'MERGE-RESERVED-'.$product->id,
+            'name' => 'Default',
+            'price' => '10000.00',
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+    
+        Inventory::create([
+            'product_variant_id' => $variant->id,
+            'quantity' => 10,
+            'reserved_quantity' => 4,
+            'reorder_level' => 0,
+        ]);
+    
+        $response = $this->withSession([
+            'cart' => [
+                'variant_'.$variant->id => [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => 8,
+                ],
+            ],
+        ])->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+    
+        $this->assertAuthenticatedAs($user);
+    
+        $cart = Cart::where('user_id', $user->id)->firstOrFail();
+    
+        $this->assertDatabaseHas('cart_items', [
+            'cart_id' => $cart->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 6,
+        ]);
+    
+        $response->assertSessionMissing('cart');
+    }
 }

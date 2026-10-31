@@ -40,10 +40,21 @@ class PaymentController extends Controller
          * langsung ke halaman success.
          */
         if ($payment->status === 'succeeded') {
-            return redirect()->route(
-                'checkout.success',
-                $order
-            );
+            if ($order->status === 'canceled') {
+                app(RefundService::class)->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment
+                );
+        
+                return redirect()
+                    ->route('orders.show', $order)
+                    ->with(
+                        'warning',
+                        'Pembayaran berhasil setelah pesanan dibatalkan. Permintaan refund telah dibuat.'
+                    );
+            }
+        
+            return redirect()->route('checkout.success', $order);
         }
 
         /*
@@ -214,21 +225,6 @@ class PaymentController extends Controller
 
         $payment = $order->payment;
 
-        /*
-         * Idempotent:
-         * jika sudah berhasil, jangan diproses ulang.
-         */
-        if ($payment->status === 'succeeded') {
-            return response()->json([
-                'success' => true,
-                'status' => 'succeeded',
-                'redirect_url' => route(
-                    'checkout.success',
-                    $order
-                ),
-            ]);
-        }
-
         Stripe::setApiKey(
             config('services.stripe.secret')
         );
@@ -276,13 +272,24 @@ class PaymentController extends Controller
             $order->refresh();
 
             if ($payment->status === 'succeeded') {
+                if ($order->status === 'canceled') {
+                    app(RefundService::class)->requestLateCanceledOrderRefund(
+                        $order,
+                        $payment
+                    );
+            
+                    return response()->json([
+                        'success' => true,
+                        'status' => 'succeeded',
+                        'message' => 'Pembayaran berhasil setelah pesanan dibatalkan. Permintaan refund telah dibuat.',
+                        'redirect_url' => route('orders.show', $order),
+                    ]);
+                }
+            
                 return response()->json([
                     'success' => true,
                     'status' => 'succeeded',
-                    'redirect_url' => route(
-                        'checkout.success',
-                        $order
-                    ),
+                    'redirect_url' => route('checkout.success', $order),
                 ]);
             }
 
@@ -360,14 +367,6 @@ class PaymentController extends Controller
 
         if (! $paymentIntentId) {
             return false;
-        }
-
-        /*
-         * Jangan melakukan downgrade status
-         * yang sudah berhasil.
-         */
-        if ($payment->status === 'succeeded') {
-            return true;
         }
 
         Stripe::setApiKey(
@@ -505,41 +504,30 @@ class PaymentController extends Controller
             $payment,
             $paymentIntent
         ) {
-
-            // Selalu kunci Order terlebih dahulu.
+            // Urutan lock: Order -> Payment -> Reservation -> Product -> Variant -> Inventory.
             $lockedOrder = Order::query()
                 ->whereKey($order->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            // Setelah Order terkunci, baru kunci Payment.
+    
             $lockedPayment = Payment::query()
                 ->whereKey($payment->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            if ((int) $lockedPayment->order_id
-                !== (int) $lockedOrder->id
-            ) {
+    
+            if ((int) $lockedPayment->order_id !== (int) $lockedOrder->id) {
                 throw new \RuntimeException(
                     'Payment tidak sesuai dengan pesanan.'
                 );
             }
-
-            // Jangan menurunkan status pembayaran yang sudah berhasil.
-            if ($lockedPayment->status === 'succeeded') {
-                return;
-            }
-
-            // SUCCESS
+    
+            // SUCCESS: jangan mengaktifkan kembali order yang sudah dibatalkan.
             if ($paymentIntent->status === 'succeeded') {
                 $lockedPayment->update([
                     'provider' => 'stripe',
                     'stripe_payment_intent_id' => $paymentIntent->id,
                     'transaction_id' => $paymentIntent->id,
-                    'currency' => strtoupper(
-                        $paymentIntent->currency
-                    ),
+                    'currency' => strtoupper($paymentIntent->currency),
                     'status' => 'succeeded',
                     'transaction_status' => $paymentIntent->status,
                     'gross_amount' => $lockedOrder->total,
@@ -547,23 +535,24 @@ class PaymentController extends Controller
                     'metadata' => array_merge(
                         $lockedPayment->metadata ?? [],
                         [
-                            'stripe_payment_intent_status'
-                                => $paymentIntent->status,
+                            'stripe_payment_intent_status' => $paymentIntent->status,
                         ]
                     ),
                 ]);
-
-                // Hanya pesanan pending yang berubah menjadi processing.
+    
                 if ($lockedOrder->status === 'pending') {
+                    app(VariantInventoryService::class)
+                        ->commitReservationsForOrder($lockedOrder);
+    
                     $lockedOrder->update([
                         'status' => 'processing',
                     ]);
                 }
-
+    
                 return;
             }
-
-            // CANCELED
+    
+            // Pembatalan final dari Stripe.
             if ($paymentIntent->status === 'canceled') {
                 $this->cancelOrder(
                     $lockedOrder,
@@ -571,48 +560,48 @@ class PaymentController extends Controller
                     'canceled',
                     $paymentIntent
                 );
-
+    
                 return;
             }
-
-            // Status PaymentIntent lainnya tidak menurunkan status payment.
-            $lockedPayment->update([
+    
+            // Status selain succeeded/canceled tidak mengubah status lokal
+            // menjadi failed. Contohnya requires_payment_method masih retryable.
+            $updates = [
                 'transaction_status' => $paymentIntent->status,
                 'metadata' => array_merge(
                     $lockedPayment->metadata ?? [],
                     [
-                        'stripe_payment_intent_status'
-                            => $paymentIntent->status,
+                        'stripe_payment_intent_status' => $paymentIntent->status,
                     ]
                 ),
-            ]);
+            ];
+            
+            // Kegagalan sementara dapat dicoba kembali selama order masih pending.
+            if (
+                $lockedOrder->status === 'pending'
+                && $lockedPayment->status === 'failed'
+            ) {
+                $updates['status'] = 'pending';
+            }
+            
+            $lockedPayment->update($updates);
         });
-        
-        /**
-         * Jika pembayaran baru terkonfirmasi setelah order dibatalkan,
-         * gunakan mekanisme refund yang sudah ada.
-         *
-         * Pemanggilan aman diulang karena RefundService menggunakan
-         * idempotency key untuk pembayaran tersebut.
-         */
-        $order->refresh();
-
-        $payment = Payment::query()
+    
+        // Refund harus dibuat setelah transaksi transisi pembayaran selesai.
+        $freshOrder = Order::query()->findOrFail($order->getKey());
+        $freshPayment = Payment::query()
             ->whereKey($payment->getKey())
             ->firstOrFail();
-
-        if (
-            $order->status === 'canceled'
-            && $payment->status === 'succeeded'
+    
+        if ($freshOrder->status === 'canceled'
+            && $freshPayment->status === 'succeeded'
         ) {
-            app(RefundService::class)
-                ->requestLateCanceledOrderRefund(
-                    $order,
-                    $payment
-                );
+            app(RefundService::class)->requestLateCanceledOrderRefund(
+                $freshOrder,
+                $freshPayment
+            );
         }
     }
-
 
     private function cancelOrder(
         Order $order,
@@ -620,17 +609,12 @@ class PaymentController extends Controller
         string $status,
         PaymentIntent $paymentIntent
     ): void {
-        /*
-         * Jangan memproses pembatalan pembayaran berulang.
-         */
-        if (in_array($payment->status, ['failed', 'canceled'], true)) {
+        // Pembayaran yang sudah berhasil tidak boleh diturunkan menjadi canceled.
+        if ($payment->status === 'succeeded') {
             return;
         }
     
-        /*
-         * Pesanan yang sudah dikirim atau selesai tidak boleh
-         * dibatalkan oleh notifikasi pembayaran yang terlambat.
-         */
+        // Order yang sudah dikirim atau selesai tidak dibatalkan oleh callback pembayaran.
         if (in_array($order->status, ['shipped', 'completed'], true)) {
             return;
         }
@@ -646,24 +630,16 @@ class PaymentController extends Controller
             ),
         ]);
     
-        /*
-         * Jika pesanan sudah dibatalkan sebelumnya, jangan
-         * memulihkan stok untuk kedua kalinya.
-         */
-        if ($order->status === 'canceled') {
-            return;
+        if ($order->status !== 'canceled') {
+            $order->update([
+                'status' => 'canceled',
+            ]);
         }
     
-        /*
-         * Pemanggil harus sudah berada dalam transaksi database
-         * dan mengunci Order dengan lockForUpdate().
-         */
-        $order->update([
-            'status' => 'canceled',
-        ]);
-    
+        // Release hanya reservasi yang masih reserved.
+        // Reservasi committed tidak dikembalikan melalui release.
         app(VariantInventoryService::class)
-            ->restoreItemsForOrder($order);
+            ->releaseReservationsForOrder($order);
     }
 
     private function stripeAmount($amount): int

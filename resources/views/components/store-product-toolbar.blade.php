@@ -35,7 +35,7 @@
 
             <div class="row g-3">
                 {{-- Search --}}
-                <div class="col-12">
+                <div class="col-12 mb-3">
                     <label for="store-filter-search" class="form-label" >Search Product</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white">
@@ -48,7 +48,7 @@
             
             <div class="row g-3">
                 {{-- Category --}}
-                <div class="col-12 col-md-6 col-lg-6">
+                <div class="col-12 col-md-6 col-lg-6 mb-3">
                     <label for="store-filter-category" class="form-label">Category</label>
                     @if ($isCategoryContext)
                         <div class="store-filter-context">
@@ -56,7 +56,7 @@
                             <span{{ $categoryContext->name }}></span>
                         </div>
                     @else
-                        <select id="store-filter-category" name="category" class="form-select" data-filter-category >
+                        <select id="store-filter-category" name="category" class="form-select js-select2" data-filter-category >
                             <option value="">All Category</option>
                             @foreach ($categories as $category)
                                 <option value="{{ $category->slug }}" @selected($selectedCategorySlug === $category->slug )>
@@ -68,7 +68,7 @@
                 </div>
 
                 {{-- Subcategory --}}
-                <div class="col-12 col-md-6 col-lg-6">
+                <div class="col-12 col-md-6 col-lg-6 mb-3">
                     <label for="store-filter-subcategory" class="form-label">Sub Category</label>
                     <select id="store-filter-subcategory" name="subcategory" class="form-select" data-filter-subcategory @disabled(! $selectedCategorySlug)>
                         <option value="">{{ $selectedCategorySlug ? 'All Subcategory' : 'Choose category first' }}</option>
@@ -90,9 +90,9 @@
             
             <div class="row g-3">
                 {{-- Sorting --}}
-                <div class="col-12 col-md-6 col-lg-6">
+                <div class="col-12 col-md-6 col-lg-6 mb-3">
                     <label for="store-filter-sort" class="form-label">Sorting</label>
-                    <select id="store-filter-sort" name="sort" class="form-select">
+                    <select id="store-filter-sort" name="sort" class="form-select select2">
                         <option value="" @selected(! $selectedSort)>Newest</option>
                         <option value="oldest" @selected($selectedSort === 'oldest')>Oldest</option>
                         <option value="price_low" @selected($selectedSort === 'price_low')>Lower Price</option>
@@ -103,7 +103,7 @@
                 </div>
 
                 {{-- Actions --}}
-                <div class="col-12 col-md-6 col-lg-6">
+                <div class="col-12 col-md-6 col-lg-6 mb-3">
                     <label class="form-label d-block">&nbsp;</label>
                     <div class="d-flex gap-2">
                         <button type="submit" class="store-add-cart flex-grow-1">

@@ -310,11 +310,11 @@ class StripeWebhookTest extends TestCase
         );
 
         $response->assertStatus(200);
-
+        
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
             'status' => 'failed',
-            'transaction_status' => 'failed',
+            'transaction_status' => 'requires_payment_method',
             'transaction_id' => $payment->stripe_payment_intent_id,
             'reference_id' => $payment->stripe_payment_intent_id,
         ]);
@@ -407,12 +407,12 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
-    public function test_stripe_webhook_does_not_change_failed_payment_when_canceled(): void
+    public function test_stripe_webhook_cancels_failed_payment_when_payment_intent_is_canceled(): void
     {
         $payment = $this->createPayment(
             paymentStatus: 'failed'
         );
-
+    
         $response = $this->postStripeWebhook(
             'payment_intent.canceled',
             [
@@ -422,14 +422,14 @@ class StripeWebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-
+    
         $response->assertStatus(200);
-
-        $this->assertPaymentState($payment, 'failed');
-
+    
+        $this->assertPaymentState($payment, 'canceled');
+    
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
-            'status' => 'pending',
+            'status' => 'canceled',
         ]);
     }
 
@@ -615,9 +615,7 @@ class StripeWebhookTest extends TestCase
     public function test_succeeded_webhook_does_not_complete_terminal_order(
         string $orderStatus
     ): void {
-        $payment = $this->createPayment(
-            orderStatus: $orderStatus
-        );
+        $payment = $this->createPayment(orderStatus: $orderStatus);
 
         $response = $this->postStripeWebhook(
             'payment_intent.succeeded',
@@ -630,8 +628,10 @@ class StripeWebhookTest extends TestCase
         );
 
         $response->assertStatus(200);
+        
+        $expectedPaymentStatus = $orderStatus === 'canceled' ? 'succeeded' : 'pending';
 
-        $this->assertPaymentState($payment, 'pending');
+        $this->assertPaymentState($payment, $expectedPaymentStatus);
 
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
@@ -687,8 +687,10 @@ class StripeWebhookTest extends TestCase
 
         $response->assertStatus(200);
 
-        $this->assertPaymentState($payment, 'pending');
-
+        $expectedPaymentStatus = $orderStatus === 'canceled' ? 'canceled' : 'pending';
+        
+        $this->assertPaymentState($payment, $expectedPaymentStatus);
+        
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
             'status' => $orderStatus,

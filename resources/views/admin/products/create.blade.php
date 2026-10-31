@@ -54,8 +54,8 @@
             <div class="row">
                 <div class="col-md-6 mb-2">
                     <div class="form-group">
-                        <label for="category_id">Kategori *</label>
-                        <select class="form-control" id="category_id"
+                        <label for="category_id" class="form-control-label">Kategori *</label>
+                        <select class="form-control form-control-outlined js-select2" id="category_id"
                                 name="category_id" required>
                             <option value="">Pilih kategori</option>
                             @foreach ($categories as $category)
@@ -69,8 +69,8 @@
                 </div>
                 <div class="col-md-6 mb-2">
                     <div class="form-group">
-                        <label for="sub_category_id">Subkategori *</label>
-                        <select class="form-control" id="sub_category_id"
+                        <label for="sub_category_id" class="form-control-label">Subkategori *</label>
+                        <select class="form-control form-control-outlined js-select2" id="sub_category_id"
                                 name="sub_category_id" required>
                             <option value="">Pilih subkategori</option>
                             @foreach ($categories as $category)

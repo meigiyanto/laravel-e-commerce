@@ -15,6 +15,7 @@ class InventoryMovement extends Model
         'quantity',
         'reference_type',
         'reference_id',
+        'idempotency_key',
         'note',
         'created_by',
     ];

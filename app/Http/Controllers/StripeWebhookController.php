@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Product;
 use App\Models\Payment;
+use App\Services\RefundService;
 use App\Services\WebhookEventService;
 use App\Services\VariantInventoryService;
 use Illuminate\Http\Request;
@@ -82,235 +82,151 @@ class StripeWebhookController extends Controller
     private function handlePaymentIntentSucceeded(
         object $paymentIntent
     ): void {
-        if (! isset($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status is missing.'
-            );
-        }
-
-        if (! is_string($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status must be a string.'
-            );
-        }
-
-        if ($paymentIntent->status !== 'succeeded') {
-            throw new \RuntimeException(
-                'Stripe payment intent has an invalid status for payment_intent.succeeded event.'
-            );
-        }
-
-        if (! isset($paymentIntent->id)) {
-            throw new \RuntimeException(
-                'Stripe payment intent ID is missing.'
-            );
-        }
-
-        if (! is_string($paymentIntent->id)) {
-            throw new \RuntimeException(
-                'Stripe payment intent ID must be a string.'
-            );
-        }
-
-        if (! isset($paymentIntent->amount)) {
-            throw new \RuntimeException(
-                'Stripe payment amount is missing.'
-            );
-        }
-
-        if (! is_int($paymentIntent->amount)) {
-            throw new \RuntimeException(
-                'Stripe payment amount must be an integer.'
-            );
-        }
-
-        if ($paymentIntent->amount <= 0) {
-            throw new \RuntimeException(
-                'Stripe payment amount must be greater than zero.'
-            );
-        }
-
-        if (! isset($paymentIntent->currency)) {
-            throw new \RuntimeException(
-                'Stripe payment currency is missing.'
-            );
-        }
-
-        if (! is_string($paymentIntent->currency)) {
-            throw new \RuntimeException(
-                'Stripe payment currency must be a string.'
-            );
-        }
-
-        if (trim($paymentIntent->currency) === '') {
-            throw new \RuntimeException(
-                'Stripe payment currency cannot be empty.'
-            );
-        }
-
-        DB::transaction(function () use ($paymentIntent): void {
-            $payment = Payment::query()
-                ->where('provider', 'stripe')
-                ->where(
-                    'stripe_payment_intent_id',
-                    $paymentIntent->id
-                )
-                ->lockForUpdate()
-                ->first();
-
-            if (! $payment) {
-                return;
-            }
-
-            $order = $payment->order;
-
-            if (! $order) {
-                return;
-            }
-
-            if (in_array(
-                $order->status,
-                ['canceled', 'failed', 'refunded'],
-                true
-            )) {
-                return;
-            }
-
-            $stripeCurrency = strtolower(
+        if (
+            ! isset(
+                $paymentIntent->id,
+                $paymentIntent->status,
+                $paymentIntent->amount,
                 $paymentIntent->currency
+            )
+            || ! is_string($paymentIntent->id)
+            || ! is_string($paymentIntent->status)
+            || $paymentIntent->status !== 'succeeded'
+            || ! is_int($paymentIntent->amount)
+            || $paymentIntent->amount <= 0
+            || ! is_string($paymentIntent->currency)
+            || trim($paymentIntent->currency) === ''
+        ) {
+            throw new \RuntimeException(
+                'Stripe payment intent is invalid for success event.'
             );
-
-            $paymentCurrency = strtolower(
-                $payment->currency
+        }
+    
+        DB::transaction(function () use ($paymentIntent): void {
+            $context = $this->lockPaymentContext(
+                $paymentIntent->id
             );
-
-            if ($paymentCurrency !== $stripeCurrency) {
+    
+            if (! $context) {
+                return;
+            }
+    
+            $order = $context['order'];
+            $payment = $context['payment'];
+            
+            // Order failed dan refunded tidak boleh menerima pembayaran baru.
+            if (in_array($order->status, ['failed', 'refunded'], true)) {
+                return;
+            }
+    
+            $stripeCurrency = strtolower($paymentIntent->currency);
+            $paymentCurrency = strtolower($payment->currency);
+    
+            if ($stripeCurrency !== $paymentCurrency) {
                 throw new \RuntimeException(
                     'Stripe payment currency does not match payment currency.'
                 );
             }
-
+    
             $stripeAmount = $this->convertStripeAmount(
                 $paymentIntent->amount
             );
-
+    
             if ((float) $payment->gross_amount !== $stripeAmount) {
                 throw new \RuntimeException(
                     'Stripe payment amount does not match payment gross amount.'
                 );
             }
-
-            /*
-             * Jangan pernah mengubah payment yang sudah
-             * succeeded atau canceled menjadi succeeded kembali.
-             */
-            if (in_array(
-                $payment->status,
-                ['succeeded', 'canceled'],
-                true
-            )) {
+    
+            // Pembayaran yang sudah canceled tidak boleh diaktifkan kembali.
+            // PaymentIntent yang sama tidak boleh membalikkan transisi terminal.
+            if ($payment->status === 'canceled') {
                 return;
             }
-
-            $payment->update([
-                'status' => 'succeeded',
-                'transaction_status' => 'succeeded',
-                'transaction_id' => $paymentIntent->id,
-                'reference_id' => $paymentIntent->id,
-                'paid_at' => $payment->paid_at ?? now(),
-                'metadata' => array_merge(
-                    $payment->metadata ?? [],
-                    [
-                        'stripe_webhook_event' => 'payment_intent.succeeded',
-                        'stripe_payment_intent_status' => $paymentIntent->status,
-                    ],
-                ),
-            ]);
-
+            
+            // Pembayaran succeeded tetap diproses secara idempoten.
+            if ($payment->status !== 'succeeded') {    
+                $payment->update([
+                    'provider' => 'stripe',
+                    'status' => 'succeeded',
+                    'transaction_status' => 'succeeded',
+                    'transaction_id' => $paymentIntent->id,
+                    'reference_id' => $paymentIntent->id,
+                    'stripe_payment_intent_id' => $paymentIntent->id,
+                    'currency' => strtoupper($paymentIntent->currency),
+                    'gross_amount' => $order->total,
+                    'paid_at' => $payment->paid_at ?? now(),
+                    'metadata' => array_merge(
+                        $payment->metadata ?? [],
+                        [
+                            'stripe_webhook_event' => 'payment_intent.succeeded',
+                            'stripe_payment_intent_status' => $paymentIntent->status,
+                        ]
+                    ),
+                ]);
+            }
+    
+            // Jangan aktifkan kembali order yang sudah dibatalkan.
             if ($order->status === 'pending') {
+                app(VariantInventoryService::class)->commitReservationsForOrder($order);
+    
                 $order->update([
                     'status' => 'processing',
                 ]);
             }
         });
+    
+        // Refund dilakukan setelah transaksi transisi selesai.
+        $payment = Payment::query()
+            ->where('provider', 'stripe')
+            ->where('stripe_payment_intent_id', $paymentIntent->id)
+            ->first();
+    
+        if (! $payment) {
+            return;
+        }
+    
+        $order = Order::query()->find($payment->order_id);
+    
+        if ($order&& $order->status === 'canceled'&& $payment->status === 'succeeded') {
+            app(RefundService::class)->requestLateCanceledOrderRefund($order, $payment);
+        }
     }
 
     private function handlePaymentIntentFailed(
         object $paymentIntent
     ): void {
-        if (! isset($paymentIntent->id)) {
+        if ( ! isset($paymentIntent->id, $paymentIntent->status) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'requires_payment_method') {
             throw new \RuntimeException(
-                'Stripe payment intent ID is missing.'
+                'Stripe payment intent is invalid for payment_failed event.'
             );
         }
-
-        if (! is_string($paymentIntent->id)) {
-            throw new \RuntimeException(
-                'Stripe payment intent ID must be a string.'
-            );
-        }
-
-        if (! isset($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status is missing.'
-            );
-        }
-
-        if (! is_string($paymentIntent->status)) {
-            throw new \RuntimeException(
-                'Stripe payment intent status must be a string.'
-            );
-        }
-
-        if ($paymentIntent->status !== 'requires_payment_method') {
-            throw new \RuntimeException(
-                'Stripe payment intent has an invalid status for payment_failed event.'
-            );
-        }
-
+    
         DB::transaction(function () use ($paymentIntent): void {
-            $payment = Payment::query()
-                ->where('provider', 'stripe')
-                ->where(
-                    'stripe_payment_intent_id',
-                    $paymentIntent->id
-                )
-                ->lockForUpdate()
-                ->first();
-
-            if (! $payment) {
+            $context = $this->lockPaymentContext(
+                $paymentIntent->id
+            );
+    
+            if (! $context) {
                 return;
             }
-
-            /*
-             * Jangan pernah menurunkan payment yang sudah
-             * succeeded atau canceled.
-             */
-            if (in_array(
-                $payment->status,
-                ['succeeded', 'canceled'],
-                true
-            )) {
+    
+            $order = $context['order'];
+            $payment = $context['payment'];
+    
+            // Jangan menurunkan pembayaran yang sudah sukses atau canceled.
+            if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
                 return;
             }
-
-            $order = $payment->order;
-
-            if (! $order) {
+    
+            // Hanya pembayaran pada order pending yang bisa dicoba ulang.
+            if ($order->status !== 'pending') {
                 return;
             }
-
-            if (in_array(
-                $order->status,
-                ['completed', 'canceled', 'failed', 'refunded'],
-                true
-            )) {
-                return;
-            }
-
+    
             $payment->update([
                 'status' => 'failed',
-                'transaction_status' => 'failed',
+                'transaction_status' => $paymentIntent->status,
                 'transaction_id' => $paymentIntent->id,
                 'reference_id' => $paymentIntent->id,
                 'metadata' => array_merge(
@@ -318,72 +234,92 @@ class StripeWebhookController extends Controller
                     [
                         'stripe_webhook_event' => 'payment_intent.payment_failed',
                         'stripe_payment_intent_status' => $paymentIntent->status,
-                        'stripe_last_payment_error' => isset($paymentIntent->last_payment_error)
-                                ? (array) $paymentIntent->last_payment_error
-                                : null,
-                    ],
+                        'stripe_last_payment_error' => isset(
+                            $paymentIntent->last_payment_error
+                        )
+                            ? (array) $paymentIntent->last_payment_error
+                            : null,
+                    ]
                 ),
             ]);
+    
+            // Jangan commit atau release reservasi pada kegagalan sementara.
         });
+    }
+    
+    /**
+     * Mengunci Order terlebih dahulu, baru Payment.
+     *
+     * Dipanggil hanya dari dalam DB transaction.
+     */
+    private function lockPaymentContext(string $paymentIntentId): ?array
+    {
+        // Ambil referensi awal untuk mengetahui order_id.
+        $paymentReference = Payment::query()
+            ->where('provider', 'stripe')
+            ->where('stripe_payment_intent_id', $paymentIntentId)
+            ->first();
+    
+        if (! $paymentReference) {
+            return null;
+        }
+    
+        $order = Order::query()
+            ->whereKey($paymentReference->order_id)
+            ->lockForUpdate()
+            ->first();
+    
+        if (! $order) {
+            return null;
+        }
+    
+        $payment = Payment::query()
+            ->whereKey($paymentReference->id)
+            ->lockForUpdate()
+            ->first();
+    
+        if (! $payment|| (int) $payment->order_id !== (int) $order->id|| $payment->stripe_payment_intent_id !== $paymentIntentId) {
+            return null;
+        }
+    
+        return [
+            'order' => $order,
+            'payment' => $payment,
+        ];
     }
 
     private function handlePaymentIntentCanceled(
         object $paymentIntent
     ): void {
-        if (
-            ! isset($paymentIntent->id, $paymentIntent->status)
-            || ! is_string($paymentIntent->id)
-            || ! is_string($paymentIntent->status)
-            || $paymentIntent->status !== 'canceled'
-        ) {
-            throw new \RuntimeException(
-                'Stripe payment intent is invalid for cancellation.'
-            );
+        if ( ! isset($paymentIntent->id, $paymentIntent->status) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'canceled') {
+            throw new \RuntimeException('Stripe payment intent is invalid for cancellation.');
         }
-        
+    
         DB::transaction(function () use ($paymentIntent): void {
-            $payment = Payment::query()
-                ->where('provider', 'stripe')
-                ->where('stripe_payment_intent_id', $paymentIntent->id)
-                ->lockForUpdate()
-                ->first();
-        
-            if (! $payment) {
+            $context = $this->lockPaymentContext($paymentIntent->id);
+    
+            if (! $context) {
                 return;
             }
-        
-            $order = Order::query()
-                ->whereKey($payment->order_id)
-                ->lockForUpdate()
-                ->first();
-        
-            if (! $order) {
+    
+            $order = $context['order'];
+            $payment = $context['payment'];
+    
+            // Pembayaran sukses tidak boleh dibatalkan.
+            if ($payment->status === 'succeeded') {
                 return;
             }
-        
-            // Pertahankan status untuk pesanan terminal.
-            if (in_array(
-                $order->status,
-                ['completed', 'canceled', 'failed', 'refunded'],
-                true
-            )) {
+    
+            // Pesanan yang sudah dikirim atau selesai tidak boleh dibatalkan.
+            if (in_array($order->status, ['shipped', 'completed'], true)) {
                 return;
             }
-        
-            // Pembayaran yang sudah terminal tidak boleh diturunkan.
-            if (in_array(
-                $payment->status,
-                ['succeeded', 'failed', 'canceled'],
-                true
-            )) {
+    
+            // Jangan mengubah status order terminal selain canceled.
+            if (in_array($order->status, ['failed', 'refunded'], true)) {
                 return;
             }
-        
-            // Jalur ini hanya membatalkan pesanan pending.
-            if ($order->status !== 'pending') {
-                return;
-            }
-        
+    
             $payment->update([
                 'status' => 'canceled',
                 'transaction_status' => 'canceled',
@@ -397,49 +333,17 @@ class StripeWebhookController extends Controller
                     ]
                 ),
             ]);
-        
-            $items = $order->items()
-                ->orderBy('product_id')
-                ->orderBy('product_variant_id')
-                ->orderBy('id')
-                ->get();
-        
-            $productIds = $items->pluck('product_id')
-                ->unique()
-                ->sort()
-                ->values();
-        
-            $products = Product::query()
-                ->whereIn('id', $productIds)
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-        
-            $stockService = app(VariantInventoryService::class);
-        
-            foreach ($items as $item) {
-                $product = $products->get($item->product_id);
-        
-                if (! $product) {
-                    throw new \RuntimeException(
-                        "Product {$item->product_id} not found while restoring stock."
-                    );
-                }
-        
-                $stockService->restoreForOrder(
-                    $product,
-                    $item->product_variant_id
-                        ? (int) $item->product_variant_id
-                        : null,
-                    (int) $item->quantity,
-                    $order
-                );
+    
+            if ($order->status === 'pending') {
+                $order->update([
+                    'status' => 'canceled',
+                ]);
             }
-        
-            $order->update(['status' => 'canceled']);
+    
+            // Aman dipanggil ulang: reservasi released akan dilewati.
+            app(VariantInventoryService::class)
+                ->releaseReservationsForOrder($order);
         });
-
     }
 
     private function convertStripeAmount(int $amount): float

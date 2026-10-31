@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\InventoryReservation;
 
 class Order extends Model
 {
@@ -64,5 +65,13 @@ class Order extends Model
     public function shipments(): HasMany
     {
         return $this->hasMany(Shipment::class);
+    }
+    
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(
+            InventoryReservation::class,
+            'reference_id'
+        )->where('reference_type', self::class);
     }
 }
