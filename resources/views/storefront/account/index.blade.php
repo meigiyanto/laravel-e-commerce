@@ -1,6 +1,6 @@
 @extends('layouts.storefront')
 
-@section('title', config('app.name') . ' - My Account')
+@section('title', config('app.name') . ' - Account')
 
 @section('content')
 <div class="store-breadcrumb">
@@ -12,8 +12,9 @@
                         <i class="bi bi-house me-1"></i> Home
                     </a>
                 </li>
+                <li class="breadcrumb-item">Account</li>
                 <li class="breadcrumb-item active" aria-current="page">
-                    My Account
+                    Account Overview
                 </li>
             </ol>
         </nav>
@@ -40,72 +41,7 @@
         <div class="row g-4">
             {{-- Sidebar --}}
             <div class="col-lg-4">
-                <div class="store-profile-sidebar">
-                    <div class="store-profile-sidebar-item">
-                        <div class="store-profile-sidebar-icon">
-                            @if ($user->avatar)
-                                <img
-                                    src="{{ asset('storage/' . $user->avatar) }}"
-                                    alt="{{ $user->name }}"
-                                    class="rounded-circle"
-                                    width="48"
-                                    height="48"
-                                    style="object-fit: cover;"
-                                >
-                            @else
-                                <i class="bi bi-person-circle"></i>
-                            @endif
-                        </div>
-                        <div>
-                            <strong>{{ $user->name }}</strong>
-                            <span>{{ $user->email }}</span>
-                        </div>
-                    </div>
-
-                    <div class="store-profile-sidebar-divider"></div>
-
-                    <a href="{{ route('account.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('account.index') ? 'active' : '' }}">
-                        <i class="bi bi-grid"></i>
-                        <span>Account Overview</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="{{ route('profile.edit') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
-                        <i class="bi bi-person"></i>
-                        <span>Profile Settings</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="{{ route('orders.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
-                        <i class="bi bi-bag"></i>
-                        <span>My Orders</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="{{ route('account.addresses.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('account.addresses.*') ? 'active' : '' }}">
-                        <i class="bi bi-geo-alt"></i>
-                        <span>My Addresses</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="{{ route('wishlist.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('wishlist.*') ? 'active' : '' }}">
-                        <i class="bi bi-heart"></i>
-                        <span>Wishlist</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-
-                    <a href="{{ route('compare.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('compare.*') ? 'active' : '' }}">
-                        <i class="bi bi-arrow-left-right"></i>
-                        <span>Compare Products</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                </div>
+                @include('components.account.sidebar', ['user' => $user])
             </div>
 
             {{-- Main Content --}}

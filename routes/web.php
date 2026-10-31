@@ -36,7 +36,7 @@ use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\AccountController;
-// use App\Http\Controllers\UserAddressController;
+use App\Http\Controllers\UserAddressController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

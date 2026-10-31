@@ -1,100 +1,46 @@
 @extends('layouts.storefront')
 
-@section('title', 'Profile')
+@section('title', config('app.name') . ' - Profile Settings')
 
 @section('content')
-
-{{-- =========================================================
-    BREADCRUMB
-========================================================= --}}
 <div class="store-breadcrumb">
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
-
                 <li class="breadcrumb-item">
                     <a href="{{ route('storefront.home') }}">
-                        <i class="bi bi-house me-1"></i>
-                        Home
+                        <i class="bi bi-house me-1"></i> Home
                     </a>
                 </li>
-
                 <li class="breadcrumb-item">
-                    <a href="{{ route('account.index') }}">
-                        My Account
-                    </a>
+                    Account
                 </li>
-
                 <li class="breadcrumb-item active" aria-current="page">
-                    Profile
+                    Profile Settings
                 </li>
-
             </ol>
         </nav>
     </div>
 </div>
 
+@include('components.account.page-header', [
+    'title' => 'Profile Settings',
+    'description' => 'Manage your personal information and account security.',
+    'eyebrow' => 'My Account',
+])
 
-{{-- =========================================================
-    HEADER
-========================================================= --}}
-<section class="store-section pb-3">
-    <div class="container">
-
-        <div class="store-section-header">
-
-            <div>
-                <span class="store-section-eyebrow">
-                    Account
-                </span>
-
-                <h1 class="store-section-title">Profile</h1>
-                <p class="store-section-subtitle">Manage your personal information and account security</p>
-            </div>
-
-        </div>
-
-        @if (session('status') === 'profile-updated')
-            <div class="alert alert-success mt-3">
-                Profile updated successfully
-            </div>
-        @endif
-
-    </div>
-</section>
-
-
-{{-- =========================================================
-    PROFILE CONTENT
-========================================================= --}}
 <section class="pb-5">
     <div class="container">
-
         <div class="row g-4">
-
-            {{-- =================================================
-                PROFILE INFORMATION
-            ================================================= --}}
+            <aside class="col-lg-4">
+                @include('components.account.sidebar', ['user' => $user])
+            </aside>
             <div class="col-lg-8">
-
                 <div class="store-profile-panel">
 
-                    <div class="store-profile-panel-header">
-                        <div>
-                            <h2>Personal Information</h2>
-                            <p>Update your basic account information.</p>
-                        </div>
-                    </div>
-
-
-                    <form
-                        method="POST"
-                        action="{{ route('profile.update') }}"
-                        enctype="multipart/form-data"
-                    >
+                    <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
                         @csrf
                         @method('PATCH')
-
 
                         {{-- =====================================
                             AVATAR
@@ -139,7 +85,6 @@
                             </div>
                         </div>
 
-
                         <div class="row g-3">
                             {{-- NAME --}}
                             <div class="col-md-6">
@@ -165,7 +110,6 @@
 
                             </div>
 
-
                             {{-- EMAIL --}}
                             <div class="col-md-6">
 
@@ -190,7 +134,6 @@
                                 @enderror
 
                             </div>
-
 
                             {{-- PHONE --}}
                             <div class="col-md-6">
@@ -220,7 +163,6 @@
 
                             </div>
 
-
                             {{-- BIRTH DATE --}}
                             <div class="col-md-6">
 
@@ -248,7 +190,6 @@
 
                             </div>
 
-
                             {{-- ADDRESS --}}
                             <div class="col-12">
 
@@ -272,7 +213,6 @@
                                 @enderror
 
                             </div>
-
 
                             {{-- CITY --}}
                             <div class="col-md-4">
@@ -301,7 +241,6 @@
 
                             </div>
 
-
                             {{-- PROVINCE --}}
                             <div class="col-md-4">
 
@@ -328,7 +267,6 @@
                                 @enderror
 
                             </div>
-
 
                             {{-- POSTAL CODE --}}
                             <div class="col-md-4">
@@ -359,7 +297,6 @@
 
                         </div>
 
-
                         <div class="store-profile-form-actions">
 
                             <a
@@ -382,37 +319,8 @@
                     </form>
 
                 </div>
-
             </div>
-
-
-            {{-- =================================================
-                ACCOUNT SIDEBAR
-            ================================================= --}}
-            <div class="col-lg-4">
-                <div class="store-profile-panel">
-                    <div class="store-profile-panel-header">
-                        <div>
-                            <h2>Password</h2>
-                            <p>Use a strong password to keep your account safe from</p>
-                        </div>
-                    </div>
-                    {{-- =====================================================
-                        SECURITY
-                    ====================================================== --}}
-                    @include('profile.partials.update-password-form')
-                </div>
-                {{-- =====================================================
-                    DANGER ZONE
-                ====================================================== --}}
-                <div class="store-profile-danger mt-3">
-                    @include('profile.partials.delete-user-form')
-                </div>
-            </div>
-
         </div>
-
     </div>
 </section>
-
 @endsection

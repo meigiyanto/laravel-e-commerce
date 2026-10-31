@@ -14,11 +14,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        $user->loadCount([
-            'orders',
-            'addresses',
-        ]);
-
+        $user->loadCount(['orders', 'addresses']);
         $user->load('defaultAddress');
 
         $recentOrders = $user->orders()
@@ -26,9 +22,9 @@ class AccountController extends Controller
             ->limit(5)
             ->get();
 
-        return view('storefront.account.index', [
-            'user' => $user,
-            'recentOrders' => $recentOrders,
-        ]);
+        return view('storefront.account.index', compact(
+            'user',
+            'recentOrders'
+        ));
     }
 }
