@@ -88,4 +88,31 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsToMany(Product::class, 'wishlists')->withTimestamps();
     }
+    
+    public function tenantMemberships(): HasMany
+    {
+        return $this->hasMany(TenantMembership::class);
+    }
+    
+    public function tenants(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Tenant::class,
+            'tenant_memberships'
+        )->withPivot([
+            'id',
+            'role',
+            'status',
+            'invited_at',
+            'accepted_at',
+        ])->withTimestamps();
+    }
+    
+    public function createdTenants(): HasMany
+    {
+        return $this->hasMany(
+            Tenant::class,
+            'created_by_user_id'
+        );
+    }
 }
