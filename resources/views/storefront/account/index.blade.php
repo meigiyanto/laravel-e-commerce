@@ -21,20 +21,11 @@
     </div>
 </div>
 
-<section class="store-section pb-3">
-    <div class="container">
-        <div class="store-section-header">
-            <div>
-                <span class="store-section-eyebrow">Account</span>
-                <h1 class="store-section-title">Account Overview</h1>
-                <p class="store-section-subtitle">
-                    Welcome back, <strong>{{ $user->name }}</strong>.
-                    Manage your account and orders here.
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
+@include('components.account.page-header', [
+    'title' => 'Account Overview',
+    'description' => 'Welcome back, ' . $user->name . '. Manage your account and orders here.',
+    'eyebrow' => 'My Account',
+])
 
 <section class="pb-5">
     <div class="container">

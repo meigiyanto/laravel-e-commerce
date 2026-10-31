@@ -46,10 +46,7 @@ class UserAddressTest extends TestCase
             ->assertNotFound();
 
         $this->actingAs($owner)
-            ->patch(
-                route('account.addresses.update', $address),
-                $this->validAddressData()
-            )
+            ->put(route('account.addresses.update', $address), $this->validAddressData())
             ->assertNotFound();
 
         $this->actingAs($owner)
@@ -137,5 +134,94 @@ class UserAddressTest extends TestCase
             'postal_code' => '12160',
             'country' => 'Indonesia',
         ];
+    }
+    
+    public function test_user_can_view_create_address_page(): void
+    {
+        $user = User::factory()->create();
+    
+        $this->actingAs($user)
+            ->get(route('account.addresses.create'))
+            ->assertOk()
+            ->assertViewIs('storefront.account.addresses.form');
+    }
+    
+    public function test_user_can_view_edit_address_page(): void
+    {
+        $user = User::factory()->create();
+        $address = UserAddress::factory()->for($user)->create();
+    
+        $this->actingAs($user)
+            ->get(route('account.addresses.edit', $address))
+            ->assertOk()
+            ->assertViewIs('storefront.account.addresses.form')
+            ->assertViewHas('address', $address);
+    }
+    
+    public function test_user_can_create_an_address(): void
+    {
+        $user = User::factory()->create();
+    
+        $this->actingAs($user)
+            ->post(
+                route('account.addresses.store'),
+                $this->validAddressData()
+            )
+            ->assertRedirect(route('account.addresses.index'));
+    
+        $this->assertDatabaseHas('user_addresses', [
+            'user_id' => $user->id,
+            'label' => 'Rumah',
+            'recipient_name' => 'Test Customer',
+        ]);
+    }
+    
+    public function test_user_can_update_their_address(): void
+    {
+        $user = User::factory()->create();
+        $address = UserAddress::factory()->for($user)->create();
+    
+        $data = $this->validAddressData();
+        $data['label'] = 'Kantor';
+        $data['city'] = 'Jakarta Pusat';
+    
+        $this->actingAs($user)
+            ->put(route('account.addresses.update', $address), $data)
+            ->assertRedirect(route('account.addresses.index'));
+    
+        $this->assertDatabaseHas('user_addresses', [
+            'id' => $address->id,
+            'label' => 'Kantor',
+            'city' => 'Jakarta Pusat',
+        ]);
+    }
+    
+    public function test_address_requires_mandatory_fields(): void
+    {
+        $user = User::factory()->create();
+    
+        $this->actingAs($user)
+            ->post(route('account.addresses.store'), [])
+            ->assertSessionHasErrors([
+                'label',
+                'recipient_name',
+                'phone',
+                'address_line',
+                'province',
+                'city',
+                'district',
+                'village',
+                'postal_code',
+                'country',
+            ]);
+    }
+    
+    public function test_guest_cannot_access_address_pages(): void
+    {
+        $this->get(route('account.addresses.index'))
+            ->assertRedirect(route('login'));
+    
+        $this->get(route('account.addresses.create'))
+            ->assertRedirect(route('login'));
     }
 }
