@@ -615,9 +615,7 @@ class StripeWebhookTest extends TestCase
     public function test_succeeded_webhook_does_not_complete_terminal_order(
         string $orderStatus
     ): void {
-        $payment = $this->createPayment(
-            orderStatus: $orderStatus
-        );
+        $payment = $this->createPayment(orderStatus: $orderStatus);
 
         $response = $this->postStripeWebhook(
             'payment_intent.succeeded',
@@ -630,11 +628,11 @@ class StripeWebhookTest extends TestCase
         );
 
         $response->assertStatus(200);
-
+        
         $expectedPaymentStatus = $orderStatus === 'canceled' ? 'succeeded' : 'pending';
-        
+
         $this->assertPaymentState($payment, $expectedPaymentStatus);
-        
+
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
             'status' => $orderStatus,

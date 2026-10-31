@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Payment;
-use App\Models\Product;
 use App\Services\RefundService;
 use App\Services\WebhookEventService;
 use App\Services\VariantInventoryService;
@@ -114,6 +113,11 @@ class StripeWebhookController extends Controller
     
             $order = $context['order'];
             $payment = $context['payment'];
+            
+            // Order failed dan refunded tidak boleh menerima pembayaran baru.
+            if (in_array($order->status, ['failed', 'refunded'], true)) {
+                return;
+            }
     
             $stripeCurrency = strtolower($paymentIntent->currency);
             $paymentCurrency = strtolower($payment->currency);
@@ -164,8 +168,7 @@ class StripeWebhookController extends Controller
     
             // Jangan aktifkan kembali order yang sudah dibatalkan.
             if ($order->status === 'pending') {
-                app(VariantInventoryService::class)
-                    ->commitReservationsForOrder($order);
+                app(VariantInventoryService::class)->commitReservationsForOrder($order);
     
                 $order->update([
                     'status' => 'processing',
@@ -185,28 +188,15 @@ class StripeWebhookController extends Controller
     
         $order = Order::query()->find($payment->order_id);
     
-        if (
-            $order
-            && $order->status === 'canceled'
-            && $payment->status === 'succeeded'
-        ) {
-            app(RefundService::class)
-                ->requestLateCanceledOrderRefund(
-                    $order,
-                    $payment
-                );
+        if ($order&& $order->status === 'canceled'&& $payment->status === 'succeeded') {
+            app(RefundService::class)->requestLateCanceledOrderRefund($order, $payment);
         }
     }
 
     private function handlePaymentIntentFailed(
         object $paymentIntent
     ): void {
-        if (
-            ! isset($paymentIntent->id, $paymentIntent->status)
-            || ! is_string($paymentIntent->id)
-            || ! is_string($paymentIntent->status)
-            || $paymentIntent->status !== 'requires_payment_method'
-        ) {
+        if ( ! isset($paymentIntent->id, $paymentIntent->status) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'requires_payment_method') {
             throw new \RuntimeException(
                 'Stripe payment intent is invalid for payment_failed event.'
             );
@@ -288,11 +278,7 @@ class StripeWebhookController extends Controller
             ->lockForUpdate()
             ->first();
     
-        if (
-            ! $payment
-            || (int) $payment->order_id !== (int) $order->id
-            || $payment->stripe_payment_intent_id !== $paymentIntentId
-        ) {
+        if (! $payment|| (int) $payment->order_id !== (int) $order->id|| $payment->stripe_payment_intent_id !== $paymentIntentId) {
             return null;
         }
     
@@ -305,21 +291,12 @@ class StripeWebhookController extends Controller
     private function handlePaymentIntentCanceled(
         object $paymentIntent
     ): void {
-        if (
-            ! isset($paymentIntent->id, $paymentIntent->status)
-            || ! is_string($paymentIntent->id)
-            || ! is_string($paymentIntent->status)
-            || $paymentIntent->status !== 'canceled'
-        ) {
-            throw new \RuntimeException(
-                'Stripe payment intent is invalid for cancellation.'
-            );
+        if ( ! isset($paymentIntent->id, $paymentIntent->status) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'canceled') {
+            throw new \RuntimeException('Stripe payment intent is invalid for cancellation.');
         }
     
         DB::transaction(function () use ($paymentIntent): void {
-            $context = $this->lockPaymentContext(
-                $paymentIntent->id
-            );
+            $context = $this->lockPaymentContext($paymentIntent->id);
     
             if (! $context) {
                 return;
