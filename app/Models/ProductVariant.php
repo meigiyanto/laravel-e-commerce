@@ -58,4 +58,9 @@ class ProductVariant extends Model
     {
         return $this->belongsToMany(AttributeValue::class, 'product_variant_attribute_values')->withTimestamps();
     }
+    
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(InventoryReservation::class, 'product_variant_id');
+    }
 }

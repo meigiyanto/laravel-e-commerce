@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use App\Models\InventoryMovement;
 use Illuminate\Validation\ValidationException;
+use App\Models\InventoryReservation;
 
 class VariantInventoryService
 {
@@ -139,6 +140,231 @@ class VariantInventoryService
             'inventory' => $inventory,
         ];
     }
+    
+    public function reserve(
+        ProductVariant $variant,
+        int $quantity,
+        string $idempotencyKey,
+        string $referenceType,
+        int $referenceId
+    ): InventoryReservation {
+        if ($quantity < 1) {
+            throw ValidationException::withMessages([
+                'stock' => 'Jumlah reservasi tidak valid.',
+            ]);
+        }
+    
+        if (
+            trim($idempotencyKey) === ''
+            || strlen($idempotencyKey) > 191
+            || trim($referenceType) === ''
+            || strlen($referenceType) > 100
+            || $referenceId < 1
+        ) {
+            throw new \InvalidArgumentException(
+                'Data reservasi tidak valid.'
+            );
+        }
+    
+        return DB::transaction(function () use (
+            $variant,
+            $quantity,
+            $idempotencyKey,
+            $referenceType,
+            $referenceId
+        ) {
+            /*
+             * Insert reservation lebih dahulu agar unique key menjadi
+             * titik sinkronisasi untuk request dengan key yang sama.
+             * Jika stok tidak cukup, seluruh transaksi akan rollback.
+             */
+            $inserted = DB::table('inventory_reservations')
+                ->insertOrIgnore([
+                    'product_variant_id' => $variant->id,
+                    'idempotency_key' => $idempotencyKey,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'quantity' => $quantity,
+                    'status' => InventoryReservation::STATUS_RESERVED,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+    
+            $reservation = InventoryReservation::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($inserted === 0) {
+                if (
+                    (int) $reservation->product_variant_id !== (int) $variant->id
+                    || (int) $reservation->quantity !== $quantity
+                    || $reservation->reference_type !== $referenceType
+                    || (int) $reservation->reference_id !== $referenceId
+                ) {
+                    throw new \LogicException(
+                        'Reservation idempotency key digunakan dengan data berbeda.'
+                    );
+                }
+    
+                return $reservation;
+            }
+    
+            $product = Product::query()
+                ->findOrFail($variant->product_id);
+    
+            $resolved = $this->resolve($product, (int) $variant->id);
+            $inventory = $resolved['inventory'];
+    
+            /*
+             * Kondisi stok diperiksa langsung pada UPDATE agar
+             * reservasi tidak dapat melampaui stok tersedia.
+             */
+            $updated = Inventory::query()
+                ->whereKey($inventory->id)
+                ->whereRaw(
+                    'quantity - reserved_quantity >= ?',
+                    [$quantity]
+                )
+                ->increment('reserved_quantity', $quantity);
+    
+            if ($updated !== 1) {
+                throw ValidationException::withMessages([
+                    'stock' => "Stok varian {$resolved['variant']->name} tidak mencukupi.",
+                ]);
+            }
+    
+            return $reservation->fresh();
+        });
+    }
+    
+    public function commitReservation(
+        string $idempotencyKey
+    ): InventoryReservation {
+        return DB::transaction(function () use ($idempotencyKey) {
+            $reservation = InventoryReservation::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($reservation->status === InventoryReservation::STATUS_COMMITTED) {
+                return $reservation;
+            }
+    
+            if ($reservation->status === InventoryReservation::STATUS_RELEASED) {
+                throw new \LogicException(
+                    'Reservasi yang sudah dilepas tidak dapat di-commit.'
+                );
+            }
+    
+            $variant = ProductVariant::query()
+                ->findOrFail($reservation->product_variant_id);
+    
+            $product = Product::query()
+                ->findOrFail($variant->product_id);
+    
+            $resolved = $this->resolve($product, (int) $variant->id);
+            $inventory = $resolved['inventory'];
+            $quantity = (int) $reservation->quantity;
+    
+            if (
+                (int) $inventory->reserved_quantity < $quantity
+                || (int) $inventory->quantity < $quantity
+            ) {
+                throw new \LogicException(
+                    'Jumlah stok tidak konsisten dengan reservasi.'
+                );
+            }
+    
+            $movementKey = "reservation:{$reservation->id}:commit";
+    
+            if ($this->hasRecordedMovement(
+                $movementKey,
+                (int) $variant->id,
+                'sale',
+                -$quantity,
+                $reservation->reference_type,
+                (int) $reservation->reference_id
+            )) {
+                throw new \LogicException(
+                    'Movement commit sudah tercatat tetapi status reservasi belum committed.'
+                );
+            }
+    
+            /*
+             * Urutan ini penting agar constraint
+             * reserved_quantity <= quantity selalu terpenuhi.
+             */
+            $inventory->decrement('reserved_quantity', $quantity);
+            $inventory->decrement('quantity', $quantity);
+    
+            $variant->inventoryMovements()->create([
+                'type' => 'sale',
+                'quantity' => -$quantity,
+                'reference_type' => $reservation->reference_type,
+                'reference_id' => $reservation->reference_id,
+                'idempotency_key' => $movementKey,
+                'note' => 'Stok dikurangi setelah reservasi di-commit.',
+                'created_by' => auth()->id(),
+            ]);
+    
+            $reservation->update([
+                'status' => InventoryReservation::STATUS_COMMITTED,
+                'committed_at' => now(),
+            ]);
+    
+            $this->syncLegacyStock($product);
+    
+            return $reservation->fresh();
+        });
+    }
+    
+    public function releaseReservation(
+        string $idempotencyKey
+    ): InventoryReservation {
+        return DB::transaction(function () use ($idempotencyKey) {
+            $reservation = InventoryReservation::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($reservation->status === InventoryReservation::STATUS_RELEASED) {
+                return $reservation;
+            }
+    
+            if ($reservation->status === InventoryReservation::STATUS_COMMITTED) {
+                throw new \LogicException(
+                    'Reservasi yang sudah di-commit tidak dapat dilepas.'
+                );
+            }
+    
+            $variant = ProductVariant::query()
+                ->findOrFail($reservation->product_variant_id);
+    
+            $product = Product::query()
+                ->findOrFail($variant->product_id);
+    
+            $resolved = $this->resolve($product, (int) $variant->id);
+            $inventory = $resolved['inventory'];
+            $quantity = (int) $reservation->quantity;
+    
+            if ((int) $inventory->reserved_quantity < $quantity) {
+                throw new \LogicException(
+                    'Reserved quantity lebih kecil daripada jumlah reservasi.'
+                );
+            }
+    
+            $inventory->decrement('reserved_quantity', $quantity);
+    
+            $reservation->update([
+                'status' => InventoryReservation::STATUS_RELEASED,
+                'released_at' => now(),
+            ]);
+    
+            return $reservation->fresh();
+        });
+    }
+
 
     /**
      * Kurangi stok saat order dibuat.
@@ -173,7 +399,9 @@ class VariantInventoryService
             $idempotencyKey,
             $variant->id,
             'sale',
-            -$quantity
+            -$quantity,
+            Order::class,
+            (int) $order->id
         )) {
             return;
         }
@@ -243,7 +471,9 @@ class VariantInventoryService
             $idempotencyKey,
             $variant->id,
             'return',
-            $quantity
+            $quantity,
+            Order::class,
+            (int) $order->id
         )) {
             return;
         }
@@ -339,7 +569,9 @@ class VariantInventoryService
         string $idempotencyKey,
         int $variantId,
         string $type,
-        int $quantity
+        int $quantity,
+        string $referenceType,
+        int $referenceId
     ): bool {
         $movement = InventoryMovement::query()
             ->where('idempotency_key', $idempotencyKey)
@@ -354,6 +586,8 @@ class VariantInventoryService
             (int) $movement->product_variant_id !== $variantId
             || $movement->type !== $type
             || (int) $movement->quantity !== $quantity
+            || $movement->reference_type !== $referenceType
+            || (int) $movement->reference_id !== $referenceId
         ) {
             throw new \LogicException(
                 'Inventory movement idempotency key digunakan dengan data yang berbeda.'
