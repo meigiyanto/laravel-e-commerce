@@ -143,10 +143,7 @@
                         <div class="row g-3">
                             {{-- NAME --}}
                             <div class="col-md-6">
-                                <label
-                                    for="name"
-                                    class="form-label"
-                                >
+                                <label for="name" class="form-label">
                                     Full Name
                                 </label>
 
@@ -172,10 +169,7 @@
                             {{-- EMAIL --}}
                             <div class="col-md-6">
 
-                                <label
-                                    for="email"
-                                    class="form-label"
-                                >
+                                <label for="email" class="form-label">
                                     Email Address
                                 </label>
 
@@ -230,10 +224,7 @@
                             {{-- BIRTH DATE --}}
                             <div class="col-md-6">
 
-                                <label
-                                    for="birth_date"
-                                    class="form-label"
-                                >
+                                <label for="birth_date" class="form-label">
                                     Date of Birth
                                 </label>
 
@@ -261,10 +252,7 @@
                             {{-- ADDRESS --}}
                             <div class="col-12">
 
-                                <label
-                                    for="address"
-                                    class="form-label"
-                                >
+                                <label for="address" class="form-label">
                                     Address
                                 </label>
 

@@ -122,7 +122,7 @@
                         <i class="bi bi-chevron-right"></i>
                     </a>
                     <a
-                        href="#"
+                        href="{{ route(storefront.account.address) }}"
                         class="store-profile-sidebar-link"
                     >
                         <i class="bi bi-person"></i>

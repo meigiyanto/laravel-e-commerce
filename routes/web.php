@@ -35,6 +35,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\UserAddressController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -109,6 +110,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/account', function () {
         return view('storefront.account.index');
     })->name('account.index');
+    
+    Route::prefix('account/addresses')->name('account.addresses.')->controller(UserAddressController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{address}/edit', 'edit')->name('edit');
+        Route::put('/{address}', 'update')->name('update');
+        Route::delete('/{address}', 'destroy')->name('destroy');
+        Route::patch('/{address}/default', 'makeDefault')->name('default');
+    });
 });
 
 /*
