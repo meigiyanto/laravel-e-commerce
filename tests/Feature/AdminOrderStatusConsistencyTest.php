@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Inventory;
 use App\Models\User;
+use App\Models\InventoryReservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -243,5 +244,135 @@ class AdminOrderStatusConsistencyTest extends TestCase
         ]);
 
         return [$order, $product, $variant, $inventory];
+    }
+    
+    public function test_canceling_pending_order_releases_reserved_stock_without_restoring_quantity(): void
+    {
+        [$order, $product, $variant, $inventory] =
+            $this->createOrderWithVariantStock('pending');
+    
+        $reservation = InventoryReservation::create([
+            'product_variant_id' => $variant->id,
+            'idempotency_key' => "order:{$order->id}:variant:{$variant->id}:reserve",
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+            'quantity' => 2,
+            'status' => InventoryReservation::STATUS_RESERVED,
+        ]);
+    
+        $inventory->update(['reserved_quantity' => 2]);
+    
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->patch(route('admin.orders.status', $order), [
+                'status' => 'canceled',
+            ]);
+    
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(8, $inventory->fresh()->quantity);
+        $this->assertSame(0, $inventory->fresh()->reserved_quantity);
+        $this->assertSame(8, $product->fresh()->stock);
+    
+        $this->assertSame(
+            InventoryReservation::STATUS_RELEASED,
+            $reservation->fresh()->status
+        );
+    
+        $this->assertDatabaseMissing('inventory_movements', [
+            'product_variant_id' => $variant->id,
+            'type' => 'return',
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+        ]);
+    }
+    
+    public function test_canceling_pending_order_restores_committed_reservation_only_once(): void
+    {
+        [$order, $product, $variant, $inventory] =
+            $this->createOrderWithVariantStock('pending');
+    
+        $inventory->update(['quantity' => 6]);
+        $product->update(['stock' => 6]);
+    
+        $reservation = InventoryReservation::create([
+            'product_variant_id' => $variant->id,
+            'idempotency_key' => "order:{$order->id}:variant:{$variant->id}:reserve",
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+            'quantity' => 2,
+            'status' => InventoryReservation::STATUS_COMMITTED,
+            'committed_at' => now(),
+        ]);
+    
+        $admin = User::factory()->create(['role' => 'admin']);
+    
+        $this->actingAs($admin)->patch(
+            route('admin.orders.status', $order),
+            ['status' => 'canceled']
+        );
+    
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(8, $inventory->fresh()->quantity);
+        $this->assertSame(8, $product->fresh()->stock);
+    
+        // Status committed tidak diubah menjadi released.
+        $this->assertSame(
+            InventoryReservation::STATUS_COMMITTED,
+            $reservation->fresh()->status
+        );
+    
+        // Request pembatalan kedua tidak boleh memulihkan stok lagi.
+        $this->actingAs($admin)->patch(
+            route('admin.orders.status', $order),
+            ['status' => 'canceled']
+        );
+    
+        $this->assertSame(8, $inventory->fresh()->quantity);
+        $this->assertSame(8, $product->fresh()->stock);
+    
+        $this->assertDatabaseCount('inventory_movements', 1);
+        $this->assertDatabaseHas('inventory_movements', [
+            'product_variant_id' => $variant->id,
+            'type' => 'return',
+            'quantity' => 2,
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+        ]);
+    }
+    
+    public function test_canceling_order_with_released_reservation_does_not_restore_stock(): void
+    {
+        [$order, $product, $variant, $inventory] =
+            $this->createOrderWithVariantStock('pending');
+    
+        $reservation = InventoryReservation::create([
+            'product_variant_id' => $variant->id,
+            'idempotency_key' => "order:{$order->id}:variant:{$variant->id}:reserve",
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+            'quantity' => 2,
+            'status' => InventoryReservation::STATUS_RELEASED,
+            'released_at' => now(),
+        ]);
+    
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->patch(route('admin.orders.status', $order), [
+                'status' => 'canceled',
+            ]);
+    
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(8, $inventory->fresh()->quantity);
+        $this->assertSame(8, $product->fresh()->stock);
+    
+        $this->assertSame(
+            InventoryReservation::STATUS_RELEASED,
+            $reservation->fresh()->status
+        );
+    
+        $this->assertDatabaseMissing('inventory_movements', [
+            'product_variant_id' => $variant->id,
+            'type' => 'return',
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+        ]);
     }
 }

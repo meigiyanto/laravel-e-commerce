@@ -322,10 +322,7 @@ class OrderController extends Controller
                      * Jangan membatalkan pembayaran dengan provider yang
                      * tidak memiliki mekanisme pembatalan yang dikenali.
                      */
-                    return back()->with(
-                        'error',
-                        'Pembatalan ditolak: provider pembayaran tidak didukung.'
-                    );
+                    return back()->with('error', 'Pembatalan ditolak: provider pembayaran tidak didukung.');
                 }
             }
         }    
@@ -420,8 +417,7 @@ class OrderController extends Controller
                     true
                 )
             ) {
-                app(VariantInventoryService::class)
-                    ->restoreItemsForOrder($lockedOrder);
+                app(VariantInventoryService::class)->cancelStockForOrder($lockedOrder);
             }
             
             $lockedOrder->update([

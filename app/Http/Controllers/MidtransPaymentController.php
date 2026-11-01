@@ -221,26 +221,12 @@ class MidtransPaymentController extends Controller
                 }
 
                 $incomingStatus = $this->resolvePaymentStatus(
-                    strtolower(
-                        (string) ($transaction->transaction_status ?? 'pending')
-                    ),
-                    isset($transaction->status_code)
-                        ? (string) $transaction->status_code
-                        : null,
-                    isset($transaction->fraud_status)
-                        ? strtolower((string) $transaction->fraud_status)
-                        : null
+                    strtolower((string) ($transaction->transaction_status ?? 'pending')),
+                    isset($transaction->status_code) ? (string) $transaction->status_code : null,
+                    isset($transaction->fraud_status) ? strtolower((string) $transaction->fraud_status) : null
                 );
 
-                // Jangan menurunkan status terminal menjadi pending.
-                if (
-                    in_array(
-                        $lockedPayment->status,
-                        ['failed', 'expired', 'canceled'],
-                        true
-                    )
-                    && $incomingStatus === 'pending'
-                ) {
+                if (! $this->canTransitionPaymentStatus($lockedPayment->status, $incomingStatus )) {
                     return 'ignored_stale';
                 }
 
@@ -443,15 +429,11 @@ class MidtransPaymentController extends Controller
                 $lockedPayment = Payment::where('order_id',$lockedOrder->id)->lockForUpdate()->first();
 
                 if (! $lockedPayment) {
-                    throw new \RuntimeException(
-                        'Data pembayaran tidak ditemukan.'
-                    );
+                    throw new \RuntimeException('Data pembayaran tidak ditemukan.');
                 }
 
                 if ($lockedPayment->provider !== 'midtrans') {
-                    throw new \RuntimeException(
-                        'Provider pembayaran berubah saat pemrosesan.'
-                    );
+                    throw new \RuntimeException('Provider pembayaran berubah saat pemrosesan.');
                 }
 
                 // Request paralel mungkin sudah menyelesaikan pembayaran.
@@ -467,9 +449,7 @@ class MidtransPaymentController extends Controller
                     isset($transaction->fraud_status) ? strtolower((string) $transaction->fraud_status) : null
                 );
 
-                if (in_array($lockedPayment->status,['failed', 'expired', 'canceled'],true)
-                    && $incomingStatus === 'pending'
-                ) {
+                if (! $this->canTransitionPaymentStatus($lockedPayment->status, $incomingStatus)) {
                     return 'ignored_stale';
                 }
 
@@ -482,15 +462,10 @@ class MidtransPaymentController extends Controller
             // Muat ulang status terbaru setelah transaksi selesai.
             $order->refresh();
             
-            $payment = Payment::query()
-                ->where('order_id', $order->id)
-                ->first();
+            $payment = Payment::query()->where('order_id', $order->id)->first();
             
             if ( $payment && $order->status === 'canceled' && $payment->status === 'succeeded') {
-                $this->refundService->requestLateCanceledOrderRefund(
-                    $order,
-                    $payment
-                );
+                $this->refundService->requestLateCanceledOrderRefund($order,$payment);
             }
 
             if ($result === 'ignored_stale') {
@@ -585,13 +560,41 @@ class MidtransPaymentController extends Controller
 
         $payment->update($data);
         
-        if (in_array($paymentStatus,['failed', 'expired', 'canceled'],true) && $order->status === 'pending') {
+        if ( in_array($paymentStatus, ['failed', 'expired', 'canceled'], true) && $order->status === 'pending') {
             $order->update([
                 'status' => 'canceled',
             ]);
         
-            app(\App\Services\VariantInventoryService::class)->restoreItemsForOrder($order);
+            app(\App\Services\VariantInventoryService::class)->cancelStockForOrder($order);
         }
+    }
+    
+    /**
+     * Aturan transisi status pembayaran Midtrans.
+     *
+     * Status terminal tidak boleh saling menimpa.
+     * Pengecualian: pembayaran terminal dapat menjadi succeeded
+     * jika Midtrans benar-benar mengonfirmasi settlement terlambat.
+     */
+    private function canTransitionPaymentStatus(
+        string $currentStatus,
+        string $incomingStatus
+    ): bool {
+        if ($currentStatus === 'succeeded') {
+            return false;
+        }
+    
+        $terminalStatuses = [
+            'failed',
+            'expired',
+            'canceled',
+        ];
+    
+        if (in_array($currentStatus, $terminalStatuses, true)) {
+            return $incomingStatus === 'succeeded';
+        }
+    
+        return true;
     }
 
     /**

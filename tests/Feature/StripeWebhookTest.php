@@ -10,6 +10,11 @@ use Illuminate\Support\Facades\Config;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Stripe\WebhookSignature;
 use Tests\TestCase;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Inventory;
+use Illuminate\Support\Facades\DB;
 
 class StripeWebhookTest extends TestCase
 {
@@ -1267,5 +1272,56 @@ class StripeWebhookTest extends TestCase
             'id' => $payment->id,
             'status' => $status,
         ]);
+    }
+    
+    private function createOrderReservation(
+        Payment $payment,
+        string $reservationStatus
+    ): array {
+        $order = Order::findOrFail($payment->order_id);
+        $isCommitted = $reservationStatus === 'committed';
+    
+        $product = Product::factory()->create([
+            'stock' => $isCommitted ? 8 : 10,
+        ]);
+    
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'STRIPE-CANCEL-'.uniqid(),
+            'name' => 'Webhook test variant',
+            'price' => 50000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+    
+        $inventory = Inventory::create([
+            'product_variant_id' => $variant->id,
+            'quantity' => $isCommitted ? 8 : 10,
+            'reserved_quantity' => $reservationStatus === 'reserved' ? 2 : 0,
+            'reorder_level' => 0,
+        ]);
+    
+        $item = OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => $product->name,
+            'price' => 50000,
+            'quantity' => 2,
+            'subtotal' => 100000,
+        ]);
+    
+        DB::table('inventory_reservations')->insert([
+            'product_variant_id' => $variant->id,
+            'idempotency_key' => 'stripe-cancel-'.$order->id,
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+            'quantity' => 2,
+            'status' => $reservationStatus,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    
+        return [$order, $product, $variant, $inventory, $item];
     }
 }

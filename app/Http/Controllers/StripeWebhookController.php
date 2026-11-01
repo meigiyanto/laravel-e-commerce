@@ -304,10 +304,18 @@ class StripeWebhookController extends Controller
     
             $order = $context['order'];
             $payment = $context['payment'];
-    
-            // Pembayaran sukses tidak boleh dibatalkan.
-            if ($payment->status === 'succeeded') {
-                return;
+            
+            if ($order->status === 'pending') {
+                $order->update([
+                    'status' => 'canceled',
+                ]);
+            }
+            
+            // Jangan mengembalikan stok untuk order yang masih processing.
+            // Order yang sudah canceled boleh diproses ulang karena
+            // cancelStockForOrder() menangani idempotency reservasi.
+            if ($order->status === 'canceled') {
+                app(VariantInventoryService::class)->cancelStockForOrder($order);
             }
     
             // Pesanan yang sudah dikirim atau selesai tidak boleh dibatalkan.
