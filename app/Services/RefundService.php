@@ -199,6 +199,97 @@ class RefundService
             $lock->release();
         }
     }
+    
+    protected function processUnderLock(Refund $refund): Refund
+    {
+        // payment_id merupakan foreign key yang immutable.
+        // Baca terlebih dahulu untuk menentukan row lock pertama.
+        $refundData = Refund::query()
+            ->select(['id', 'payment_id'])
+            ->findOrFail($refund->id);
+    
+        $refund = DB::transaction(function () use ($refundData) {
+            // Urutan lock harus konsisten: Payment -> Refund.
+            $payment = Payment::query()
+                ->whereKey($refundData->payment_id)
+                ->lockForUpdate()
+                ->first();
+    
+            if (! $payment) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Payment untuk refund tidak ditemukan.',
+                ]);
+            }
+    
+            $refund = Refund::query()
+                ->whereKey($refundData->id)
+                ->lockForUpdate()
+                ->first();
+    
+            if (! $refund) {
+                throw ValidationException::withMessages([
+                    'refund' => 'Refund tidak ditemukan.',
+                ]);
+            }
+    
+            if ($refund->status !== Refund::STATUS_REQUESTED) {
+                throw ValidationException::withMessages([
+                    'refund' => 'Refund ini sudah diproses atau tidak dapat diproses kembali.',
+                ]);
+            }
+    
+            if ($payment->status !== 'succeeded') {
+                throw ValidationException::withMessages([
+                    'payment' => 'Payment belum berada pada status succeeded.',
+                ]);
+            }
+    
+            $refundableAmount = $this->refundableAmount(
+                $payment,
+                (int) $refund->id
+            );
+    
+            if ((float) $refund->amount > $refundableAmount) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Nominal refund melebihi sisa dana yang dapat direfund.',
+                ]);
+            }
+    
+            if (! in_array(
+                $payment->provider,
+                ['stripe', 'midtrans', 'cod'],
+                true
+            )) {
+                throw ValidationException::withMessages([
+                    'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
+                ]);
+            }
+    
+            // Claim refund sebelum provider dipanggil.
+            $refund->update([
+                'status' => Refund::STATUS_PROCESSING,
+                'processing_at' => now(),
+            ]);
+    
+            return $refund->fresh(['order', 'payment']);
+        });
+    
+        // Jangan menahan database transaction selama HTTP request.
+        return match ($refund->payment->provider) {
+            'stripe' => $this->processStripe(
+                $refund,
+                $refund->payment
+            ),
+            'midtrans' => $this->processMidtrans(
+                $refund,
+                $refund->payment
+            ),
+            'cod' => $this->processCod($refund),
+            default => throw new \LogicException(
+                'Unsupported refund provider.'
+            ),
+        };
+    }
 
     /**
      * Mengambil refund yang stuck dalam status processing.
@@ -226,48 +317,80 @@ class RefundService
             ->get();
     }
 
-    public function recoverRefund(
-        Refund $refund
-    ): Refund {
-        $lock = Cache::lock(
-            'refund-recovery:'.$refund->id,
-            (int) config(
-                'services.refund.recovery_lock_ttl_seconds'
-            )
-        );
-
+    public function recoverRefund(Refund $refund): Refund
+    {
+        $lock = $this->refundOperationLock($refund->id);
+    
         if (! $lock->get()) {
             return $refund->fresh();
         }
-
+    
         try {
-            $refund = Refund::query()
-                ->with(['order', 'payment'])
+            $refundData = Refund::query()
+                ->select(['id', 'payment_id'])
                 ->findOrFail($refund->id);
-
+    
+            $timeoutMinutes = (int) config(
+                'services.refund.processing_timeout_minutes',
+                15
+            );
+    
+            $refund = DB::transaction(function () use (
+                $refundData,
+                $timeoutMinutes
+            ) {
+                // Gunakan urutan lock yang sama dengan process().
+                $payment = Payment::query()
+                    ->whereKey($refundData->payment_id)
+                    ->lockForUpdate()
+                    ->first();
+    
+                if (! $payment) {
+                    return Refund::findOrFail($refundData->id);
+                }
+    
+                $refund = Refund::query()
+                    ->whereKey($refundData->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+    
+                if (
+                    $refund->status !== Refund::STATUS_PROCESSING
+                    || ! $refund->processing_at
+                ) {
+                    return $refund->load(['order', 'payment']);
+                }
+    
+                $cutoff = now()->subMinutes($timeoutMinutes);
+    
+                // Jangan recovery pekerjaan yang belum timeout.
+                if ($refund->processing_at->gt($cutoff)) {
+                    return $refund->load(['order', 'payment']);
+                }
+    
+                // Ambil alih lease recovery.
+                $refund->update([
+                    'processing_at' => now(),
+                ]);
+    
+                return $refund->fresh(['order', 'payment']);
+            });
+    
+            // Periksa kembali status setelah transaksi.
             if ($refund->status !== Refund::STATUS_PROCESSING) {
                 return $refund;
             }
-
-            if (! $refund->processing_at) {
-                return $refund;
-            }
-
+    
             return match ($refund->payment?->provider) {
                 'stripe' => $this->recoverStripe(
                     $refund,
                     $refund->payment
                 ),
-
                 'midtrans' => $this->recoverMidtrans(
                     $refund,
                     $refund->payment
                 ),
-
-                'cod' => $this->processCod(
-                    $refund
-                ),
-
+                'cod' => $this->processCod($refund),
                 default => $refund,
             };
         } finally {
@@ -603,12 +726,24 @@ class RefundService
     
     protected function refundOperationLock(int $refundId)
     {
-        return Cache::lock(
-            $this->refundOperationLockKey($refundId),
+        $providerTimeout = (int) config(
+            'services.refund.provider_timeout_seconds',
+            80
+        );
+    
+        $minimumTtl = $providerTimeout + 30;
+    
+        $ttl = max(
             (int) config(
                 'services.refund.operation_lock_ttl_seconds',
-                1800
-            )
+                $minimumTtl
+            ),
+            $minimumTtl
+        );
+    
+        return Cache::lock(
+            $this->refundOperationLockKey($refundId),
+            $ttl
         );
     }
 }

@@ -2149,9 +2149,8 @@ class RefundServiceTest extends TestCase
         );
 
         $this->assertNotNull($result->processing_at);
-
         $this->assertEquals(
-            $processingAt->timestamp,
+            now()->timestamp,
             $result->processing_at->timestamp
         );
     }
@@ -2849,19 +2848,11 @@ class RefundServiceTest extends TestCase
 
         $service = app(RefundService::class);
 
-        $lock = Cache::lock(
-            'refund-recovery:'.$refund->id,
-            (int) config('services.refund.recovery_lock_ttl_seconds')
-        );
+        $lock = Cache::lock('refund-recovery:'.$refund->id, (int) config('services.refund.recovery_lock_ttl_seconds'));
 
         $this->assertTrue($lock->get());
 
-        $this->assertFalse(
-            Cache::lock(
-                'refund-recovery:'.$refund->id,
-                (int) config('services.refund.recovery_lock_ttl_seconds')
-            )->get()
-        );
+        $this->assertFalse(Cache::lock( 'refund-recovery:'.$refund->id, (int) config('services.refund.recovery_lock_ttl_seconds'))->get());
 
         $lock->release();
 
@@ -3160,7 +3151,7 @@ class RefundServiceTest extends TestCase
         $lock = Mockery::mock(
             \Illuminate\Contracts\Cache\Lock::class
         );
-
+        
         Cache::shouldReceive('lock')
             ->once()
             ->with(
@@ -3170,7 +3161,7 @@ class RefundServiceTest extends TestCase
                 )
             )
             ->andReturn($lock);
-
+        
         $result = Cache::lock(
             'refund-recovery:'.$refund->id,
             (int) config(

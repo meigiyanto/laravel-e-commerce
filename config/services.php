@@ -44,6 +44,6 @@ return [
     'refund' => [
         'processing_timeout_minutes' => 15,
         'provider_timeout_seconds' => 80,
-        'recovery_lock_ttl_seconds' => 120,
+        'operation_lock_ttl_seconds' => 120,
     ],
 ];
