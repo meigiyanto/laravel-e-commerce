@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
@@ -58,7 +60,30 @@ class ProfileController extends Controller
             Storage::disk('public')->delete($oldAvatar);
         }
     
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return Redirect::route('profile.edit')->with('success', 'profile has been updated successfully');
+    }
+    
+    /**
+     * Update the authenticated user's password.
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $validated = $request->validateWithBag('passwordUpdate', [
+            'current_password' => ['required', 'current_password'],
+            'password' => [
+                'required',
+                'string',
+                Password::defaults(),
+                'confirmed',
+                'different:current_password',
+            ],
+        ]);
+    
+        $request->user()->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+    
+        return Redirect::route('profile.edit')->with('success', 'password has been updated successfully');
     }
 
     /**

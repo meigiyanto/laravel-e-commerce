@@ -432,7 +432,7 @@
 
 .store-home-benefit {
     height: 100%;
-    border: 1px solid var(--store-border);
+    border: 2px solid var(--store-border);
     border-radius: var(--store-radius);
     background: #fff;
     transition: transform .2s ease,

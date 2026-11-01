@@ -36,8 +36,14 @@
                 @include('components.account.sidebar', ['user' => $user])
             </aside>
             <div class="col-lg-8">
-                <div class="store-profile-panel">
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
 
+                <div class="store-profile-panel">
                     <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
                         @csrf
                         @method('PATCH')
@@ -190,111 +196,6 @@
 
                             </div>
 
-                            {{-- ADDRESS --}}
-                            <div class="col-12">
-
-                                <label for="address" class="form-label">
-                                    Address
-                                </label>
-
-                                <textarea
-                                    id="address"
-                                    name="address"
-                                    class="form-control @error('address') is-invalid @enderror"
-                                    rows="4"
-                                    autocomplete="street-address"
-                                    placeholder="Alamat lengkap"
-                                >{{ old('address', $user->address) }}</textarea>
-
-                                @error('address')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-                            </div>
-
-                            {{-- CITY --}}
-                            <div class="col-md-4">
-
-                                <label
-                                    for="city"
-                                    class="form-label"
-                                >
-                                    City
-                                </label>
-
-                                <input
-                                    id="city"
-                                    name="city"
-                                    type="text"
-                                    class="form-control @error('city') is-invalid @enderror"
-                                    value="{{ old('city', $user->city) }}"
-                                    autocomplete="address-level2"
-                                >
-
-                                @error('city')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-                            </div>
-
-                            {{-- PROVINCE --}}
-                            <div class="col-md-4">
-
-                                <label
-                                    for="province"
-                                    class="form-label"
-                                >
-                                    Province
-                                </label>
-
-                                <input
-                                    id="province"
-                                    name="province"
-                                    type="text"
-                                    class="form-control @error('province') is-invalid @enderror"
-                                    value="{{ old('province', $user->province) }}"
-                                    autocomplete="address-level1"
-                                >
-
-                                @error('province')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-                            </div>
-
-                            {{-- POSTAL CODE --}}
-                            <div class="col-md-4">
-
-                                <label
-                                    for="postal_code"
-                                    class="form-label"
-                                >
-                                    Postal Code
-                                </label>
-
-                                <input
-                                    id="postal_code"
-                                    name="postal_code"
-                                    type="text"
-                                    class="form-control @error('postal_code') is-invalid @enderror"
-                                    value="{{ old('postal_code', $user->postal_code) }}"
-                                    autocomplete="postal-code"
-                                >
-
-                                @error('postal_code')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
-
-                            </div>
-
                         </div>
 
                         <div class="store-profile-form-actions">
@@ -317,8 +218,78 @@
                         </div>
 
                     </form>
-
                 </div>
+                
+                <div class="store-profile-panel p-3 mt-4">
+                    <h2 class="h5 mb-3">Change Password</h2>
+                    <p class="text-muted mb-4">
+                        Update your account password to keep your account secure.
+                    </p>
+                
+                    <form method="POST" action="{{ route('profile.password.update') }}">
+                        @csrf
+                        @method('PUT')
+                
+                        {{-- CURRENT PASSWORD --}}
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">
+                                Current Password
+                            </label>
+                            <input
+                                id="current_password"
+                                name="current_password"
+                                type="password"
+                                class="form-control @error('current_password', 'passwordUpdate') is-invalid @enderror"
+                                autocomplete="current-password"
+                                required
+                            >
+                            @error('current_password', 'passwordUpdate')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                
+                        {{-- NEW PASSWORD --}}
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                New Password
+                            </label>
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                class="form-control @error('password', 'passwordUpdate') is-invalid @enderror"
+                                autocomplete="new-password"
+                                required
+                            >
+                            @error('password', 'passwordUpdate')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                
+                        {{-- CONFIRM PASSWORD --}}
+                        <div class="mb-3">
+                            <label for="password_confirmation" class="form-label">
+                                Confirm New Password
+                            </label>
+                            <input
+                                id="password_confirmation"
+                                name="password_confirmation"
+                                type="password"
+                                class="form-control"
+                                autocomplete="new-password"
+                                required
+                            >
+                        </div>
+                
+                        <div class="store-profile-form-actions">
+                            <button type="submit" class="store-btn-primary">
+                                <i class="bi bi-shield-lock me-1"></i>
+                                Update Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
             </div>
         </div>
     </div>
