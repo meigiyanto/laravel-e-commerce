@@ -687,13 +687,6 @@ class MidtransPaymentController extends Controller
         Order $order,
         Payment $payment
     ): void {
-        if (
-            $order->status !== 'canceled'
-            || $payment->status !== 'succeeded'
-        ) {
-            return;
-        }
-    
         $this->refundService->requestLateCanceledOrderRefund(
             $order,
             $payment

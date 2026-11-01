@@ -49,8 +49,7 @@ class RefundService
             }
 
             // Satu kunci tetap untuk satu pembayaran.
-            $idempotencyKey =
-                'late-canceled-order-payment-'.$lockedPayment->id;
+            $idempotencyKey = 'late-canceled-order-payment-'.$lockedPayment->id;
 
             $existingRefund = Refund::query()
                 ->where('idempotency_key', $idempotencyKey)
@@ -188,183 +187,17 @@ class RefundService
      */
     public function process(Refund $refund): Refund
     {
-        /*
-        * payment_id merupakan foreign key yang immutable untuk refund.
-        *
-        * Kita hanya membaca refund terlebih dahulu untuk mengetahui
-        * Payment mana yang harus menjadi lock pertama.
-        *
-        * Lock belum dilakukan di sini.
-        */
-        $refundData = Refund::query()
-            ->select(['id', 'payment_id'])
-            ->findOrFail($refund->id);
-
-        $refund = DB::transaction(function () use ($refundData) {
-            /*
-            * ============================================================
-            * LOCK ORDER
-            * ============================================================
-            *
-            * Seluruh alur refund harus menggunakan urutan:
-            *
-            * Payment -> Refund
-            *
-            * Jangan mengubah urutan ini menjadi:
-            *
-            * Refund -> Payment
-            *
-            * karena request() juga mengunci Payment terlebih dahulu.
-            */
-
-            $payment = Payment::query()
-                ->whereKey($refundData->payment_id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $payment) {
-                throw ValidationException::withMessages([
-                    'payment' => 'Payment untuk refund tidak ditemukan.',
-                ]);
-            }
-
-            /*
-            * Setelah Payment terkunci, baru lock Refund.
-            * Dengan demikian dua proses refund terhadap Payment yang sama
-            * akan diserialisasi oleh row Payment.
-            */
-            $refund = Refund::query()
-                ->whereKey($refundData->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $refund) {
-                throw ValidationException::withMessages([
-                    'refund' => 'Refund tidak ditemukan.',
-                ]);
-            }
-
-            /*
-            * Hanya refund REQUESTED yang boleh di-claim.
-            *
-            * Jika worker/admin kedua datang bersamaan:
-            *
-            * Request A:
-            *   Payment locked
-            *   Refund locked
-            *   status -> processing
-            *   commit
-            *
-            * Request B:
-            *   menunggu Payment
-            *   setelah Payment dilepas:
-            *   membaca Refund = processing
-            *   ditolak
-            *
-            * Dengan demikian provider tidak dipanggil dua kali.
-            */
-            if ($refund->status !== Refund::STATUS_REQUESTED) {
-                throw ValidationException::withMessages([
-                    'refund' => 'Refund ini sudah diproses atau tidak dapat diproses kembali.',
-                ]);
-            }
-
-            /*
-            * Payment harus tetap succeeded ketika refund di-claim.
-            */
-            if ($payment->status !== 'succeeded') {
-                throw ValidationException::withMessages([
-                    'payment' => 'Payment belum berada pada status succeeded.',
-                ]);
-            }
-
-            /*
-            * Karena Payment sedang di-lock, tidak ada request()
-            * lain yang dapat membuat refund baru untuk Payment ini
-            * sampai transaction selesai.
-            *
-            * Refund dengan status REQUESTED / APPROVED / PROCESSING /
-            * COMPLETED ikut dihitung sebagai dana yang sudah dicadangkan
-            * atau sudah direfund.
-            */
-            $refundableAmount = $this->refundableAmount(
-                $payment, (int) $refund->id
-            );
-
-            if ((float) $refund->amount > $refundableAmount) {
-                throw ValidationException::withMessages([
-                    'amount' => 'Nominal refund melebihi sisa dana yang dapat direfund.',
-                ]);
-            }
-
-            /*
-            * Provider harus divalidasi SEBELUM refund di-claim.
-            *
-            * Kalau provider tidak didukung:
-            *
-            * requested -> tetap requested
-            *
-            * bukan:
-            *
-            * requested -> processing -> failed
-            */
-            if (! in_array(
-                $payment->provider,
-                ['stripe', 'midtrans', 'cod'],
-                true
-            )) {
-                throw ValidationException::withMessages([
-                    'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
-                ]);
-            }
-
-            /*
-            * ============================================================
-            * ATOMIC CLAIM
-            * ============================================================
-            *
-            * Setelah titik ini refund resmi dimiliki oleh proses ini.
-            * processing_at penting untuk recovery job/scheduler.
-            */
-            $refund->update(['status' => Refund::STATUS_PROCESSING, 'processing_at' => now(),]);
-
-            /*
-            * Fresh relation digunakan setelah lock dan update.
-            *
-            * Provider dipanggil DI LUAR transaction.
-            */
-            return $refund->fresh(['order','payment',]);
-        });
-
-        /*
-        * ================================================================
-        * PROVIDER CALL OUTSIDE DATABASE TRANSACTION
-        * ================================================================
-        *
-        * Jangan pernah memegang database transaction ketika melakukan
-        * HTTP request ke Stripe/Midtrans.
-        *
-        * Kalau provider lambat, database row lock tidak ikut tertahan.
-        */
-        return match ($refund->payment->provider) {
-            'stripe' => $this->processStripe(
-                $refund,
-                $refund->payment
-            ),
-
-            'midtrans' => $this->processMidtrans(
-                $refund,
-                $refund->payment
-            ),
-
-            'cod' => $this->processCod(
-                $refund
-            ),
-
-            default => throw new \LogicException(
-                'Unsupported refund provider.'
-            ),
-        };
+        $lock = $this->refundOperationLock($refund->id);
+    
+        if (! $lock->get()) {
+            return $refund->fresh();
+        }
+    
+        try {
+            return $this->processUnderLock($refund);
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -761,5 +594,21 @@ class RefundService
         ]);
 
         return $refund->fresh();
+    }
+    
+    protected function refundOperationLockKey(int $refundId): string
+    {
+        return 'refund-operation:'.$refundId;
+    }
+    
+    protected function refundOperationLock(int $refundId)
+    {
+        return Cache::lock(
+            $this->refundOperationLockKey($refundId),
+            (int) config(
+                'services.refund.operation_lock_ttl_seconds',
+                1800
+            )
+        );
     }
 }
