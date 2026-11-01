@@ -335,46 +335,61 @@ class RefundService
                 15
             );
     
-            $refund = DB::transaction(function () use (
+            $recovery = DB::transaction(function () use (
                 $refundData,
                 $timeoutMinutes
             ) {
-                // Gunakan urutan lock yang sama dengan process().
                 $payment = Payment::query()
                     ->whereKey($refundData->payment_id)
                     ->lockForUpdate()
                     ->first();
-    
+            
                 if (! $payment) {
-                    return Refund::findOrFail($refundData->id);
+                    return [
+                        'refund' => Refund::findOrFail($refundData->id),
+                        'eligible' => false,
+                    ];
                 }
-    
+            
                 $refund = Refund::query()
                     ->whereKey($refundData->id)
                     ->lockForUpdate()
                     ->firstOrFail();
-    
+            
                 if (
                     $refund->status !== Refund::STATUS_PROCESSING
                     || ! $refund->processing_at
                 ) {
-                    return $refund->load(['order', 'payment']);
+                    return [
+                        'refund' => $refund->load(['order', 'payment']),
+                        'eligible' => false,
+                    ];
                 }
-    
+            
                 $cutoff = now()->subMinutes($timeoutMinutes);
-    
-                // Jangan recovery pekerjaan yang belum timeout.
+            
                 if ($refund->processing_at->gt($cutoff)) {
-                    return $refund->load(['order', 'payment']);
+                    return [
+                        'refund' => $refund->load(['order', 'payment']),
+                        'eligible' => false,
+                    ];
                 }
-    
-                // Ambil alih lease recovery.
+            
                 $refund->update([
                     'processing_at' => now(),
                 ]);
-    
-                return $refund->fresh(['order', 'payment']);
+            
+                return [
+                    'refund' => $refund->fresh(['order', 'payment']),
+                    'eligible' => true,
+                ];
             });
+            
+            $refund = $recovery['refund'];
+            
+            if (! $recovery['eligible']) {
+                return $refund;
+            }
     
             // Periksa kembali status setelah transaksi.
             if ($refund->status !== Refund::STATUS_PROCESSING) {
