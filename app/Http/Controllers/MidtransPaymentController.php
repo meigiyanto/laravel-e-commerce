@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\MidtransService;
 use App\Services\RefundService;
+use App\Services\VariantInventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -245,17 +246,6 @@ class MidtransPaymentController extends Controller
             $order->refresh();
             
             $this->handleLateCanceledOrderPayment($order, $payment);
-
-            /*
-             * Pembayaran sudah berhasil diverifikasi.
-             */
-            if ($payment->status === 'succeeded') {
-                return response()->json([
-                    'success' => true,
-                    'status' => 'succeeded',
-                    'redirect_url' => route('checkout.success', $order),
-                ]);
-            }
 
             /*
              * Pembayaran belum berhasil.
@@ -518,7 +508,6 @@ class MidtransPaymentController extends Controller
         object $transaction
     ): void {
         $transactionStatus = strtolower((string) ($transaction->transaction_status ?? 'pending'));
-
         $statusCode = isset($transaction->status_code) ? (string) $transaction->status_code : null;
 
         $paymentType = $transaction->payment_type ?? null;
@@ -529,7 +518,11 @@ class MidtransPaymentController extends Controller
          * Tentukan status lokal berdasarkan
          * status transaksi Midtrans.
          */
-        $paymentStatus = $this->resolvePaymentStatus($transactionStatus, $statusCode, $fraudStatus);
+        $paymentStatus = $this->resolvePaymentStatus(
+            $transactionStatus,
+            $statusCode,
+            $fraudStatus
+        );
 
         $data = [
             'provider' => 'midtrans',
@@ -550,13 +543,14 @@ class MidtransPaymentController extends Controller
          */
         if ($paymentStatus === 'succeeded') {
             $data['paid_at'] = $payment->paid_at ?? now();
-
+    
             if ($order->status === 'pending') {
-                $order->update([
-                    'status' => 'processing',
-                ]);
+                app(VariantInventoryService::class)->commitReservationsForOrder($order);
+    
+                $order->update(['status' => 'processing']);
             }
         }
+
 
         /*
          * Simpan expiry time jika dikirim Midtrans.

@@ -44,6 +44,7 @@ class MidtransNotificationTest extends TestCase
     public function test_midtrans_settlement_completes_payment_and_order(): void
     {
         [$order, $payment] = $this->createPendingMidtransPayment();
+        [$product, $variant, $inventory] = $this->createMidtransOrderReservation($order, 'reserved');
 
         Config::set(
             'midtrans.server_key',
@@ -99,6 +100,24 @@ class MidtransNotificationTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'status' => 'processing',
+        ]);
+        
+        $this->assertSame(8, (int) $inventory->fresh()->quantity);
+        $this->assertSame(0, (int) $inventory->fresh()->reserved_quantity);
+        
+        $this->assertDatabaseHas('inventory_reservations', [
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'status' => 'committed',
+        ]);
+        
+        $this->assertDatabaseHas('inventory_movements', [
+            'product_variant_id' => $variant->id,
+            'type' => 'sale',
+            'quantity' => -2,
+            'reference_type' => Order::class,
+            'reference_id' => $order->id,
         ]);
     }
 
