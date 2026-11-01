@@ -140,6 +140,8 @@ class MidtransPaymentController extends Controller
          * pembayaran sudah berhasil diverifikasi.
          */
         if ($payment->status === 'succeeded') {
+            $this->handleLateCanceledOrderPayment($order, $payment);
+        
             return response()->json([
                 'success' => true,
                 'status' => 'succeeded',
@@ -241,6 +243,8 @@ class MidtransPaymentController extends Controller
 
             $payment->refresh();
             $order->refresh();
+            
+            $this->handleLateCanceledOrderPayment($order, $payment);
 
             /*
              * Pembayaran sudah berhasil diverifikasi.
@@ -368,12 +372,7 @@ class MidtransPaymentController extends Controller
 
             // Notifikasi duplikat: pastikan refund terlambat juga tertangani.
             if ($payment->status === 'succeeded') {
-                if ($order->status === 'canceled') {
-                    $this->refundService->requestLateCanceledOrderRefund(
-                        $order,
-                        $payment
-                    );
-                }
+                $this->handleLateCanceledOrderPayment($order, $payment);
             
                 return response()->json([
                     'success' => true,
@@ -461,6 +460,14 @@ class MidtransPaymentController extends Controller
             
             // Muat ulang status terbaru setelah transaksi selesai.
             $order->refresh();
+
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->first();
+            
+            if ($payment) {
+                $this->handleLateCanceledOrderPayment($order, $payment);
+            }
             
             $payment = Payment::query()->where('order_id', $order->id)->first();
             
@@ -580,21 +587,30 @@ class MidtransPaymentController extends Controller
         string $currentStatus,
         string $incomingStatus
     ): bool {
-        if ($currentStatus === 'succeeded') {
-            return false;
-        }
-    
-        $terminalStatuses = [
+        $knownStatuses = [
+            'pending',
+            'succeeded',
             'failed',
             'expired',
             'canceled',
         ];
     
-        if (in_array($currentStatus, $terminalStatuses, true)) {
-            return $incomingStatus === 'succeeded';
+        if (
+            ! in_array($currentStatus, $knownStatuses, true)
+            || ! in_array($incomingStatus, $knownStatuses, true)
+        ) {
+            return false;
         }
     
-        return true;
+        if ($currentStatus === 'succeeded') {
+            return false;
+        }
+    
+        if ($currentStatus === 'pending') {
+            return true;
+        }
+    
+        return $incomingStatus === 'succeeded';
     }
 
     /**
@@ -665,5 +681,22 @@ class MidtransPaymentController extends Controller
         ksort($normalized);
 
         return hash('sha256', json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+    }
+    
+    private function handleLateCanceledOrderPayment(
+        Order $order,
+        Payment $payment
+    ): void {
+        if (
+            $order->status !== 'canceled'
+            || $payment->status !== 'succeeded'
+        ) {
+            return;
+        }
+    
+        $this->refundService->requestLateCanceledOrderRefund(
+            $order,
+            $payment
+        );
     }
 }

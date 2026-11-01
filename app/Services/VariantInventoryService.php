@@ -695,18 +695,23 @@ class VariantInventoryService
     public function cancelStockForOrder(Order $order): void
     {
         DB::transaction(function () use ($order): void {
-            $reservations = $order->reservations()
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $reservations = $lockedOrder->reservations()
                 ->orderBy('product_variant_id')
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
     
-            $items = $order->items()
+            $items = $lockedOrder->items()
                 ->orderBy('product_id')
                 ->orderBy('product_variant_id')
                 ->orderBy('id')
-                ->get();
-    
+                ->get();    
+            
             $productIds = $items->pluck('product_id')
                 ->unique()
                 ->sort()
@@ -724,9 +729,7 @@ class VariantInventoryService
             );
     
             $itemsByVariant = $items->groupBy(
-                fn ($item) => $item->product_variant_id === null
-                    ? 'legacy-'.$item->product_id
-                    : (string) $item->product_variant_id
+                fn ($item) => $item->product_variant_id === null ? 'legacy-'.$item->product_id : (string) $item->product_variant_id
             );
     
             $handledItemIds = [];
@@ -755,34 +758,22 @@ class VariantInventoryService
     
                 if ($status === InventoryReservation::STATUS_RESERVED) {
                     foreach ($variantReservations as $reservation) {
-                        $this->releaseReservation(
-                            $reservation->idempotency_key
-                        );
+                        $this->releaseReservation($reservation->idempotency_key);
                     }
                 } elseif ($status === InventoryReservation::STATUS_COMMITTED) {
                     foreach ($variantItems as $item) {
                         $product = $products->get($item->product_id);
     
                         if (! $product) {
-                            throw new \RuntimeException(
-                                "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
-                            );
+                            throw new \RuntimeException("Produk {$item->product_id} tidak ditemukan saat memulihkan stok.");
                         }
     
-                        $this->restoreForOrder(
-                            $product,
-                            (int) $variantId,
-                            (int) $item->quantity,
-                            $order,
-                            (int) $item->id
-                        );
+                        $this->restoreForOrder( $product, (int) $variantId, (int) $item->quantity, $lockedOrder, (int) $item->id);
     
                         $handledItemIds[] = (int) $item->id;
                     }
                 } elseif ($status !== InventoryReservation::STATUS_RELEASED) {
-                    throw new \LogicException(
-                        "Status reservasi {$status} tidak dikenal."
-                    );
+                    throw new \LogicException("Status reservasi {$status} tidak dikenal.");
                 }
             }
     
@@ -796,14 +787,9 @@ class VariantInventoryService
                     continue;
                 }
     
-                $variantKey = $item->product_variant_id === null
-                    ? null
-                    : (string) $item->product_variant_id;
+                $variantKey = $item->product_variant_id === null ? null : (string) $item->product_variant_id;
     
-                if (
-                    $variantKey !== null
-                    && $reservationsByVariant->has($variantKey)
-                ) {
+                if ($variantKey !== null && $reservationsByVariant->has($variantKey)) {
                     // Varian ini sudah ditangani berdasarkan status reservasinya.
                     continue;
                 }
@@ -811,20 +797,10 @@ class VariantInventoryService
                 $product = $products->get($item->product_id);
     
                 if (! $product) {
-                    throw new \RuntimeException(
-                        "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
-                    );
+                    throw new \RuntimeException("Produk {$item->product_id} tidak ditemukan saat memulihkan stok.");
                 }
     
-                $this->restoreForOrder(
-                    $product,
-                    $item->product_variant_id
-                        ? (int) $item->product_variant_id
-                        : null,
-                    (int) $item->quantity,
-                    $order,
-                    (int) $item->id
-                );
+                $this->restoreForOrder( $product, $item->product_variant_id ? (int) $item->product_variant_id : null, (int) $item->quantity, $lockedOrder, (int) $item->id);
             }
         });
     }

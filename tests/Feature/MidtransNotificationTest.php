@@ -1055,4 +1055,141 @@ class MidtransNotificationTest extends TestCase
     
         $this->assertSame(1,Refund::query()->where('idempotency_key', $idempotencyKey)->count());
     }
+    
+    public function test_midtrans_confirm_late_settlement_requests_only_one_refund(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+    
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'canceled',
+            'total' => 100000,
+        ]);
+    
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'failed',
+            'gross_amount' => 100000,
+            'transaction_id' => 'MIDTRANS-CONFIRM-LATE',
+        ]);
+    
+        $this->mock(
+            \App\Services\MidtransService::class,
+            function ($mock) use ($order) {
+                $mock->shouldReceive('getStatus')
+                    ->once()
+                    ->with($order->order_number)
+                    ->andReturn((object) [
+                        'order_id' => $order->order_number,
+                        'transaction_status' => 'settlement',
+                        'status_code' => '200',
+                        'gross_amount' => '100000.00',
+                        'payment_type' => 'bank_transfer',
+                        'transaction_id' => 'MIDTRANS-CONFIRM-LATE',
+                        'fraud_status' => 'accept',
+                    ]);
+            }
+        );
+    
+        $payload = [
+            'transaction_id' => 'MIDTRANS-CONFIRM-LATE',
+        ];
+    
+        $firstResponse = $this->postJson(
+            route('payment.midtrans.confirm', $order),
+            $payload
+        );
+    
+        $firstResponse->assertSuccessful();
+    
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'succeeded',
+        ]);
+    
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'canceled',
+        ]);
+    
+        $idempotencyKey =
+            'late-canceled-order-payment-'.$payment->id;
+    
+        $this->assertDatabaseHas('refunds', [
+            'payment_id' => $payment->id,
+            'idempotency_key' => $idempotencyKey,
+            'status' => Refund::STATUS_REQUESTED,
+        ]);
+    
+        // Confirm kedua masuk melalui jalur payment yang sudah succeeded.
+        $secondResponse = $this->postJson(
+            route('payment.midtrans.confirm', $order),
+            $payload
+        );
+    
+        $secondResponse->assertSuccessful();
+    
+        $this->assertDatabaseCount('refunds', 1);
+    }
+    
+    public function test_midtrans_confirm_ignores_unknown_current_payment_status(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+    
+        $order = Order::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'pending',
+            'total' => 100000,
+        ]);
+    
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'status' => 'manual_review',
+            'gross_amount' => 100000,
+            'transaction_id' => 'MIDTRANS-UNKNOWN-STATUS',
+        ]);
+    
+        $this->mock(
+            \App\Services\MidtransService::class,
+            function ($mock) use ($order) {
+                $mock->shouldReceive('getStatus')
+                    ->once()
+                    ->with($order->order_number)
+                    ->andReturn((object) [
+                        'order_id' => $order->order_number,
+                        'transaction_status' => 'settlement',
+                        'status_code' => '200',
+                        'gross_amount' => '100000.00',
+                        'payment_type' => 'bank_transfer',
+                        'transaction_id' => 'MIDTRANS-UNKNOWN-STATUS',
+                        'fraud_status' => 'accept',
+                    ]);
+            }
+        );
+    
+        $response = $this->postJson(
+            route('payment.midtrans.confirm', $order),
+            [
+                'transaction_id' => 'MIDTRANS-UNKNOWN-STATUS',
+            ]
+        );
+    
+        $response->assertStatus(422);
+    
+        $this->assertDatabaseHas('payments', [
+            'id' => $payment->id,
+            'status' => 'manual_review',
+        ]);
+    
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'pending',
+        ]);
+    
+        $this->assertDatabaseCount('refunds', 0);
+    }
 }
