@@ -2,14 +2,17 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\RoleMiddleware;
-use Illuminate\Http\Request;
+use App\Http\Middleware\ResolveTenantFromDomain;
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Validation\ValidationException;
+
+// use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+// use Illuminate\Auth\AuthenticationException;
+// use Illuminate\Auth\Access\AuthorizationException;
+// use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
