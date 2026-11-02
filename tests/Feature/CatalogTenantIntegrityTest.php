@@ -6,6 +6,7 @@ use App\Models\Attribute;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SubCategory;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -27,11 +28,37 @@ class CatalogTenantIntegrityTest extends TestCase
         ]);
     }
 
-    private function createProduct(Tenant $tenant, Category $category): Product
+    private function createCategory(Tenant $tenant, string $name): Category
     {
+        return Category::create([
+            'tenant_id' => $tenant->id,
+            'name' => $name,
+            'slug' => strtolower(str_replace(' ', '-', $name)),
+        ]);
+    }
+
+    private function createSubCategory(
+        Tenant $tenant,
+        Category $category
+    ): SubCategory {
+        return SubCategory::create([
+            'tenant_id' => $tenant->id,
+            'category_id' => $category->id,
+            'name' => 'Test Subcategory',
+            'slug' => 'test-subcategory-'.$tenant->id.'-'.$category->id,
+        ]);
+    }
+
+    private function createProduct(
+        Tenant $tenant,
+        Category $category
+    ): Product {
+        $subCategory = $this->createSubCategory($tenant, $category);
+
         return Product::create([
             'tenant_id' => $tenant->id,
             'category_id' => $category->id,
+            'sub_category_id' => $subCategory->id,
             'name' => 'Test Product',
             'slug' => 'test-product-'.$tenant->id,
             'price' => 100000,
@@ -39,8 +66,10 @@ class CatalogTenantIntegrityTest extends TestCase
         ]);
     }
 
-    private function createVariant(Tenant $tenant, Product $product): ProductVariant
-    {
+    private function createVariant(
+        Tenant $tenant,
+        Product $product
+    ): ProductVariant {
         return ProductVariant::create([
             'tenant_id' => $tenant->id,
             'product_id' => $product->id,
@@ -57,17 +86,15 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        $categoryB = Category::create([
-            'tenant_id' => $tenantB->id,
-            'name' => 'Category B',
-            'slug' => 'category-b',
-        ]);
+        $categoryB = $this->createCategory($tenantB, 'Category B');
+        $subCategoryB = $this->createSubCategory($tenantB, $categoryB);
 
         $this->expectException(QueryException::class);
 
         Product::create([
             'tenant_id' => $tenantA->id,
             'category_id' => $categoryB->id,
+            'sub_category_id' => $subCategoryB->id,
             'name' => 'Invalid Product',
             'slug' => 'invalid-product',
             'price' => 100000,
@@ -80,12 +107,7 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        $categoryB = Category::create([
-            'tenant_id' => $tenantB->id,
-            'name' => 'Category B',
-            'slug' => 'category-b',
-        ]);
-
+        $categoryB = $this->createCategory($tenantB, 'Category B');
         $productB = $this->createProduct($tenantB, $categoryB);
 
         $this->expectException(QueryException::class);
@@ -103,12 +125,7 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        $categoryB = Category::create([
-            'tenant_id' => $tenantB->id,
-            'name' => 'Category B',
-            'slug' => 'category-b',
-        ]);
-
+        $categoryB = $this->createCategory($tenantB, 'Category B');
         $productB = $this->createProduct($tenantB, $categoryB);
         $variantB = $this->createVariant($tenantB, $productB);
 
@@ -130,12 +147,7 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        $categoryA = Category::create([
-            'tenant_id' => $tenantA->id,
-            'name' => 'Category A',
-            'slug' => 'category-a',
-        ]);
-
+        $categoryA = $this->createCategory($tenantA, 'Category A');
         $productA = $this->createProduct($tenantA, $categoryA);
         $variantA = $this->createVariant($tenantA, $productA);
 
@@ -174,17 +186,8 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        $categoryA = Category::create([
-            'tenant_id' => $tenantA->id,
-            'name' => 'Category A',
-            'slug' => 'category-a',
-        ]);
-
-        $categoryB = Category::create([
-            'tenant_id' => $tenantB->id,
-            'name' => 'Category B',
-            'slug' => 'category-b',
-        ]);
+        $categoryA = $this->createCategory($tenantA, 'Category A');
+        $categoryB = $this->createCategory($tenantB, 'Category B');
 
         $productA = $this->createProduct($tenantA, $categoryA);
         $productB = $this->createProduct($tenantB, $categoryB);
