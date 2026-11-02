@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProductVariant extends Model
 {
-    protected $fillable = [
-        'tenant_id',
+    use BelongsToTenant;
+
+    protected $fillable = ['tenant_id',
         'product_id',
         'sku',
         'barcode',
@@ -21,55 +23,39 @@ class ProductVariant extends Model
         'cost_price',
         'weight',
         'is_default',
-        'status',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'price' => 'decimal:2',
+        'status'];
+    protected static function tenantParent(): ?array {
+        return ['products',
+            'product_id'];
+    }
+    protected function casts(): array {
+        return ['price' => 'decimal:2',
             'compare_at_price' => 'decimal:2',
             'cost_price' => 'decimal:2',
             'weight' => 'decimal:3',
-            'is_default' => 'boolean',
-        ];
+            'is_default' => 'boolean'];
     }
-
-    public function tenant(): BelongsTo
-    {
+    public function tenant(): BelongsTo {
         return $this->belongsTo(Tenant::class);
     }
-
-    public function product(): BelongsTo
-    {
+    public function product(): BelongsTo {
         return $this->belongsTo(Product::class);
     }
-
-    public function inventory(): HasOne
-    {
+    public function inventory(): HasOne {
         return $this->hasOne(Inventory::class);
     }
-
-    public function images(): HasMany
-    {
+    public function images(): HasMany {
         return $this->hasMany(ProductImage::class);
     }
-
-    public function inventoryMovements(): HasMany
-    {
+    public function inventoryMovements(): HasMany {
         return $this->hasMany(InventoryMovement::class);
     }
-
     public function attributeValues(): BelongsToMany
     {
-        return $this->belongsToMany(
-            AttributeValue::class,
-            'product_variant_attribute_values'
-        )->withTimestamps();
+        return $this->belongsToMany(AttributeValue::class, 'product_variant_attribute_values')
+        ->using(ProductVariantAttributeValue::class)->withPivot('tenant_id')->withTimestamps();
     }
-
-    public function reservations(): HasMany
-    {
+    public function reservations(): HasMany {
         return $this->hasMany(InventoryReservation::class, 'product_variant_id');
     }
 }

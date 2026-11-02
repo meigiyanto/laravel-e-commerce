@@ -2,10 +2,10 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\RoleMiddleware;
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -18,19 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->validateCsrfTokens(except: [
-            'stripe/webhook',
-            'payment/midtrans/notification',
-        ]);
-
-        $middleware->alias([
-            'admin' => AdminMiddleware::class,
-            'role' => RoleMiddleware::class,
-        ]);
-
-        $middleware->redirectGuestsTo(
-            fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login')
-        );
+        $middleware->validateCsrfTokens(except: ['stripe/webhook', 'payment/midtrans/notification']);
+        $middleware->web(append: [ResolveTenantFromDomain::class]);
+        $middleware->alias(['admin' => AdminMiddleware::class, 'role' => RoleMiddleware::class]);
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -39,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->create();
+
     /*
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
