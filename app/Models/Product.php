@@ -9,13 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Models\ProductVariant;
 
 class Product extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id',
         'category_id',
         'sub_category_id',
         'name',
@@ -31,16 +31,18 @@ class Product extends Model
         'stock' => 'integer',
     ];
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     public function getImageUrlAttribute(): ?string
     {
         if (! $this->image) {
             return null;
         }
 
-        if (Str::startsWith($this->image, [
-            'http://',
-            'https://',
-        ])) {
+        if (Str::startsWith($this->image, ['http://', 'https://'])) {
             return $this->image;
         }
 
@@ -74,7 +76,8 @@ class Product extends Model
 
     public function wishlistedBy(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'wishlists')->withTimestamps();
+        return $this->belongsToMany(User::class, 'wishlists')
+            ->withTimestamps();
     }
 
     public function specifications(): HasMany
@@ -84,12 +87,12 @@ class Product extends Model
             ->orderBy('sort_order');
     }
 
-    public function variants()
+    public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
     }
 
-    public function images()
+    public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class);
     }

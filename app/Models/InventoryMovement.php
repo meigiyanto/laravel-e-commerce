@@ -10,6 +10,7 @@ class InventoryMovement extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'tenant_id',
         'product_variant_id',
         'type',
         'quantity',
@@ -41,5 +42,10 @@ class InventoryMovement extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+    
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }

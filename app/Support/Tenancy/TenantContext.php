@@ -1,6 +1,9 @@
 <?php
 
-namespace app/Support/Tenancy;
+namespace App\Support\Tenancy;
+
+use App\Models\Tenant;
+use LogicException;
 
 class TenantContext
 {
@@ -19,13 +22,16 @@ class TenantContext
     public function require(): Tenant
     {
         return $this->tenant
-            ?? throw new LogicException(
-                'Tenant context is not initialized.'
-            );
+            ?? throw new LogicException('Tenant context is not initialized.');
     }
 
     public function hasTenant(): bool
     {
         return $this->tenant !== null;
+    }
+
+    public function clear(): void
+    {
+        $this->tenant = null;
     }
 }

@@ -11,7 +11,19 @@ class SubCategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['category_id', 'name', 'slug', 'image'];
+    protected $fillable = [
+        'tenant_id',
+        'category_id',
+        'name',
+        'slug',
+        'image',
+        'description',
+    ];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
     public function category(): BelongsTo
     {

@@ -9,12 +9,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class AttributeValue extends Model
 {
     protected $fillable = [
+        'tenant_id',
         'attribute_id',
         'value',
         'slug',
         'hex_color',
         'sort_order',
     ];
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 
     public function attribute(): BelongsTo
     {

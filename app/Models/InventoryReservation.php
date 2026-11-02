@@ -12,6 +12,7 @@ class InventoryReservation extends Model
     public const STATUS_RELEASED = 'released';
 
     protected $fillable = [
+        'tenant_id',
         'product_variant_id',
         'idempotency_key',
         'reference_type',
@@ -38,5 +39,10 @@ class InventoryReservation extends Model
             ProductVariant::class,
             'product_variant_id'
         );
+    }
+    
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }

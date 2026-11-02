@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ProductVariant extends Model
 {
     protected $fillable = [
+        'tenant_id',
         'product_id',
         'sku',
         'barcode',
@@ -32,6 +33,11 @@ class ProductVariant extends Model
             'weight' => 'decimal:3',
             'is_default' => 'boolean',
         ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function product(): BelongsTo
@@ -56,9 +62,12 @@ class ProductVariant extends Model
 
     public function attributeValues(): BelongsToMany
     {
-        return $this->belongsToMany(AttributeValue::class, 'product_variant_attribute_values')->withTimestamps();
+        return $this->belongsToMany(
+            AttributeValue::class,
+            'product_variant_attribute_values'
+        )->withTimestamps();
     }
-    
+
     public function reservations(): HasMany
     {
         return $this->hasMany(InventoryReservation::class, 'product_variant_id');

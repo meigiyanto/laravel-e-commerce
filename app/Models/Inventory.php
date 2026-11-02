@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Inventory extends Model
 {
     protected $fillable = [
+        'tenant_id',
         'product_variant_id',
         'quantity',
         'reserved_quantity',
@@ -31,5 +32,10 @@ class Inventory extends Model
     public function getAvailableQuantityAttribute(): int
     {
         return max(0, $this->quantity - $this->reserved_quantity);
+    }
+    
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
