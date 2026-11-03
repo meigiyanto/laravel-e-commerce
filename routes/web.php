@@ -59,6 +59,8 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
+Route::get('/platform/tenant-access/{token}', [PlatformTenantController::class, 'consume'])->middleware('throttle:10,1')->name('platform.tenant-access.consume');
+
 /*
 |-----------------------------------------------------------| 
 | Authenticated User Routes
