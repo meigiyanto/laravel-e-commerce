@@ -8,14 +8,16 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
+use App\Models\Category;
+use App\Models\SubCategory;
 use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class GuestCartLoginMergeTest extends TestCase
 {
     use RefreshDatabase;
-
     protected Tenant $tenant;
 
     protected function setUp(): void
@@ -27,13 +29,42 @@ class GuestCartLoginMergeTest extends TestCase
             'slug' => 'default',
             'status' => 'active',
         ]);
+
+        app(TenantContext::class)->set($this->tenant);
     }
 
+    private function product(array $attributes = []): Product
+    {
+        $category = Category::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Test Category',
+            'slug' => 'test-category',
+        ]);
+
+        $subCategory = SubCategory::create([
+            'tenant_id' => $this->tenant->id,
+            'category_id' => $category->id,
+            'name' => 'Test Subcategory',
+            'slug' => 'test-subcategory',
+        ]);
+
+        return Product::create(array_merge([
+            'tenant_id' => $this->tenant->id,
+            'category_id' => $category->id,
+            'sub_category_id' => $subCategory->id,
+            'name' => 'Test Product',
+            'slug' => 'test-product',
+            'description' => 'Product for cart testing',
+            'price' => 10000,
+            'stock' => 10,
+        ], $attributes));
+    }
+    
     public function test_guest_cart_is_merged_into_user_cart_after_login(): void
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'stock' => 10,
         ]);
 
@@ -70,7 +101,7 @@ class GuestCartLoginMergeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'stock' => 10,
         ]);
 
@@ -114,7 +145,7 @@ class GuestCartLoginMergeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'stock' => 10,
         ]);
 
@@ -178,7 +209,7 @@ class GuestCartLoginMergeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'price' => 10000,
             'stock' => 10,
         ]);
@@ -261,7 +292,7 @@ class GuestCartLoginMergeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'price' => 10000,
             'stock' => 10,
         ]);
@@ -335,7 +366,7 @@ class GuestCartLoginMergeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'stock' => 10,
         ]);
 
