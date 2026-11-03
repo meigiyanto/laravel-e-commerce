@@ -8,6 +8,8 @@ use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use App\Services\VariantInventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +25,10 @@ class InventoryReservationTest extends TestCase
         $product = Product::factory()->create([
             'stock' => $stock,
         ]);
+
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        app(TenantContext::class)->set($tenant);
 
         $variant = ProductVariant::create([
             'product_id' => $product->id,
@@ -96,8 +102,8 @@ class InventoryReservationTest extends TestCase
         $this->assertSame(
             1,
             InventoryReservation::query()
-                ->where('idempotency_key', $key)
-                ->count()
+            ->where('idempotency_key', $key)
+            ->count()
         );
     }
 
@@ -182,10 +188,10 @@ class InventoryReservationTest extends TestCase
         $this->assertSame(
             1,
             InventoryMovement::query()
-                ->where('idempotency_key', "reservation:{$first->id}:commit")
-                ->where('type', 'sale')
-                ->where('quantity', -3)
-                ->count()
+            ->where('idempotency_key', "reservation:{$first->id}:commit")
+            ->where('type', 'sale')
+            ->where('quantity', -3)
+            ->count()
         );
     }
 
@@ -215,9 +221,9 @@ class InventoryReservationTest extends TestCase
         $this->assertSame(
             0,
             InventoryMovement::query()
-                ->where('reference_type', Order::class)
-                ->where('reference_id', $fixture['order']->id)
-                ->count()
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $fixture['order']->id)
+            ->count()
         );
     }
 

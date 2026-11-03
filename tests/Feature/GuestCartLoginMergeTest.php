@@ -8,12 +8,26 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class GuestCartLoginMergeTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+    }
 
     public function test_guest_cart_is_merged_into_user_cart_after_login(): void
     {
@@ -23,16 +37,15 @@ class GuestCartLoginMergeTest extends TestCase
             'stock' => 10,
         ]);
 
-        $response = $this
-            ->withSession([
-                'cart' => [
-                    (string) $product->id => 2,
-                ],
-            ])
-            ->post('/login', [
-                'email' => $user->email,
-                'password' => 'password',
-            ]);
+        $response = $this->withSession([
+            'cart' => [
+                (string) $product->id => 2,
+            ],
+        ])
+        ->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
 
         $this->assertAuthenticatedAs($user);
 
@@ -72,15 +85,15 @@ class GuestCartLoginMergeTest extends TestCase
         ]);
 
         $response = $this
-            ->withSession([
-                'cart' => [
-                    (string) $product->id => 2,
-                ],
-            ])
-            ->post('/login', [
-                'email' => $user->email,
-                'password' => 'password',
-            ]);
+        ->withSession([
+            'cart' => [
+                (string) $product->id => 2,
+            ],
+        ])
+        ->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
 
         $this->assertAuthenticatedAs($user);
 
@@ -116,15 +129,15 @@ class GuestCartLoginMergeTest extends TestCase
         ]);
 
         $response = $this
-            ->withSession([
-                'cart' => [
-                    (string) $product->id => 7,
-                ],
-            ])
-            ->post('/login', [
-                'email' => $user->email,
-                'password' => 'password',
-            ]);
+        ->withSession([
+            'cart' => [
+                (string) $product->id => 7,
+            ],
+        ])
+        ->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
 
         $this->assertAuthenticatedAs($user);
 
@@ -160,16 +173,16 @@ class GuestCartLoginMergeTest extends TestCase
             'user_id' => $user->id,
         ]);
     }
-    
+
     public function test_new_guest_cart_format_merges_distinct_variants_after_login(): void
     {
         $user = User::factory()->create();
-    
+
         $product = Product::factory()->create([
             'price' => 10000,
             'stock' => 10,
         ]);
-    
+
         $small = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'MERGE-SMALL-'.$product->id,
@@ -178,7 +191,7 @@ class GuestCartLoginMergeTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-    
+
         $large = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'MERGE-LARGE-'.$product->id,
@@ -187,7 +200,7 @@ class GuestCartLoginMergeTest extends TestCase
             'is_default' => false,
             'status' => 'active',
         ]);
-    
+
         foreach ([$small, $large] as $variant) {
             Inventory::create([
                 'product_variant_id' => $variant->id,
@@ -196,63 +209,63 @@ class GuestCartLoginMergeTest extends TestCase
                 'reorder_level' => 0,
             ]);
         }
-    
+
         $response = $this
-            ->withSession([
-                'cart' => [
-                    'variant_'.$small->id => [
-                        'product_id' => $product->id,
-                        'product_variant_id' => $small->id,
-                        'quantity' => 2,
-                    ],
-                    'variant_'.$large->id => [
-                        'product_id' => $product->id,
-                        'product_variant_id' => $large->id,
-                        'quantity' => 3,
-                    ],
+        ->withSession([
+            'cart' => [
+                'variant_'.$small->id => [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $small->id,
+                    'quantity' => 2,
                 ],
-            ])
-            ->post('/login', [
-                'email' => $user->email,
-                'password' => 'password',
-            ]);
-    
+                'variant_'.$large->id => [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $large->id,
+                    'quantity' => 3,
+                ],
+            ],
+        ])
+        ->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
         $this->assertAuthenticatedAs($user);
-    
+
         $response->assertRedirect(
             route('account.index', absolute: false)
         );
-    
+
         $cart = Cart::where('user_id', $user->id)->firstOrFail();
-    
+
         $this->assertDatabaseHas('cart_items', [
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $small->id,
             'quantity' => 2,
         ]);
-    
+
         $this->assertDatabaseHas('cart_items', [
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $large->id,
             'quantity' => 3,
         ]);
-    
+
         $this->assertSame(2, $cart->items()->count());
-    
+
         $response->assertSessionMissing('cart');
     }
-    
+
     public function test_new_guest_cart_format_merges_quantity_into_matching_user_variant(): void
     {
         $user = User::factory()->create();
-    
+
         $product = Product::factory()->create([
             'price' => 10000,
             'stock' => 10,
         ]);
-    
+
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'MERGE-EXISTING-'.$product->id,
@@ -261,71 +274,71 @@ class GuestCartLoginMergeTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-    
+
         Inventory::create([
             'product_variant_id' => $variant->id,
             'quantity' => 10,
             'reserved_quantity' => 0,
             'reorder_level' => 0,
         ]);
-    
+
         $cart = Cart::create([
             'user_id' => $user->id,
         ]);
-    
+
         CartItem::create([
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
-    
+
         $response = $this
-            ->withSession([
-                'cart' => [
-                    'variant_'.$variant->id => [
-                        'product_id' => $product->id,
-                        'product_variant_id' => $variant->id,
-                        'quantity' => 3,
-                    ],
+        ->withSession([
+            'cart' => [
+                'variant_'.$variant->id => [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant->id,
+                    'quantity' => 3,
                 ],
-            ])
-            ->post('/login', [
-                'email' => $user->email,
-                'password' => 'password',
-            ]);
-    
+            ],
+        ])
+        ->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
         $this->assertAuthenticatedAs($user);
-    
+
         $response->assertRedirect(
             route('account.index', absolute: false)
         );
-    
+
         $this->assertDatabaseHas('cart_items', [
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $variant->id,
             'quantity' => 5,
         ]);
-    
+
         $this->assertSame(
             1,
             CartItem::where('cart_id', $cart->id)
-                ->where('product_variant_id', $variant->id)
-                ->count(),
+            ->where('product_variant_id', $variant->id)
+            ->count(),
         );
-    
+
         $response->assertSessionMissing('cart');
     }
-    
+
     public function test_guest_cart_merge_respects_reserved_stock(): void
     {
         $user = User::factory()->create();
-    
+
         $product = Product::factory()->create([
             'stock' => 10,
         ]);
-    
+
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'MERGE-RESERVED-'.$product->id,
@@ -334,14 +347,14 @@ class GuestCartLoginMergeTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-    
+
         Inventory::create([
             'product_variant_id' => $variant->id,
             'quantity' => 10,
             'reserved_quantity' => 4,
             'reorder_level' => 0,
         ]);
-    
+
         $response = $this->withSession([
             'cart' => [
                 'variant_'.$variant->id => [
@@ -354,17 +367,17 @@ class GuestCartLoginMergeTest extends TestCase
             'email' => $user->email,
             'password' => 'password',
         ]);
-    
+
         $this->assertAuthenticatedAs($user);
-    
+
         $cart = Cart::where('user_id', $user->id)->firstOrFail();
-    
+
         $this->assertDatabaseHas('cart_items', [
             'cart_id' => $cart->id,
             'product_variant_id' => $variant->id,
             'quantity' => 6,
         ]);
-    
+
         $response->assertSessionMissing('cart');
     }
 }
