@@ -21,8 +21,7 @@ class TenantContext
 
     public function require(): Tenant
     {
-        return $this->tenant
-            ?? throw new LogicException('Tenant context is not initialized.');
+        return $this->tenant ?? throw new LogicException('Tenant context is not initialized.');
     }
 
     public function hasTenant(): bool

@@ -24,6 +24,14 @@ class ResolveTenantFromDomain
             }
 
             $host = strtolower(rtrim($request->getHost(), '.'));
+            \Illuminate\Support\Facades\Log::debug('Tenant resolver test', [
+                'host' => $host,
+                'path' => $request->path(),
+                'domain_exists' => StoreDomain::query()
+                    ->whereRaw('LOWER(domain) = ?', [$host])
+                    ->where('verification_status', 'verified')
+                    ->exists(),
+            ]);
 
             $storeDomain = StoreDomain::query()
                 ->with('store.tenant')

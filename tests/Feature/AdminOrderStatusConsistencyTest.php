@@ -150,6 +150,7 @@ class AdminOrderStatusConsistencyTest extends TestCase
     public function test_fulfillment_status_transitions_do_not_deduct_variant_stock_again(): void
     {
         [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
+        
         [$admin, $domain] = $this->createTenantAdminContext($product);
 
         foreach (['processing', 'shipped', 'completed'] as $status) {
@@ -173,6 +174,7 @@ class AdminOrderStatusConsistencyTest extends TestCase
     public function test_canceling_processing_order_restores_variant_stock_only_once(): void
     {
         [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('processing');
+        
         [$admin, $domain] = $this->createTenantAdminContext($product);
 
         $this->patchAsTenantAdmin( $order, $admin, $domain, 'canceled')->assertRedirect();
@@ -207,17 +209,20 @@ class AdminOrderStatusConsistencyTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
+        
         $inventory = Inventory::create([
             'product_variant_id' => $variant->id,
             'quantity' => 8,
             'reserved_quantity' => 0,
             'reorder_level' => 0,
         ]);
+        
         $order = Order::factory()->create([
             'user_id' => $user->id,
             'status' => $status,
             'total' => 200000,
         ]);
+        
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -233,8 +238,8 @@ class AdminOrderStatusConsistencyTest extends TestCase
     
     public function test_canceling_pending_order_releases_reserved_stock_without_restoring_quantity(): void
     {
-        [$order, $product, $variant, $inventory] =
-            $this->createOrderWithVariantStock('pending');
+        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
+        [$admin, $domain] = $this->createTenantAdminContext($product);
     
         $reservation = InventoryReservation::create([
             'product_variant_id' => $variant->id,
@@ -247,20 +252,15 @@ class AdminOrderStatusConsistencyTest extends TestCase
     
         $inventory->update(['reserved_quantity' => 2]);
     
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
-            ->patch(route('admin.orders.status', $order), [
-                'status' => 'canceled',
-            ]);
-    
+        $this->patchAsTenantAdmin($order, $admin, $domain, 'canceled')
+            ->assertRedirect();  
+        
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame(8, $inventory->fresh()->quantity);
         $this->assertSame(0, $inventory->fresh()->reserved_quantity);
         $this->assertSame(8, $product->fresh()->stock);
     
-        $this->assertSame(
-            InventoryReservation::STATUS_RELEASED,
-            $reservation->fresh()->status
-        );
+        $this->assertSame(InventoryReservation::STATUS_RELEASED,$reservation->fresh()->status);
     
         $this->assertDatabaseMissing('inventory_movements', [
             'product_variant_id' => $variant->id,
@@ -272,9 +272,8 @@ class AdminOrderStatusConsistencyTest extends TestCase
     
     public function test_canceling_pending_order_restores_committed_reservation_only_once(): void
     {
-        [$order, $product, $variant, $inventory] =
-            $this->createOrderWithVariantStock('pending');
-    
+        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
+        
         $inventory->update(['quantity' => 6]);
         $product->update(['stock' => 6]);
     
@@ -288,12 +287,14 @@ class AdminOrderStatusConsistencyTest extends TestCase
             'committed_at' => now(),
         ]);
     
-        $admin = User::factory()->create(['role' => 'admin']);
-    
-        $this->actingAs($admin)->patch(
-            route('admin.orders.status', $order),
-            ['status' => 'canceled']
-        );
+        [$admin, $domain] = $this->createTenantAdminContext($product);
+
+        $this->patchAsTenantAdmin(
+            $order,
+            $admin,
+            $domain,
+            'canceled'
+        )->assertRedirect();
     
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame(8, $inventory->fresh()->quantity);
@@ -326,8 +327,9 @@ class AdminOrderStatusConsistencyTest extends TestCase
     
     public function test_canceling_order_with_released_reservation_does_not_restore_stock(): void
     {
-        [$order, $product, $variant, $inventory] =
-            $this->createOrderWithVariantStock('pending');
+        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
+        
+        [$admin, $domain] = $this->createTenantAdminContext($product);
     
         $reservation = InventoryReservation::create([
             'product_variant_id' => $variant->id,
@@ -339,10 +341,12 @@ class AdminOrderStatusConsistencyTest extends TestCase
             'released_at' => now(),
         ]);
     
-        $this->actingAs(User::factory()->create(['role' => 'admin']))
-            ->patch(route('admin.orders.status', $order), [
-                'status' => 'canceled',
-            ]);
+        $this->patchAsTenantAdmin(
+            $order,
+            $admin,
+            $domain,
+            'canceled'
+        )->assertRedirect();
     
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame(8, $inventory->fresh()->quantity);
@@ -384,16 +388,28 @@ class AdminOrderStatusConsistencyTest extends TestCase
                 'is_primary' => true,
             ]
         );
+        
+        $this->assertDatabaseHas('store_domains', [
+            'store_id' => $store->id,
+            'domain' => $domain,
+            'verification_status' => 'verified',
+        ]);
     
         $admin = User::factory()->create([
             'role' => User::ROLE_ADMIN,
         ]);
-    
+        
         $admin->tenantMemberships()->create([
             'tenant_id' => $tenant->id,
             'role' => 'admin',
             'status' => 'active',
             'accepted_at' => now(),
+        ]);
+    
+        $this->assertDatabaseHas('tenant_memberships', [
+            'tenant_id' => $tenant->id,
+            'user_id' => $admin->id,
+            'status' => 'active',
         ]);
     
         return [$admin, $domain];
@@ -405,11 +421,14 @@ class AdminOrderStatusConsistencyTest extends TestCase
         string $domain,
         string $status
     ) {
-        return $this->withServerVariables([
-            'HTTP_HOST' => $domain,
-        ])->actingAs($admin)->patch(
-            route('admin.orders.status', $order),
-            ['status' => $status]
+        $uri = 'http://' . $domain . route(
+            'admin.orders.status',
+            $order,
+            false
         );
+    
+        return $this->actingAs($admin)->patch($uri, [
+            'status' => $status,
+        ]);
     }
 }
