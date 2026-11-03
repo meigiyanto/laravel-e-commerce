@@ -21,9 +21,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_guest_cannot_access_inventory(): void
     {
-        $response = $this->get(route('admin.inventory.index'));
+        $response = $this->get($this->tenantUrl($product, 'admin.inventory.index'));
 
-        $response->assertRedirect(route('admin.login'));
+        $response->assertRedirect($this->tenantUrl($product, 'admin.login'));
     }
 
     public function test_non_admin_cannot_access_inventory(): void
@@ -32,7 +32,8 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(route('admin.inventory.index'));
+            ->get($this->tenantUrl($product, 'admin.inventory.index'));
+        $this->activateTenant($product);
 
         $response->assertForbidden();
     }
@@ -44,7 +45,8 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->get(route('admin.inventory.index'));
+            ->get($this->tenantUrl($product, 'admin.inventory.index'));
+        $this->activateTenant($product);
 
         $response
             ->assertOk()
@@ -59,9 +61,10 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->patch(route('admin.inventory.update-stock', $product), [
+            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
                 'stock' => 25,
             ]);
+        $this->activateTenant($product);
 
         $response
             ->assertRedirect(route('admin.inventory.index'))
@@ -80,12 +83,12 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->patch(route('admin.inventory.update-stock', $product), [
+            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
                 'stock' => -1,
             ]);
+        $this->activateTenant($product);
 
-        $response
-            ->assertSessionHasErrors('stock');
+        $response->assertSessionHasErrors('stock');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -100,13 +103,14 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
+            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
                 'quantity' => 5,
                 'type' => 'add',
             ]);
+        $this->activateTenant($product);
 
         $response
-            ->assertRedirect(route('admin.inventory.index'))
+            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -122,13 +126,14 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
+            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
                 'quantity' => 4,
                 'type' => 'subtract',
             ]);
+        $this->activateTenant($product);
 
         $response
-            ->assertRedirect(route('admin.inventory.index'))
+            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -144,10 +149,11 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
+            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
                 'quantity' => 11,
                 'type' => 'subtract',
             ]);
+        $this->activateTenant($product);
 
         $response
             ->assertRedirect()
@@ -166,10 +172,11 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->post(route('admin.inventory.adjust-stock', $product), [
+            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
                 'quantity' => 0,
                 'type' => 'add',
             ]);
+        $this->activateTenant($product);
 
         $response
             ->assertSessionHasErrors('quantity');
@@ -187,10 +194,11 @@ class InventoryControllerTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->post(route('admin.inventory.adjust-stock', $product), [
+            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
                 'quantity' => 5,
                 'type' => 'add',
             ]);
+        $this->activateTenant($product);
 
         $response->assertForbidden();
 
@@ -240,12 +248,12 @@ class InventoryControllerTest extends TestCase
     
         $response = $this
             ->actingAs($admin)
-            ->patch(route('admin.inventory.update-stock', $product), [
+            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
                 'stock' => 5,
             ]);
-    
+        $this->activateTenant($product);
         $response
-            ->assertRedirect(route('admin.inventory.index'))
+            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
             ->assertSessionHas('success');
     
         $this->assertSame(5, (int) $inventoryA->fresh()->quantity);
