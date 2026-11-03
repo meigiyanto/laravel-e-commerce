@@ -6,6 +6,11 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
+use App\Support\Tenancy\TenantContext;
+
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -246,5 +251,49 @@ class InventoryControllerTest extends TestCase
         $this->assertSame(5, (int) $inventoryA->fresh()->quantity);
         $this->assertSame(12, (int) $inventoryB->fresh()->quantity);
         $this->assertSame(17, (int) $product->fresh()->stock);
+    }
+    
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $domain;
+    }
+    
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        app(TenantContext::class)->set($tenant);
+    }
+    
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }
