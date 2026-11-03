@@ -662,8 +662,7 @@ class MidtransNotificationTest extends TestCase
         string $providerStatus,
         string $expectedPaymentStatus
     ): void {
-        [$order,
-            $payment] = $this->createPendingMidtransPayment();
+        [$order, $payment] = $this->createPendingMidtransPayment();
 
         $product = Product::factory()->create(['stock' => 8]);
 
@@ -735,13 +734,14 @@ class MidtransNotificationTest extends TestCase
         $this->assertSame($expectedPaymentStatus, $payment->fresh()->status);
         $this->assertSame(10, (int) $inventory->fresh()->quantity);
         $this->assertSame(10, (int) $product->fresh()->stock);
-
-        $movements = InventoryMovement::query()
-        ->where('product_variant_id', $variant->id)
-        ->where('reference_type', Order::class)
-        ->where('reference_id', $order->id)
-        ->where('type', 'return');
-
+        
+        $movements = DB::table('inventory_movements')
+            ->where('tenant_id', $variant->tenant_id)
+            ->where('product_variant_id', $variant->id)
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $order->id)
+            ->where('type', 'return');
+        
         $this->assertSame(1, (clone $movements)->count());
         $this->assertSame(2, (int) (clone $movements)->sum('quantity'));
 
