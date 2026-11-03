@@ -55,6 +55,8 @@ class CheckoutStockTest extends TestCase
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
+            
+        $this->activateTenant($product);
 
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -136,7 +138,8 @@ class CheckoutStockTest extends TestCase
                 'payment_method' => 'cod',
             ]);
 
-    
+        $this->activateTenant($product);
+        
         $order = Order::where('user_id', $user->id)
             ->latest('id')
             ->first();
@@ -234,7 +237,8 @@ class CheckoutStockTest extends TestCase
                 'payment_method' => 'cod',
             ]);
 
-    
+        $this->activateTenant($product);
+        
         $order = Order::where('user_id', $user->id)
             ->latest('id')
             ->first();
@@ -415,7 +419,8 @@ class CheckoutStockTest extends TestCase
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
-
+        
+        $this->activateTenant($product);
     
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -499,7 +504,8 @@ class CheckoutStockTest extends TestCase
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
-
+        
+        $this->activateTenant($product);
     
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -567,7 +573,8 @@ class CheckoutStockTest extends TestCase
                 'notes' => '',
                 'payment_method' => $paymentMethod,
             ]);
-
+        
+        $this->activateTenant($product);
     
         $order = Order::query()
             ->where('user_id', $user->id)
@@ -706,7 +713,8 @@ class CheckoutStockTest extends TestCase
                 'payment_method' => 'stripe',
             ]);
 
-    
+        $this->activateTenant($product);
+        
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
     
