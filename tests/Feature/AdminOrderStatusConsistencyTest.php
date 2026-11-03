@@ -8,6 +8,9 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Inventory;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
 use App\Models\InventoryReservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -135,37 +138,25 @@ class AdminOrderStatusConsistencyTest extends TestCase
 
     public function test_admin_cannot_move_shipped_order_back_to_processing(): void
     {
-        [$order, $product] = $this->createOrderWithStock(
-            'shipped'
-        );
+        [$order, $product] = $this->createOrderWithStock('shipped');
 
-        $this->actingAs(
-            User::factory()->create(['role' => 'admin'])
-        )->patch(
-            route('admin.orders.status', $order),
-            ['status' => 'processing']
-        );
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->patch(route('admin.orders.status', $order), ['status' => 'processing']);
 
-        $this->assertSame(
-            'shipped',
-            $order->fresh()->status
-        );
+        $this->assertSame('shipped',$order->fresh()->status);
 
-        $this->assertSame(
-            8,
-            $product->fresh()->stock
-        );
+        $this->assertSame(8,$product->fresh()->stock);
     }
+    
     public function test_fulfillment_status_transitions_do_not_deduct_variant_stock_again(): void
     {
         [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
-        $admin = User::factory()->create(['role' => 'admin']);
+        [$admin, $domain] = $this->createTenantAdminContext($product);
 
         foreach (['processing', 'shipped', 'completed'] as $status) {
-            $this->actingAs($admin)->patch(
-                route('admin.orders.status', $order),
-                ['status' => $status]
-            );
+            $response = $this->patchAsTenantAdmin( $order, $admin, $domain, $status);
+        
+            $response->assertRedirect();
+        
             $this->assertSame($status, $order->fresh()->status);
             $this->assertSame(8, $inventory->fresh()->quantity);
             $this->assertSame(8, $product->fresh()->stock);
@@ -182,24 +173,18 @@ class AdminOrderStatusConsistencyTest extends TestCase
     public function test_canceling_processing_order_restores_variant_stock_only_once(): void
     {
         [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('processing');
-        $admin = User::factory()->create(['role' => 'admin']);
+        [$admin, $domain] = $this->createTenantAdminContext($product);
 
-        $this->actingAs($admin)->patch(
-            route('admin.orders.status', $order),
-            ['status' => 'canceled']
-        );
+        $this->patchAsTenantAdmin( $order, $admin, $domain, 'canceled')->assertRedirect();
+        
+        $this->assertSame('canceled', $order->fresh()->status);
+
+        $this->actingAs($admin)->patch(route('admin.orders.status', $order), ['status' => 'canceled']);
 
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame(10, $inventory->fresh()->quantity);
         $this->assertSame(10, $product->fresh()->stock);
 
-        $this->actingAs($admin)->patch(
-            route('admin.orders.status', $order),
-            ['status' => 'canceled']
-        );
-
-        $this->assertSame(10, $inventory->fresh()->quantity);
-        $this->assertSame(10, $product->fresh()->stock);
         $this->assertDatabaseCount('inventory_movements', 1);
         $this->assertDatabaseHas('inventory_movements', [
             'product_variant_id' => $variant->id,
@@ -374,5 +359,57 @@ class AdminOrderStatusConsistencyTest extends TestCase
             'reference_type' => Order::class,
             'reference_id' => $order->id,
         ]);
+    }
+    
+    private function createTenantAdminContext(Product $product): array
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'order-status-'.$tenant->id.'.example.test';
+    
+        StoreDomain::firstOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+    
+        $admin->tenantMemberships()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'admin',
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+    
+        return [$admin, $domain];
+    }
+    
+    private function patchAsTenantAdmin(
+        Order $order,
+        User $admin,
+        string $domain,
+        string $status
+    ) {
+        return $this->withServerVariables([
+            'HTTP_HOST' => $domain,
+        ])->actingAs($admin)->patch(
+            route('admin.orders.status', $order),
+            ['status' => $status]
+        );
     }
 }
