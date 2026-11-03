@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\Tenant;
 use App\Models\Store;
 use App\Models\StoreDomain;
+use App\Models\TenantMembership;
 use App\Support\Tenancy\TenantContext;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,15 +22,15 @@ class InventoryControllerTest extends TestCase
 
     public function test_guest_cannot_access_inventory(): void
     {
+        $product = Product::factory()->create(['stock' => 10]);
         $response = $this->get($this->tenantUrl($product, 'admin.inventory.index'));
-
         $response->assertRedirect($this->tenantUrl($product, 'admin.login'));
     }
 
     public function test_non_admin_cannot_access_inventory(): void
     {
         $user = User::factory()->create(['role' => 'user']);
-
+        $product = Product::factory()->create(['stock' => 10]);
         $response = $this
             ->actingAs($user)
             ->get($this->tenantUrl($product, 'admin.inventory.index'));
@@ -40,25 +41,18 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_can_view_inventory(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
-        $response = $this
-            ->actingAs($admin)
-            ->get($this->tenantUrl($product, 'admin.inventory.index'));
+        $admin = $this->createTenantAdmin($product);
+        $response = $this->actingAs($admin)->get($this->tenantUrl($product, 'admin.inventory.index'));
         $this->activateTenant($product);
-
-        $response
-            ->assertOk()
-            ->assertViewIs('admin.inventory.index')
-            ->assertSee($product->name);
+        $response->assertOk()->assertViewIs('admin.inventory.index')->assertSee($product->name);
     }
 
     public function test_admin_can_update_product_stock(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
@@ -67,7 +61,7 @@ class InventoryControllerTest extends TestCase
         $this->activateTenant($product);
 
         $response
-            ->assertRedirect(route('admin.inventory.index'))
+            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
@@ -78,9 +72,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_cannot_set_negative_stock(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
@@ -98,9 +92,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_can_add_stock(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
@@ -121,9 +115,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_can_subtract_stock(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
@@ -144,9 +138,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_cannot_subtract_more_stock_than_available(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
@@ -167,9 +161,9 @@ class InventoryControllerTest extends TestCase
 
     public function test_admin_cannot_adjust_stock_by_zero(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create(['stock' => 10]);
-
+        $admin = $this->createTenantAdmin($product);
+        
         $response = $this
             ->actingAs($admin)
             ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
@@ -210,9 +204,8 @@ class InventoryControllerTest extends TestCase
     
     public function test_updating_one_variant_keeps_product_stock_equal_to_all_variant_stock(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-    
         $product = Product::factory()->create(['stock' => 20]);
+        $admin = $this->createTenantAdmin($product);
     
         $variantA = ProductVariant::create([
             'product_id' => $product->id,
@@ -303,5 +296,22 @@ class InventoryControllerTest extends TestCase
         $domain = $this->createTenantDomain($product);
     
         return 'http://'.$domain.route($routeName, $parameters, false);
+    }
+    
+    private function createTenantAdmin(Product $product): User
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $admin = User::factory()->create(['role' => 'admin']);
+    
+        TenantMembership::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $admin->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+    
+        return $admin;
     }
 }
