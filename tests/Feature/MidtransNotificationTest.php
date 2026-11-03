@@ -11,6 +11,10 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
+use App\Models\Tenant;
+use App\Models\Category;
+use App\Models\SubCategory;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -19,17 +23,30 @@ use Tests\TestCase;
 class MidtransNotificationTest extends TestCase
 {
     use RefreshDatabase;
+    
+    private Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+    
+        $this->tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+    }
 
     private function createPendingMidtransPayment(): array
     {
         $user = User::factory()->create();
-
+    
         $order = Order::factory()->create([
             'user_id' => $user->id,
             'status' => 'pending',
             'total' => 100000,
         ]);
-
+    
         $payment = Payment::factory()->create([
             'order_id' => $order->id,
             'provider' => 'midtrans',
@@ -37,18 +54,14 @@ class MidtransNotificationTest extends TestCase
             'gross_amount' => 100000,
             'transaction_id' => 'MIDTRANS-TEST-123',
         ]);
-
-        return [$order,
-            $payment];
+    
+        return [$order, $payment];
     }
 
     public function test_midtrans_settlement_completes_payment_and_order(): void
     {
-        [$order,
-            $payment] = $this->createPendingMidtransPayment();
-        [$product,
-            $variant,
-            $inventory] = $this->createMidtransOrderReservation($order, 'reserved');
+        [$order, $payment] = $this->createPendingMidtransPayment();
+        [$product, $variant, $inventory] = $this->createMidtransOrderReservation($order, 'reserved');
 
         Config::set(
             'midtrans.server_key',
