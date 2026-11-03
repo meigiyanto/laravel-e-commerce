@@ -14,6 +14,13 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
+    public const ROLE_PLATFORM_ADMIN = 'platform_admin';
+    
+    public function isPlatformAdmin(): bool
+    {
+        return $this->role === self::ROLE_PLATFORM_ADMIN;
+    }
+
     protected $fillable = [
         'name',
         'email',

@@ -10,25 +10,22 @@
                 
                 <div class="flex-shrink-0">
                     <h6 class="mb-1 fw-semibold">
-                        Top Kategori
+                        Top Category
                     </h6>
     
                     <p class="mb-0 text-muted small">
-                        Jelajahi kategori produk terpopuler.
+                        Explore our popular product category.
                     </p>
                 </div>
     
                 <div class="d-flex flex-wrap gap-2">
                     @forelse ($storefrontTopCategories as $category)
-                        <a
-                            href="{{ route('storefront.category', $category->slug) }}"
-                            class="btn btn-outline-warning btn-sm rounded-pill"
-                        >
+                        <a href="{{ route('storefront.category', $category->slug) }}" class="store-btn-category">
                             {{ $category->name }}
                         </a>
                     @empty
                         <span class="text-muted small">
-                            Belum ada kategori produk.
+                            No category yet.
                         </span>
                     @endforelse
                 </div>

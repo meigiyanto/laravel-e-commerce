@@ -13,37 +13,58 @@ class ResolveTenantFromDomain
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $path = trim($request->path(), '/');
-        if ($this->isPlatformOrCallbackPath($path)) {
+        $context = app(TenantContext::class);
+        $context->clear();
+
+        try {
+            $path = trim($request->path(), '/');
+
+            if ($this->isPlatformOrCallbackPath($path)) {
+                return $next($request);
+            }
+
+            $host = strtolower(rtrim($request->getHost(), '.'));
+
+            $storeDomain = StoreDomain::query()
+                ->with('store.tenant')
+                ->whereRaw('LOWER(domain) = ?', [$host])
+                ->where('verification_status', 'verified')
+                ->first();
+
+            $store = $storeDomain?->store;
+            $tenant = $store?->tenant;
+
+            if (! $tenant && in_array($host, [
+                'localhost',
+                '127.0.0.1',
+                '::1',
+            ], true)) {
+                $tenant = Tenant::query()
+                    ->where('slug', 'default')
+                    ->where('status', 'active')
+                    ->first();
+            } else {
+                abort_unless(
+                    $store && $store->status === 'active',
+                    404
+                );
+            }
+
+            abort_unless($tenant && $tenant->status === 'active', 404);
+
+            $context->set($tenant);
+
             return $next($request);
+        } finally {
+            $context->clear();
         }
-
-        $host = strtolower(rtrim($request->getHost(), '.'));
-        $storeDomain = StoreDomain::query()
-            ->with('store.tenant')
-            ->whereRaw('LOWER(domain) = ?', [$host])
-            ->where('verification_status', 'verified')
-            ->first();
-
-        $tenant = $storeDomain?->store?->tenant;
-        if (! $tenant && in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
-            $tenant = Tenant::query()->where('slug', 'default')->where('status', 'active')->first();
-        }
-
-        if (! $tenant || $tenant->status !== 'active') {
-            abort(404);
-        }
-
-        app(TenantContext::class)->set($tenant);
-        return $next($request);
     }
 
     private function isPlatformOrCallbackPath(string $path): bool
     {
-        return $path === 'up'
-            || $path === 'stripe/webhook'
+        return $path === 'stripe/webhook'
             || $path === 'payment/midtrans/notification'
-            || str_starts_with($path, 'marketplace')
-            || str_starts_with($path, 'payment/');
+            || $path === 'platform'
+            || str_starts_with($path, 'platform/');
     }
 }

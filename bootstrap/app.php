@@ -3,6 +3,7 @@
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Http\Middleware\PlatformAdminMiddleware;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,8 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: ['stripe/webhook', 'payment/midtrans/notification']);
-        $middleware->web(append: [ResolveTenantFromDomain::class]);
-        $middleware->alias(['admin' => AdminMiddleware::class, 'role' => RoleMiddleware::class]);
+        $middleware->web(prepend: [ResolveTenantFromDomain::class]);
+        $middleware->alias(['admin' => AdminMiddleware::class, 'role' => RoleMiddleware::class, RoleMiddleware::class, 'platform.admin' => PlatformAdminMiddleware::class]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

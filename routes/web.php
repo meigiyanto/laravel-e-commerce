@@ -20,6 +20,9 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\OrderCancellationRequestController as CustomerOrderCancellationRequestController;
 use App\Http\Controllers\Admin\OrderCancellationRequestController as AdminOrderCancellationRequestController;
 
+use App\Http\Controllers\Platform\DashboardController as PlatformDashboardController;
+use App\Http\Controllers\Platform\TenantController as PlatformTenantController;
+
 /**
  * Store Front
  */
@@ -122,6 +125,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Refund
     Route::post('account/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
+});
+
+Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platform.')->group(function () {
+    Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
+    Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
 });
 
 /*
