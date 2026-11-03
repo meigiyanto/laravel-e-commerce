@@ -6,12 +6,42 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\TenantMembership;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RefundControllerTest extends TestCase
 {
     use RefreshDatabase;
+    protected Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+    }
+
+    private function createTenantAdmin(): User
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $admin->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+        ]);
+
+        return $admin;
+    }
 
     public function test_guest_cannot_access_refund_management(): void
     {
@@ -26,9 +56,7 @@ class RefundControllerTest extends TestCase
 
     public function test_admin_can_view_refund_list(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -39,23 +67,21 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(route('admin.refunds.index'));
+        ->actingAs($admin)
+        ->get(route('admin.refunds.index'));
 
         $response
-            ->assertOk()
-            ->assertViewIs('admin.refunds.index')
-            ->assertSee($refund->order->order_number)
-            ->assertSee('Rp 50.000')
-            ->assertSee('Stripe')
-            ->assertSee('Requested');
+        ->assertOk()
+        ->assertViewIs('admin.refunds.index')
+        ->assertSee($refund->order->order_number)
+        ->assertSee('Rp 50.000')
+        ->assertSee('Stripe')
+        ->assertSee('Requested');
     }
 
     public function test_admin_can_view_refund_detail(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -66,17 +92,17 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(
-                route('admin.refunds.show', $refund)
-            );
+        ->actingAs($admin)
+        ->get(
+            route('admin.refunds.show', $refund)
+        );
 
         $response
-            ->assertOk()
-            ->assertViewIs('admin.refunds.show')
-            ->assertSee('Barang tidak sesuai')
-            ->assertSee('Rp 75.000')
-            ->assertSee('Requested');
+        ->assertOk()
+        ->assertViewIs('admin.refunds.show')
+        ->assertSee('Barang tidak sesuai')
+        ->assertSee('Rp 75.000')
+        ->assertSee('Requested');
     }
 
     public function test_non_admin_cannot_access_refund_management(): void
@@ -86,17 +112,15 @@ class RefundControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->get(route('admin.refunds.index'));
+        ->actingAs($user)
+        ->get(route('admin.refunds.index'));
 
         $response->assertForbidden();
     }
 
     public function test_non_admin_cannot_view_refund_detail(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $user = User::factory()->create([
             'role' => 'user',
@@ -110,19 +134,17 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($user)
-            ->get(
-                route('admin.refunds.show', $refund)
-            );
+        ->actingAs($user)
+        ->get(
+            route('admin.refunds.show', $refund)
+        );
 
         $response->assertForbidden();
     }
 
     public function test_admin_can_filter_refunds_by_status(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $requested = $this->createRefund(
             admin: $admin,
@@ -139,22 +161,20 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(route('admin.refunds.index', [
-                'status' => Refund::STATUS_REQUESTED,
-            ]));
+        ->actingAs($admin)
+        ->get(route('admin.refunds.index', [
+            'status' => Refund::STATUS_REQUESTED,
+        ]));
 
         $response
-            ->assertOk()
-            ->assertSee($requested->order->order_number)
-            ->assertDontSee($completed->order->order_number);
+        ->assertOk()
+        ->assertSee($requested->order->order_number)
+        ->assertDontSee($completed->order->order_number);
     }
 
     public function test_admin_can_search_refunds_by_order_number(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $matched = $this->createRefund(
             admin: $admin,
@@ -171,22 +191,20 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(route('admin.refunds.index', [
-                'search' => 'ORD-SEARCH-001',
-            ]));
+        ->actingAs($admin)
+        ->get(route('admin.refunds.index', [
+            'search' => 'ORD-SEARCH-001',
+        ]));
 
         $response
-            ->assertOk()
-            ->assertSee($matched->order->order_number)
-            ->assertDontSee($notMatched->order->order_number);
+        ->assertOk()
+        ->assertSee($matched->order->order_number)
+        ->assertDontSee($notMatched->order->order_number);
     }
 
     public function test_admin_can_search_refunds_by_customer_name(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $matched = $this->createRefund(
             admin: $admin,
@@ -203,22 +221,20 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(route('admin.refunds.index', [
-                'search' => 'Budi Refund',
-            ]));
+        ->actingAs($admin)
+        ->get(route('admin.refunds.index', [
+            'search' => 'Budi Refund',
+        ]));
 
         $response
-            ->assertOk()
-            ->assertSee($matched->order->order_number)
-            ->assertDontSee($notMatched->order->order_number);
+        ->assertOk()
+        ->assertSee($matched->order->order_number)
+        ->assertDontSee($notMatched->order->order_number);
     }
 
     public function test_admin_can_process_requested_cod_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -230,19 +246,19 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->post(
-                route('admin.refunds.process', $refund)
-            );
+        ->actingAs($admin)
+        ->post(
+            route('admin.refunds.process', $refund)
+        );
 
         $response
-            ->assertRedirect(
-                route('admin.refunds.show', $refund)
-            )
-            ->assertSessionHas(
-                'success',
-                'Refund berhasil diproses.'
-            );
+        ->assertRedirect(
+            route('admin.refunds.show', $refund)
+        )
+        ->assertSessionHas(
+            'success',
+            'Refund berhasil diproses.'
+        );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
@@ -252,9 +268,7 @@ class RefundControllerTest extends TestCase
 
     public function test_admin_cannot_process_non_requested_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -266,17 +280,17 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->post(
-                route('admin.refunds.process', $refund)
-            );
+        ->actingAs($admin)
+        ->post(
+            route('admin.refunds.process', $refund)
+        );
 
         $response
-            ->assertRedirect()
-            ->assertSessionHas(
-                'error',
-                'Refund ini sudah diproses atau tidak dapat diproses kembali.'
-            );
+        ->assertRedirect()
+        ->assertSessionHas(
+            'error',
+            'Refund ini sudah diproses atau tidak dapat diproses kembali.'
+        );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
@@ -286,9 +300,7 @@ class RefundControllerTest extends TestCase
 
     public function test_non_admin_cannot_process_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $user = User::factory()->create([
             'role' => 'user',
@@ -302,10 +314,10 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                route('admin.refunds.process', $refund)
-            );
+        ->actingAs($user)
+        ->post(
+            route('admin.refunds.process', $refund)
+        );
 
         $response->assertForbidden();
 
@@ -317,9 +329,7 @@ class RefundControllerTest extends TestCase
 
     public function test_admin_can_reject_requested_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -329,19 +339,19 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->post(
-                route('admin.refunds.reject', $refund)
-            );
+        ->actingAs($admin)
+        ->post(
+            route('admin.refunds.reject', $refund)
+        );
 
         $response
-            ->assertRedirect(
-                route('admin.refunds.show', $refund)
-            )
-            ->assertSessionHas(
-                'success',
-                'Refund berhasil ditolak.'
-            );
+        ->assertRedirect(
+            route('admin.refunds.show', $refund)
+        )
+        ->assertSessionHas(
+            'success',
+            'Refund berhasil ditolak.'
+        );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
@@ -357,9 +367,7 @@ class RefundControllerTest extends TestCase
 
     public function test_admin_cannot_reject_non_requested_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $refund = $this->createRefund(
             admin: $admin,
@@ -369,17 +377,17 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->post(
-                route('admin.refunds.reject', $refund)
-            );
+        ->actingAs($admin)
+        ->post(
+            route('admin.refunds.reject', $refund)
+        );
 
         $response
-            ->assertRedirect()
-            ->assertSessionHas(
-                'error',
-                'Refund ini sudah diproses atau tidak dapat ditolak kembali.'
-            );
+        ->assertRedirect()
+        ->assertSessionHas(
+            'error',
+            'Refund ini sudah diproses atau tidak dapat ditolak kembali.'
+        );
 
         $this->assertDatabaseHas('refunds', [
             'id' => $refund->id,
@@ -389,9 +397,7 @@ class RefundControllerTest extends TestCase
 
     public function test_non_admin_cannot_reject_refund(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-        ]);
+        $admin = $this->createTenantAdmin();
 
         $user = User::factory()->create([
             'role' => 'user',
@@ -405,10 +411,10 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                route('admin.refunds.reject', $refund)
-            );
+        ->actingAs($user)
+        ->post(
+            route('admin.refunds.reject', $refund)
+        );
 
         $response->assertForbidden();
 
@@ -453,8 +459,8 @@ class RefundControllerTest extends TestCase
             'provider' => $provider,
             'requested_at' => now(),
             'processed_at' => $status === Refund::STATUS_COMPLETED
-                ? now()
-                : null,
+            ? now()
+            : null,
         ]);
     }
 }
