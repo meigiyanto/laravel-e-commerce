@@ -13,6 +13,7 @@ use Tests\TestCase;
 class UserAddressTest extends TestCase
 {
     use RefreshDatabase;
+    private ?string $tenantDomain = null;
 
     public function test_user_has_many_addresses_and_address_belongs_to_user(): void
     {
@@ -230,31 +231,25 @@ class UserAddressTest extends TestCase
             ->assertRedirect($this->tenantUrl($domain, 'login'));
     }
     
-    private function tenantUrl(string $routeName, mixed $parameters = []): string
-    {
-        $tenant = Tenant::factory()->create([
-            'status' => 'active',
-        ]);
-    
-        $store = Store::factory()->create([
-            'tenant_id' => $tenant->id,
-        ]);
-    
-        $domain = 'address-test-'.$tenant->id.'.example.test';
-    
-        StoreDomain::create([
-            'store_id' => $store->id,
-            'domain' => $domain,
-            'verification_status' => 'verified',
-            'is_primary' => true,
-        ]);
+    private function tenantUrl(
+        User|string $context,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = is_string($context) ? $context : $this->createTenantDomain();
     
         return 'http://'.$domain.route($routeName, $parameters, false);
     }
     
     private function createTenantDomain(): string
     {
-        $tenant = Tenant::factory()->create(['status' => 'active']);
+        if ($this->tenantDomain !== null) {
+            return $this->tenantDomain;
+        }
+    
+        $tenant = Tenant::factory()->create([
+            'status' => 'active',
+        ]);
     
         $store = Store::firstOrCreate(
             ['tenant_id' => $tenant->id],
@@ -276,6 +271,6 @@ class UserAddressTest extends TestCase
             ]
         );
     
-        return $domain;
+        return $this->tenantDomain = $domain;
     }
 }

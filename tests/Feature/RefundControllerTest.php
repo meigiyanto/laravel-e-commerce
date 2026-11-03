@@ -6,6 +6,10 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
+use App\Support\Tenancy\TenantContext;
 use App\Services\RefundService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,14 +28,14 @@ class RefundControllerTest extends TestCase
         ]);
 
         $response = $this->post(
-            route('orders.refund.store', $order),
+            $this->tenantUrl($user, 'orders.refund.store', $order),
             [
                 'amount' => 50000,
             ]
         );
 
         $response->assertRedirect(
-            route('login')
+            $this->tenantUrl($user, 'login')
         );
 
         $this->assertDatabaseCount('refunds', 0);
@@ -57,7 +61,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 50000,
                     'reason' => 'Produk rusak',
@@ -66,7 +70,7 @@ class RefundControllerTest extends TestCase
 
         $response
             ->assertRedirect(
-                route('orders.show', $order)
+                $this->tenantUrl($user, 'orders.show', $order)
             )
             ->assertSessionHas(
                 'success',
@@ -105,7 +109,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($otherUser)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($otherUser, 'orders.refund.store', $order),
                 [
                     'amount' => 50000,
                     'reason' => 'Refund',
@@ -130,7 +134,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 50000,
                     'reason' => 'Tidak sesuai',
@@ -164,7 +168,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 50000,
                     'reason' => 'Payment belum selesai',
@@ -198,7 +202,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 200000,
                     'reason' => 'Terlalu besar',
@@ -232,7 +236,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 0,
                 ]
@@ -265,7 +269,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => -10000,
                 ]
@@ -298,7 +302,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 25000,
                     'reason' => 'Satu produk rusak',
@@ -306,7 +310,7 @@ class RefundControllerTest extends TestCase
             );
 
         $response->assertRedirect(
-            route('orders.show', $order)
+            $this->tenantUrl($user, 'orders.show', $order)
         );
 
         $this->assertDatabaseHas('refunds', [
@@ -356,7 +360,7 @@ class RefundControllerTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(
-                route('orders.refund.store', $order),
+                $this->tenantUrl($user, 'orders.refund.store', $order),
                 [
                     'amount' => 50000,
                     'reason' => 'Produk rusak',
@@ -364,10 +368,54 @@ class RefundControllerTest extends TestCase
             );
 
         $response
-            ->assertRedirect(route('orders.show', $order))
+            ->assertRedirect($this->tenantUrl($user, 'orders.show', $order))
             ->assertSessionHas(
                 'success',
                 'Permintaan refund berhasil diajukan dan menunggu proses admin.'
             );
+    }
+    
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $domain;
+    }
+    
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        app(TenantContext::class)->set($tenant);
+    }
+    
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }
