@@ -8,6 +8,9 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -95,7 +98,9 @@ class CartControllerIntegrationTest extends TestCase
             ],
         ]);
 
-        $response = $this->get(route('cart.index'));
+        $response = $this->get(
+            $this->tenantUrl($product, 'cart.index')
+        );
 
         $response->assertOk();
         $response->assertViewIs('storefront.cart');
@@ -132,7 +137,7 @@ class CartControllerIntegrationTest extends TestCase
             ],
         ]);
 
-        $response = $this->getJson(route('cart.drawer'));
+        $response = $this->getJson($this->tenantUrl($product, 'cart.drawer'));
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
@@ -157,13 +162,7 @@ class CartControllerIntegrationTest extends TestCase
             'stock' => 10,
         ]);
 
-        $variant = $this->createVariant(
-            $product,
-            'Member Premium',
-            '20000.00',
-            10,
-            true,
-        );
+        $variant = $this->createVariant($product, 'Member Premium', '20000.00', 10, true);
 
         $cart = Cart::create([
             'user_id' => $user->id,
@@ -176,8 +175,9 @@ class CartControllerIntegrationTest extends TestCase
             'quantity' => 2,
         ]);
 
-        $response = $this->actingAs($user)
-            ->getJson(route('cart.drawer'));
+        $response = $this->actingAs($user)->getJson(
+            $this->tenantUrl($product, 'cart.drawer')
+        );
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
@@ -216,20 +216,14 @@ class CartControllerIntegrationTest extends TestCase
             ],
         ]);
 
-        $response = $this->patchJson(
-            route('cart.product.update', $variant->id),
-            ['quantity' => 4],
-        );
+        $response = $this->patchJson($this->tenantUrl($product, 'cart.product.update', $variant->id), ['quantity' => 4]);
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('cart_count', 4);
         $response->assertJsonPath('total', 48000);
 
-        $this->assertSame(
-            4,
-            session("cart.variant_{$variant->id}.quantity"),
-        );
+        $this->assertSame(4, session("cart.variant_{$variant->id}.quantity"));
     }
 
     public function test_guest_can_remove_variant_through_controller(): void
@@ -268,23 +262,15 @@ class CartControllerIntegrationTest extends TestCase
             ],
         ]);
 
-        $response = $this->deleteJson(
-            route('cart.product.destroy', $first->id),
-        );
+        $response = $this->deleteJson($this->tenantUrl($product, 'cart.product.destroy', $first->id));
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('cart_count', 2);
 
-        $this->assertArrayNotHasKey(
-            'variant_'.$first->id,
-            session('cart'),
-        );
+        $this->assertArrayNotHasKey('variant_'.$first->id, session('cart'));
 
-        $this->assertArrayHasKey(
-            'variant_'.$second->id,
-            session('cart'),
-        );
+        $this->assertArrayHasKey('variant_'.$second->id,session('cart'));
     }
 
     public function test_authenticated_user_can_update_and_remove_owned_cart_item(): void
@@ -296,13 +282,7 @@ class CartControllerIntegrationTest extends TestCase
             'stock' => 10,
         ]);
 
-        $variant = $this->createVariant(
-            $product,
-            'Authenticated Premium',
-            '17500.00',
-            10,
-            true,
-        );
+        $variant = $this->createVariant($product, 'Authenticated Premium', '17500.00', 10, true);
 
         $cart = Cart::create([
             'user_id' => $user->id,
@@ -317,10 +297,7 @@ class CartControllerIntegrationTest extends TestCase
 
         $this->actingAs($user);
 
-        $updateResponse = $this->patchJson(
-            route('cart.items.update', $item->id),
-            ['quantity' => 3],
-        );
+        $updateResponse = $this->patchJson($this->tenantUrl($product, 'cart.product.update', $item->id), ['quantity' => 3]);
 
         $updateResponse->assertOk();
         $updateResponse->assertJsonPath('success', true);
@@ -354,13 +331,7 @@ class CartControllerIntegrationTest extends TestCase
             'stock' => 10,
         ]);
 
-        $variant = $this->createVariant(
-            $product,
-            'Private Variant',
-            '15000.00',
-            10,
-            true,
-        );
+        $variant = $this->createVariant($product, 'Private Variant', '15000.00', 10, true);
 
         $cart = Cart::create([
             'user_id' => $owner->id,
@@ -372,12 +343,9 @@ class CartControllerIntegrationTest extends TestCase
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
-
-        $response = $this->actingAs($otherUser)->patchJson(
-            route('cart.items.update', $item->id),
-            ['quantity' => 4],
-        );
-
+        
+        $response = $this->actingAs($otherUser)->patchJson($this->tenantUrl($product, 'cart.product.update', $item->id), ['quantity' => 2]);
+        
         $response->assertNotFound();
 
         $this->assertDatabaseHas('cart_items', [
@@ -394,20 +362,9 @@ class CartControllerIntegrationTest extends TestCase
             'stock' => 10,
         ]);
     
-        $small = $this->createVariant(
-            $product,
-            'Stable Small',
-            '12000.00',
-            10,
-            true,
-        );
+        $small = $this->createVariant($product, 'Stable Small', '12000.00', 10, true);
     
-        $large = $this->createVariant(
-            $product,
-            'Stable Large',
-            '18000.00',
-            10,
-        );
+        $large = $this->createVariant($product, 'Stable Large', '18000.00', 10);
     
         $this->withSession(['cart' => [
             'variant_'.$small->id => [
@@ -422,26 +379,53 @@ class CartControllerIntegrationTest extends TestCase
             ],
         ]]);
     
-        $page = $this->get(route('cart.index'));
+        $response = $this->get($this->tenantUrl($product, 'cart.index'));
     
-        $page->assertOk()
-            ->assertSee('data-cart-item-key="'.$small->id.'"', false)
-            ->assertSee('data-cart-item-key="'.$large->id.'"', false);
+        $response->assertOk()
+                ->assertSee('data-cart-item-key="'.$small->id.'"', false)
+                ->assertSee('data-cart-item-key="'.$large->id.'"', false);
     
         $drawer = $this->getJson(route('cart.drawer'));
-    
         $drawer->assertOk();
-    
         $html = $drawer->json('html');
+        $this->assertStringContainsString('data-cart-item-key="'.$small->id.'"', $html);
+        $this->assertStringContainsString('data-cart-item-key="'.$large->id.'"', $html);
+    }
     
-        $this->assertStringContainsString(
-            'data-cart-item-key="'.$small->id.'"',
-            $html,
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
         );
     
-        $this->assertStringContainsString(
-            'data-cart-item-key="'.$large->id.'"',
-            $html,
+        $domain = 'cart-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
         );
+    
+        return $domain;
+    }
+    
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+    
+        return 'http://'.$domain.route($routeName,$parameters,false);
     }
 }
