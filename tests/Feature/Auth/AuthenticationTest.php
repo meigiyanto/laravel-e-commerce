@@ -3,13 +3,31 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\TenantMembership;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected Tenant $tenant;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+    
+        $tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+        
+        $this->tenant = $tenant;
+
+    }
+    
     public function test_login_screen_can_be_rendered(): void
     {
         $this->get('/login')->assertOk();
@@ -110,7 +128,14 @@ class AuthenticationTest extends TestCase
         $staff = User::factory()->create([
             'role' => User::ROLE_STAFF,
         ]);
-
+    
+        TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $staff->id,
+            'role' => TenantMembership::ROLE_STAFF,
+            'status' => 'active',
+        ]);
+    
         $this->actingAs($staff)
             ->get('/admin/dashboard')
             ->assertOk();
