@@ -311,6 +311,7 @@ class StockRestorationIdempotencyTest extends TestCase
         ]);
 
         $order = Order::factory()->create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
             'status' => 'pending',
             'total' => 200000,

@@ -33,6 +33,7 @@ class CheckoutStockTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -119,6 +120,7 @@ class CheckoutStockTest extends TestCase
         ]);
         
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -218,6 +220,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
         
@@ -318,6 +321,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -397,6 +401,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -477,6 +482,7 @@ class CheckoutStockTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -554,6 +560,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -648,6 +655,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -659,6 +667,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         CartItem::create([
+            'tenant_id' => $product->tenant_id,
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $secondVariant->id,

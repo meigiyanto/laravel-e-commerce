@@ -165,6 +165,7 @@ class CartControllerIntegrationTest extends TestCase
         $variant = $this->createVariant($product, 'Member Premium', '20000.00', 10, true);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -285,6 +286,7 @@ class CartControllerIntegrationTest extends TestCase
         $variant = $this->createVariant($product, 'Authenticated Premium', '17500.00', 10, true);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -334,6 +336,7 @@ class CartControllerIntegrationTest extends TestCase
         $variant = $this->createVariant($product, 'Private Variant', '15000.00', 10, true);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $owner->id,
         ]);
 

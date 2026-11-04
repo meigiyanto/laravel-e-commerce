@@ -309,6 +309,7 @@ class CartServiceConsistencyTest extends TestCase
         );
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -455,7 +456,10 @@ class CartServiceConsistencyTest extends TestCase
         $first = $this->createVariant($product, 'Red', '12000.00', 10, true);
         $second = $this->createVariant($product, 'Green', '13000.00', 10);
     
-        $cart = Cart::create(['user_id' => $user->id]);
+        $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
+            'user_id' => $user->id
+        ]);
     
         $firstItem = CartItem::create([
             'cart_id' => $cart->id,
@@ -494,7 +498,10 @@ class CartServiceConsistencyTest extends TestCase
         $this->activateTenant($product);
         $variant = $this->createVariant($product, 'Default', '12000.00', 10, true);
     
-        $cart = Cart::create(['user_id' => $owner->id]);
+        $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
+            'user_id' => $owner->id
+        ]);
     
         $item = CartItem::create([
             'cart_id' => $cart->id,

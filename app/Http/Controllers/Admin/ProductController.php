@@ -176,7 +176,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        Gate::authorize('update', Product::class);
+        Gate::authorize('update', $product);
         $product->load([
             'specifications',
             'variants.inventory',
@@ -195,7 +195,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        Gate::authorize('update', Product::class);
+        Gate::authorize('update', $product);
         $tenantId = app(TenantContext::class)->require()->getKey();
         $submittedIds = collect(
             is_array($request->input('variants', []))
@@ -661,7 +661,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        Gate::authorize('destroy', Product::class);
+        Gate::authorize('delete', $product);
         if ($product->orderItems()->exists()) {
             return redirect()
                 ->route('admin.products.index')

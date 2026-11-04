@@ -111,8 +111,7 @@ class CartService
     */
     public function getGuestCart(): array
     {
-        return session()->get('cart',
-            []);
+        return session()->get('cart', []);
     }
 
     public function normalizeGuestCart(): array
@@ -192,20 +191,14 @@ class CartService
                     continue;
                 }
 
-                $available = max(
-                    0,
-                    (int) $inventory->quantity - (int) $inventory->reserved_quantity
-                );
+                $available = max(0,(int) $inventory->quantity - (int) $inventory->reserved_quantity);
 
                 if ($available < 1) {
                     unset($normalized[$key]);
                     continue;
                 }
 
-                $normalized[$key]['quantity'] = min(
-                    (int) $item['quantity'],
-                    $available
-                );
+                $normalized[$key]['quantity'] = min((int) $item['quantity'],$available);
             }
 
             return $normalized;
@@ -267,7 +260,7 @@ class CartService
 
             $variant = $resolved['variant'];
             $inventory = $resolved['inventory'];
-            
+
             if ((int) $product->tenant_id !== $this->tenantId()) {
                 throw new \RuntimeException('Produk tidak tersedia pada toko ini.');
             }
@@ -326,6 +319,7 @@ class CartService
                     ]);
                 } else {
                     CartItem::create([
+                        'tenant_id' => $product->tenant_id,
                         'cart_id' => $cart->id,
                         'product_id' => $product->id,
                         'product_variant_id' => $variant->id,
@@ -404,6 +398,7 @@ class CartService
         }
 
         CartItem::create([
+            'tenant_id' => $product->tenant_id,
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'quantity' => $quantity,
@@ -706,12 +701,16 @@ class CartService
     /**
     * Hitung jumlah seluruh item dalam cart.
     */
+    /**
+    * Hitung jumlah seluruh unit produk dalam cart.
+    */
     public function count(): int
     {
         if (auth()->check()) {
             return (int) CartItem::query()
             ->whereHas('cart', function ($query) {
-                $query->where('user_id', auth()->id());
+                $query->where('tenant_id', $this->tenantId())
+                ->where('user_id', auth()->id());
             })
             ->sum('quantity');
         }
@@ -722,13 +721,7 @@ class CartService
             $count += is_array($item) ? (int) ($item['quantity'] ?? 0) : (int) $item;
         }
 
-        // return $count;
-        return (int) CartItem::query()
-        ->whereHas('cart', function ($query) {
-            $query->where('tenant_id', $this->tenantId())
-                ->where('user_id', auth()->id());
-        })
-        ->sum('quantity');
+        return $count;
     }
 
     /**
@@ -736,18 +729,18 @@ class CartService
     */
     public function total(): float
     {
-        
+
         if (auth()->check()) {
             $cart = Cart::query()
-                ->where('tenant_id', $this->tenantId())
-                ->where('user_id', auth()->id())
-                ->with([
-                    'items.product',
-                    'items.variant.product',
-                    'items.variant.inventory',
-                ])
-                ->first();
-            
+            ->where('tenant_id', $this->tenantId())
+            ->where('user_id', auth()->id())
+            ->with([
+                'items.product',
+                'items.variant.product',
+                'items.variant.inventory',
+            ])
+            ->first();
+
             if (! $cart) {
                 return 0.0;
             }
@@ -951,7 +944,7 @@ class CartService
                 ) {
                     continue;
                 }
-                
+
                 if (!$product || !$variant || (int) $product->tenant_id !== $this->tenantId() || (int) $variant->tenant_id !== $this->tenantId() || (int) $variant->product_id !== $productId) {
                     continue;
                 }
@@ -994,6 +987,7 @@ class CartService
                     $cartItem->save();
                 } else {
                     $cartItem = CartItem::create([
+                        'tenant_id' => $product->tenant_id,
                         'cart_id' => $cart->id,
                         'product_id' => $product->id,
                         'product_variant_id' => $variant->id,

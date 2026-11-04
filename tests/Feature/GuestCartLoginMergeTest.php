@@ -106,6 +106,7 @@ class GuestCartLoginMergeTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -150,6 +151,7 @@ class GuestCartLoginMergeTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -314,6 +316,7 @@ class GuestCartLoginMergeTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
