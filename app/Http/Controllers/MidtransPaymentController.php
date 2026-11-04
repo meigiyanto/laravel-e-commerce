@@ -301,9 +301,7 @@ class MidtransPaymentController extends Controller
         ];
 
         foreach ($requiredFields as $field) {
-            if (
-                ! array_key_exists($field, $payload) || ! is_scalar($payload[$field]) || (string) $payload[$field] === ''
-            ) {
+            if (! array_key_exists($field, $payload) || ! is_scalar($payload[$field]) || (string) $payload[$field] === '') {
                 return response()->json([
                     'message' => "Field {$field} tidak valid.",
                 ], 422);
@@ -331,7 +329,8 @@ class MidtransPaymentController extends Controller
 
         try {
             // 2. Cari pesanan dari order_id yang dikirim Midtrans.
-            $order = Order::where('order_number', (string) $payload['order_id'])->first();
+            // $order = Order::where('order_number', (string) $payload['order_id'])->first();
+            $order = Order::withoutGlobalScope('tenant')->where('order_number', (string) $payload['order_id'])->first();
 
             if (! $order) {
                 return response()->json([
@@ -360,10 +359,7 @@ class MidtransPaymentController extends Controller
             }
 
             // 4. Cocokkan nominal pada notifikasi dengan database.
-            if (! $this->amountsMatch(
-                $payload['gross_amount'],
-                $order->total
-            )) {
+            if (! $this->amountsMatch( $payload['gross_amount'], $order->total)) {
                 Log::critical('Midtrans notification amount mismatch.', [
                     'order_id' => $order->id,
                 ]);
@@ -384,8 +380,8 @@ class MidtransPaymentController extends Controller
             }
 
             $itemCount = DB::table('order_items')
-            ->where('order_id', $order->id)
-            ->count();
+                            ->where('order_id', $order->id)
+                            ->count();
 
             $tenantIds = DB::table('order_items')
             ->join('products', 'products.id', '=', 'order_items.product_id')
@@ -452,9 +448,7 @@ class MidtransPaymentController extends Controller
             // 7. Kunci pesanan dan pembayaran untuk mencegah
             // dua notifikasi bersamaan mengubah status secara bersaing.
             $result = DB::transaction(function () use ($order, $transaction) {
-                $lockedOrder = Order::whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+                $lockedOrder = Order::withoutGlobalScope('tenant')->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
                 $lockedPayment = Payment::where('order_id', $lockedOrder->id)->lockForUpdate()->first();
 
@@ -492,10 +486,7 @@ class MidtransPaymentController extends Controller
             // Muat ulang status terbaru setelah transaksi selesai.
             $order->refresh();
 
-            $payment = Payment::query()
-            ->where('order_id',
-                $order->id)
-            ->first();
+            $payment = Payment::query()->where('order_id', $order->id)->first();
 
             if ($payment) {
                 $this->handleLateCanceledOrderPayment($order, $payment);

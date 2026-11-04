@@ -20,21 +20,7 @@ class TenantIsolationSecurityTest extends TestCase
     public function test_tenant_a_cannot_read_tenant_b_orders(): void
     {
         $tenantA = Tenant::factory()->create(['status' => 'active']);
-        $categoryB = Category::factory()->create([
-            'tenant_id' => $tenantB->id,
-        ]);
-
-        $subCategoryB = SubCategory::factory()->create([
-            'tenant_id' => $tenantB->id,
-            'category_id' => $categoryB->id,
-        ]);
-
-        $productB = Product::factory()->create([
-            'tenant_id' => $tenantB->id,
-            'category_id' => $categoryB->id,
-            'sub_category_id' => $subCategoryB->id,
-        ]);
-
+        $tenantB = Tenant::factory()->create(['status' => 'active']);
         $user = User::factory()->create();
 
         TenantMembership::factory()->create([
@@ -62,8 +48,19 @@ class TenantIsolationSecurityTest extends TestCase
         $tenantA = Tenant::factory()->create(['status' => 'active']);
         $tenantB = Tenant::factory()->create(['status' => 'active']);
 
+        $categoryB = Category::factory()->create([
+            'tenant_id' => $tenantB->id,
+        ]);
+
+        $subCategoryB = SubCategory::factory()->create([
+            'category_id' => $categoryB->id,
+            'tenant_id' => $tenantB->id,
+        ]);
+
         $productB = Product::factory()->create([
             'tenant_id' => $tenantB->id,
+            'category_id' => $categoryB->id,
+            'sub_category_id' => $subCategoryB->id,
         ]);
 
         app(TenantContext::class)->set($tenantA);

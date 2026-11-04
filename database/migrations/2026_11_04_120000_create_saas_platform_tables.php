@@ -18,40 +18,39 @@ return new class extends Migration
                 $table->foreignId('invited_by')->constrained('users')->restrictOnDelete();
                 $table->string('email');
                 $table->string('role', 40)->default('owner');
-                    $table->char('token_hash', 64)->unique();
-                    $table->string('status', 30)->default('pending');
-                    $table->timestamp('expires_at');
-                    $table->timestamp('accepted_at')->nullable();
-                    $table->timestamps();
+                $table->char('token_hash', 64)->unique();
+                $table->string('status', 30)->default('pending');
+                $table->timestamp('expires_at');
+                $table->timestamp('accepted_at')->nullable();
+                $table->timestamps();
 
-                    $table->index(['tenant_id', 'email', 'status']);
-                    $table->index(['status', 'expires_at']);
-                });
-            }
+                $table->index(['tenant_id', 'email', 'status']);
+                $table->index(['status', 'expires_at']);
+            });
+        }
 
         /*
          * PHASE 1: DOMAIN VERIFICATION
          */
-            if (!Schema::hasTable('domain_verification_challenges')) {
-                Schema::create('domain_verification_challenges', function (Blueprint $table) {
-                    $table->id();
-                    $table->foreignId('store_domain_id')->unique()->constrained('store_domains')->cascadeOnDelete();
-                    $table->string('method', 30)->default('dns_txt');
-                    $table->string('record_name');
-                    $table->string('record_value', 255);
-                    $table->timestamp('expires_at');
-                    $table->timestamp('verified_at')->nullable();
-                    $table->timestamps();
+        if (!Schema::hasTable('domain_verification_challenges')) {
+            Schema::create('domain_verification_challenges', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('store_domain_id')->unique()->constrained('store_domains')->cascadeOnDelete();
+                $table->string('method', 30)->default('dns_txt');
+                $table->string('record_name');
+                $table->string('record_value', 255);
+                $table->timestamp('expires_at');
+                $table->timestamp('verified_at')->nullable();
+                $table->timestamps();
 
-                    $table->index(['method', 'expires_at']);
-                });
-            }
+                $table->index(['method', 'expires_at']);
+            });
+        }
 
         /*
          * PHASE 2: SUBSCRIPTION PLANS
          */
             if (!Schema::hasTable('subscription_plans')) {
-
                 Schema::create('subscription_plans', function (Blueprint $table) {
                     $table->id();
                     $table->string('name');
@@ -73,7 +72,6 @@ return new class extends Migration
          * PHASE 2: PLAN FEATURES / ENTITLEMENTS
          */
             if (!Schema::hasTable('plan_features')) {
-
                 Schema::create('plan_features', function (Blueprint $table) {
                     $table->id();
                     $table->foreignId('subscription_plan_id')
@@ -153,11 +151,10 @@ return new class extends Migration
                 });
             }
 
-        /*
+            /*
          * PHASE 2: SUBSCRIPTION PAYMENTS
          */
             if (!Schema::hasTable('subscription_payments')) {
-
                 Schema::create('subscription_payments', function (Blueprint $table) {
                     $table->id();
                     $table->foreignId('tenant_id')->constrained()->restrictOnDelete();
@@ -180,7 +177,6 @@ return new class extends Migration
          * PHASE 2: USAGE METERING
          */
             if (!Schema::hasTable('tenant_usages')) {
-
                 Schema::create('tenant_usages', function (Blueprint $table) {
                     $table->id();
                     $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
@@ -201,60 +197,35 @@ return new class extends Migration
             }
 
         /*
-         * PHASE 4: WEBHOOK IDEMPOTENCY AND TENANT ISOLATION
-         */
-            if (!Schema::hasTable('webhook_events')) {
-
-                Schema::create('webhook_events', function (Blueprint $table) {
-                    $table->id();
-                    $table->foreignId('tenant_id')->nullable()
-                    ->constrained()->nullOnDelete();
-                    $table->string('provider', 40);
-                    $table->string('event_id', 191);
-                    $table->string('event_type', 120);
-                    $table->string('status', 30)->default('pending');
-                    $table->json('payload')->nullable();
-                    $table->text('failure_reason')->nullable();
-                    $table->timestamp('processed_at')->nullable();
-                    $table->timestamps();
-
-                    $table->unique(['provider', 'event_id']);
-                    $table->index(['tenant_id', 'status']);
-                });
-            }
-
-        /*
          * PHASE 3: PLATFORM DAILY ANALYTICS
          */
-            if (!Schema::hasTable('platform_daily_metrics')) {
-
-                Schema::create('platform_daily_metrics', function (Blueprint $table) {
-                    $table->id();
-                    $table->date('metric_date')->unique();
-                    $table->unsignedBigInteger('total_tenants')->default(0);
-                    $table->unsignedBigInteger('active_tenants')->default(0);
-                    $table->unsignedBigInteger('new_tenants')->default(0);
-                    $table->unsignedBigInteger('total_subscriptions')->default(0);
-                    $table->unsignedBigInteger('active_subscriptions')->default(0);
-                    $table->unsignedBigInteger('revenue')->default(0);
-                    $table->char('currency', 3)->default('IDR');
-                    $table->timestamps();
-                });
-            }
+        if (!Schema::hasTable('platform_daily_metrics')) {
+            Schema::create('platform_daily_metrics', function (Blueprint $table) {
+                $table->id();
+                $table->date('metric_date')->unique();
+                $table->unsignedBigInteger('total_tenants')->default(0);
+                $table->unsignedBigInteger('active_tenants')->default(0);
+                $table->unsignedBigInteger('new_tenants')->default(0);
+                $table->unsignedBigInteger('total_subscriptions')->default(0);
+                $table->unsignedBigInteger('active_subscriptions')->default(0);
+                $table->unsignedBigInteger('revenue')->default(0);
+                $table->char('currency', 3)->default('IDR');
+                $table->timestamps();
+            });
         }
+    }
 
-        public function down(): void
-        {
-            Schema::dropIfExists('platform_daily_metrics');
-            Schema::dropIfExists('webhook_events');
-            Schema::dropIfExists('tenant_usages');
-            Schema::dropIfExists('subscription_payments');
-            Schema::dropIfExists('invoice_items');
-            Schema::dropIfExists('invoices');
-            Schema::dropIfExists('subscriptions');
-            Schema::dropIfExists('plan_features');
-            Schema::dropIfExists('subscription_plans');
-            Schema::dropIfExists('domain_verification_challenges');
-            Schema::dropIfExists('tenant_invitations');
-        }
-    };
+    public function down(): void
+    {
+        Schema::dropIfExists('platform_daily_metrics');
+        Schema::dropIfExists('tenant_usages');
+        Schema::dropIfExists('subscription_payments');
+        Schema::dropIfExists('invoice_items');
+        Schema::dropIfExists('invoices');
+        Schema::dropIfExists('subscriptions');
+        Schema::dropIfExists('plan_features');
+        Schema::dropIfExists('subscription_plans');
+        Schema::dropIfExists('domain_verification_challenges');
+        Schema::dropIfExists('tenant_invitations');
+    }
+};

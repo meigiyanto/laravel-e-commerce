@@ -57,7 +57,7 @@ class TenantQueueWebhookIsolationTest extends TestCase
             'payload' => ['id' => 'evt_123'],
         ]);
 
-        $this->assertDatabaseHas('webhook_events', [
+        $this->assertDatabaseHas('billing_webhook_events', [
             'id' => $first->id,
             'provider' => 'test-provider',
             'event_id' => 'evt_123',
@@ -89,6 +89,6 @@ class TenantQueueWebhookIsolationTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->assertDatabaseCount('webhook_events', 2);
+        $this->assertDatabaseCount('billing_webhook_events', 2);
     }
 }
