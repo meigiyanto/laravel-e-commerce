@@ -94,13 +94,14 @@ class StockRestorationIdempotencyTest extends TestCase
         return [$admin, $domain];
     }
 
-    private function createOrder(): Order
+    private function createOrder(int $tenantId): Order
     {
         return Order::factory()->create([
+            'tenant_id' => $tenantId,
             'status' => 'pending',
         ]);
     }
-
+    
     private function createOrderItem(
         Order $order,
         Product $product,
@@ -121,7 +122,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_deduct_for_order_only_deducts_stock_once_for_same_idempotency_key(): void
     {
         $fixture = $this->createInventoryFixture(10);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
         $service = app(VariantInventoryService::class);
 
         DB::transaction(function () use ($fixture, $order, $service) {
@@ -149,7 +150,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_restore_for_order_only_restores_stock_once_for_same_order_item(): void
     {
         $fixture = $this->createInventoryFixture(8);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
 
         $item = $this->createOrderItem(
             $order,
@@ -191,7 +192,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_restore_for_order_handles_multiple_items_with_same_variant(): void
     {
         $fixture = $this->createInventoryFixture(8);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
 
         $firstItem = $this->createOrderItem(
             $order,
@@ -254,7 +255,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_deduct_for_order_rejects_reusing_key_with_different_data(): void
     {
         $fixture = $this->createInventoryFixture(10);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
         $service = app(VariantInventoryService::class);
 
         DB::transaction(function () use ($fixture, $order, $service) {

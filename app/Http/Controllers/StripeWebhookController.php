@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use App\Services\RefundService;
 use App\Services\WebhookEventService;
 use App\Services\VariantInventoryService;
@@ -19,6 +21,19 @@ class StripeWebhookController extends Controller
     public function __construct(
         protected WebhookEventService $webhookEvents
     ) {}
+
+    private function activateTenantContext(Order $order): void
+    {
+        $tenant = Tenant::query()->find($order->tenant_id);
+
+        if (! $tenant) {
+            throw new \RuntimeException(
+                'Tenant untuk pesanan tidak ditemukan.'
+            );
+        }
+
+        app(TenantContext::class)->set($tenant);
+    }
 
     public function handle(Request $request): Response
     {
@@ -82,7 +97,7 @@ class StripeWebhookController extends Controller
     private function handlePaymentIntentSucceeded(
         object $paymentIntent
     ): void {
-        if (! isset( $paymentIntent->id, $paymentIntent->status, $paymentIntent->amount, $paymentIntent->currency) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'succeeded' || ! is_int($paymentIntent->amount) || $paymentIntent->amount <= 0 || ! is_string($paymentIntent->currency) || trim($paymentIntent->currency) === '') {
+        if (! isset($paymentIntent->id, $paymentIntent->status, $paymentIntent->amount, $paymentIntent->currency) || ! is_string($paymentIntent->id) || ! is_string($paymentIntent->status) || $paymentIntent->status !== 'succeeded' || ! is_int($paymentIntent->amount) || $paymentIntent->amount <= 0 || ! is_string($paymentIntent->currency) || trim($paymentIntent->currency) === '') {
             throw new \RuntimeException(
                 'Stripe payment intent is invalid for success event.'
             );
@@ -99,6 +114,7 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
+            $this->activateTenantContext($order);
 
             // Order failed dan refunded tidak boleh menerima pembayaran baru.
             if (in_array($order->status, ['failed', 'refunded'], true)) {
@@ -164,9 +180,9 @@ class StripeWebhookController extends Controller
 
         // Refund dilakukan setelah transaksi transisi selesai.
         $payment = Payment::query()
-                        ->where('provider', 'stripe')
-                        ->where('stripe_payment_intent_id', $paymentIntent->id)
-                        ->first();
+        ->where('provider', 'stripe')
+        ->where('stripe_payment_intent_id', $paymentIntent->id)
+        ->first();
 
         if (! $payment) {
             return;
@@ -199,6 +215,8 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
+
+            $this->activateTenantContext($order);
 
             // Jangan menurunkan pembayaran yang sudah sukses atau canceled.
             if (in_array($payment->status, ['succeeded', 'canceled'], true)) {
@@ -238,18 +256,18 @@ class StripeWebhookController extends Controller
     {
         // Ambil referensi awal untuk mengetahui order_id.
         $paymentReference = Payment::query()
-                            ->where('provider', 'stripe')
-                            ->where('stripe_payment_intent_id', $paymentIntentId)
-                            ->first();
+        ->where('provider', 'stripe')
+        ->where('stripe_payment_intent_id', $paymentIntentId)
+        ->first();
 
         if (! $paymentReference) {
             return null;
         }
 
         $order = Order::withoutGlobalScope('tenant')
-                    ->whereKey($paymentReference->order_id)
-                    ->lockForUpdate()
-                    ->first();
+        ->whereKey($paymentReference->order_id)
+        ->lockForUpdate()
+        ->first();
 
         if (! $order) {
             return null;
@@ -286,6 +304,7 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
+            $this->activateTenantContext($order);
 
             if ($order->status === 'pending') {
                 $order->update([

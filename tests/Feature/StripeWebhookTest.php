@@ -313,7 +313,7 @@ class StripeWebhookTest extends TestCase
                 'last_payment_error' => null,
             ]
         );
-
+        
         $response->assertStatus(200);
         
         $this->assertDatabaseHas('payments', [
@@ -343,7 +343,7 @@ class StripeWebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-
+        
         $response->assertStatus(200);
 
         $this->assertDatabaseHas('payments', [
@@ -427,7 +427,7 @@ class StripeWebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-    
+        
         $response->assertStatus(200);
     
         $this->assertPaymentState($payment, 'canceled');
@@ -541,7 +541,7 @@ class StripeWebhookTest extends TestCase
             'payment_intent.succeeded',
             $payload
         );
-
+        
         $second->assertStatus(200);
 
         $this->assertPaymentState($payment, 'succeeded');
@@ -591,7 +591,7 @@ class StripeWebhookTest extends TestCase
             'amount' => self::STRIPE_AMOUNT,
             'currency' => 'idr',
         ];
-
+        
         $this->postStripeWebhook(
             'payment_intent.canceled',
             $payload
@@ -661,6 +661,7 @@ class StripeWebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
+        
 
         $response->assertStatus(200);
 
