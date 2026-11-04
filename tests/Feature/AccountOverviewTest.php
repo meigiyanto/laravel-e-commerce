@@ -48,6 +48,7 @@ class AccountOverviewTest extends TestCase
         $user = User::factory()->create();
 
         Order::factory()->count(3)->create([
+            'tenant_id' => $this->tenant->id,
             'user_id' => $user->id,
         ]);
 
@@ -69,10 +70,12 @@ class AccountOverviewTest extends TestCase
         $otherUser = User::factory()->create();
 
         $order = Order::factory()->create([
+            'tenant_id' => $this->tenant->id,
             'user_id' => $user->id,
         ]);
 
         Order::factory()->create([
+            'tenant_id' => $this->tenant->id,
             'user_id' => $otherUser->id,
         ]);
 

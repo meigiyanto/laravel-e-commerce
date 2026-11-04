@@ -46,7 +46,9 @@ class InventoryReservationTest extends TestCase
             'reorder_level' => 0,
         ]);
 
-        $order = Order::factory()->create();
+        $order = Order::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
 
         return compact('product', 'variant', 'inventory', 'order');
     }

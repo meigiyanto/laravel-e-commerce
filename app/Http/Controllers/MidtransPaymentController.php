@@ -180,12 +180,7 @@ class MidtransPaymentController extends Controller
             }
 
             // Nominal dari gateway harus sama dengan nominal pesanan.
-            if (
-                ! isset($transaction->gross_amount) || ! $this->amountsMatch(
-                    $transaction->gross_amount,
-                    $order->total
-                )
-            ) {
+            if (!isset($transaction->gross_amount) || ! $this->amountsMatch( $transaction->gross_amount, $order->total)) {
                 Log::critical('Midtrans amount mismatch.', [
                     'order_id' => $order->id,
                     'expected_amount' => $order->total,
@@ -203,13 +198,13 @@ class MidtransPaymentController extends Controller
                 $transaction
             ) {
                 $lockedOrder = Order::query()
-                ->lockForUpdate()
-                ->findOrFail($order->id);
+                                ->lockForUpdate()
+                                ->findOrFail($order->id);
 
                 $lockedPayment = Payment::query()
-                ->where('order_id', $lockedOrder->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+                                    ->where('order_id', $lockedOrder->id)
+                                    ->lockForUpdate()
+                                    ->firstOrFail();
 
                 if ($lockedPayment->provider !== 'midtrans') {
                     throw new \RuntimeException(
@@ -248,9 +243,7 @@ class MidtransPaymentController extends Controller
             $this->handleLateCanceledOrderPayment($order, $payment);
 
             if ($payment->status === 'succeeded') {
-                $redirectUrl = $order->status === 'canceled'
-                ? route('orders.show', $order)
-                : route('checkout.success', $order);
+                $redirectUrl = $order->status === 'canceled' ? route('orders.show', $order) : route('checkout.success', $order);
 
                 return response()->json([
                     'success' => true,
@@ -378,36 +371,32 @@ class MidtransPaymentController extends Controller
                     'message' => 'Pembayaran sudah diproses sebelumnya.',
                 ]);
             }
-
-            $itemCount = DB::table('order_items')
-                            ->where('order_id', $order->id)
-                            ->count();
-
-            $tenantIds = DB::table('order_items')
-            ->join('products', 'products.id', '=', 'order_items.product_id')
-            ->where('order_items.order_id', $order->id)
-            ->distinct()
-            ->pluck('products.tenant_id');
-
-            if ($itemCount > 0 && $tenantIds->count() !== 1) {
-                return response()->json([
-                    'message' => 'Tenant pesanan tidak valid atau tidak konsisten.',
-                ], 409);
-            }
-
-            if ($tenantIds->count() === 1) {
-                $tenant = Tenant::query()
-                ->whereKey($tenantIds->first())
+            
+            // Tenant webhook harus mengikuti kepemilikan Order.
+            $tenant = Tenant::query()
+                ->whereKey($order->tenant_id)
                 ->where('status', 'active')
                 ->first();
-
-                if (! $tenant) {
-                    return response()->json([
-                        'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
-                    ], 404);
-                }
-
-                $tenantContext->set($tenant);
+            
+            if (! $tenant) {
+                return response()->json([
+                    'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
+                ], 404);
+            }
+            
+            $tenantContext->set($tenant);
+            
+            $tenantIds = DB::table('order_items')
+                ->join('products', 'products.id', '=', 'order_items.product_id')
+                ->where('order_items.order_id', $order->id)
+                ->distinct()
+                ->pluck('products.tenant_id');
+            
+            // Semua produk dalam order harus berada pada tenant yang sama.
+            if ($tenantIds->contains(fn ($tenantId) => (int) $tenantId !== (int) $order->tenant_id)) {
+                return response()->json([
+                    'message' => 'Tenant produk tidak sesuai dengan tenant pesanan.',
+                ], 409);
             }
 
             // 5. Ambil status terbaru dari API Midtrans.
@@ -430,12 +419,7 @@ class MidtransPaymentController extends Controller
                 ], 409);
             }
 
-            if (
-                ! isset($transaction->gross_amount) || ! is_numeric($transaction->gross_amount) || ! $this->amountsMatch(
-                    $transaction->gross_amount,
-                    $order->total
-                )
-            ) {
+            if (!isset($transaction->gross_amount) || ! is_numeric($transaction->gross_amount) || ! $this->amountsMatch( $transaction->gross_amount, $order->total)) {
                 Log::critical('Midtrans API amount mismatch.', [
                     'order_id' => $order->id,
                 ]);

@@ -435,6 +435,7 @@ class RefundControllerTest extends TestCase
         string $customerName = 'Test Customer',
     ): Refund {
         $order = Order::factory()->create([
+            'tenant_id' => $this->tenant->id,
             'user_id' => $admin->id,
             'order_number' => $orderNumber,
             'status' => 'completed',
