@@ -12,16 +12,34 @@ return new class extends Migration
     */
     private function hasIndex(string $table, array $columns, bool $unique = false): bool
     {
-        $indexes = DB::table('information_schema.statistics')
-        ->selectRaw('index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_list, MAX(non_unique) AS non_unique')
-        ->where('table_schema', DB::getDatabaseName())
-        ->where('table_name', $table)
-        ->groupBy('index_name')
-        ->get();
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $indexes = DB::select("PRAGMA index_list('{$table}')");
+
+            foreach ($indexes as $index) {
+                if ((bool) $index->unique !== $unique) {
+                    continue;
+                }
+
+                $indexColumns = DB::select("PRAGMA index_info('{$index->name}')");
+                $actualColumns = array_map(fn ($item) => $item->name, $indexColumns);
+
+                if ($actualColumns === $columns) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         $expected = implode(',', $columns);
 
-        return $indexes->contains(function ($index) use ($expected, $unique) {
+        return DB::table('information_schema.statistics')
+        ->selectRaw('GROUP_CONCAT(column_name ORDER BY seq_in_index) as columns_list')
+        ->where('table_schema', DB::connection()->getDatabaseName())
+        ->where('table_name', $table)
+        ->groupBy('index_name', 'non_unique')
+        ->get()
+        ->contains(function ($index) use ($expected, $unique) {
             return $index->columns_list === $expected && (int) $index->non_unique === ($unique ? 0 : 1);
         });
     }
@@ -29,13 +47,27 @@ return new class extends Migration
     /**
     * Memeriksa apakah foreign key untuk kolom sudah tersedia.
     */
-    private function hasForeignKey(string $table, string $column): bool
+    private function hasForeignKey(string $table, string $column, string $referencedTable): bool
     {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            $foreignKeys = DB::select("PRAGMA foreign_key_list('{$table}')");
+
+            foreach ($foreignKeys as $foreignKey) {
+                if ($foreignKey->from === $column && $foreignKey->table === $referencedTable) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         return DB::table('information_schema.key_column_usage')
-        ->where('table_schema', DB::getDatabaseName())
+        ->where('table_schema', DB::connection()->getDatabaseName())
         ->where('table_name', $table)
         ->where('column_name', $column)
-        ->where('referenced_table_name', 'tenants')
+        ->where('referenced_table_name', $referencedTable)
         ->exists();
     }
 
@@ -44,18 +76,40 @@ return new class extends Migration
     */
     private function findUniqueIndex(string $table, array $columns): ?string
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $indexes = DB::select("PRAGMA index_list('{$table}')");
+
+            foreach ($indexes as $index) {
+                if (!(bool) $index->unique) {
+                    continue;
+                }
+
+                $indexColumns = DB::select("PRAGMA index_info('{$index->name}')");
+                $actualColumns = array_map(fn ($item) => $item->name, $indexColumns);
+
+                if ($actualColumns === $columns) {
+                    return $index->name;
+                }
+            }
+
+            return null;
+        }
+
         $indexes = DB::table('information_schema.statistics')
-        ->selectRaw('index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_list, MAX(non_unique) AS non_unique')
-        ->where('table_schema', DB::getDatabaseName())
+        ->selectRaw('index_name, GROUP_CONCAT(column_name ORDER BY seq_in_index) as columns_list')
+        ->where('table_schema', DB::connection()->getDatabaseName())
         ->where('table_name', $table)
+        ->where('non_unique', 0)
         ->groupBy('index_name')
         ->get();
 
-        $expected = implode(',', $columns);
+        foreach ($indexes as $index) {
+            if ($index->columns_list === implode(',', $columns)) {
+                return $index->index_name;
+            }
+        }
 
-        return $indexes->first(function ($index) use ($expected) {
-            return $index->columns_list === $expected && (int) $index->non_unique === 0 && $index->index_name !== 'PRIMARY';
-        })?->index_name;
+        return null;
     }
 
     public function up(): void
@@ -63,14 +117,13 @@ return new class extends Migration
         /*
          * ORDERS
          */
-
-        if (!Schema::hasColumn('orders', 'tenant_id')) {
+        if (!Schema::hasColumn('orders', 'tenant_id', 'tenants')) {
             Schema::table('orders', function (Blueprint $table) {
                 $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
             });
         }
 
-        if (!$this->hasForeignKey('orders', 'tenant_id')) {
+        if (!$this->hasForeignKey('orders', 'tenant_id', 'tenants')) {
             Schema::table('orders', function (Blueprint $table) {
                 $table->foreign('tenant_id')
                 ->references('id')
@@ -88,14 +141,13 @@ return new class extends Migration
         /*
          * CARTS
          */
-
         if (!Schema::hasColumn('carts', 'tenant_id')) {
             Schema::table('carts', function (Blueprint $table) {
                 $table->unsignedBigInteger('tenant_id')->nullable()->after('id');
             });
         }
 
-        if (!$this->hasForeignKey('carts', 'tenant_id')) {
+        if (!$this->hasForeignKey('carts', 'tenant_id', 'tenants')) {
             Schema::table('carts', function (Blueprint $table) {
                 $table->foreign('tenant_id')
                 ->references('id')
