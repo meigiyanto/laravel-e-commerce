@@ -12,8 +12,7 @@ class ProductPolicy
     {
         $tenantId = app(TenantContext::class)->current()?->getKey();
 
-        return $tenantId !== null
-            && (int) $product->tenant_id === (int) $tenantId;
+        return $tenantId !== null && (int) $product->tenant_id === (int) $tenantId;
     }
 
     public function viewAny(User $user): bool
@@ -23,8 +22,7 @@ class ProductPolicy
 
     public function view(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product)
-            && $user->hasTenantPermission('products.view');
+        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.view');
     }
 
     public function create(User $user): bool
@@ -34,13 +32,21 @@ class ProductPolicy
 
     public function update(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product)
-            && $user->hasTenantPermission('products.manage');
+        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.manage');
     }
 
     public function delete(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product)
-            && $user->hasTenantPermission('products.manage');
+        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.manage');
+    }
+
+    public function updateStock(User $user, Product $product): bool
+    {
+        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('inventory.manage');
+    }
+
+    public function adjustStock(User $user, Product $product): bool
+    {
+        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('inventory.manage');
     }
 }

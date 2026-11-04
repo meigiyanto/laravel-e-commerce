@@ -71,7 +71,7 @@ class InventoryController extends Controller
 
     public function updateStock(Request $request, Product $product)
     {
-        Gate::authorize('updateStock', Product::class);
+        Gate::authorize('updateStock', $product);
         $validated = $request->validate([
             'stock' => ['required', 'integer', 'min:0'],
         ], [
@@ -94,7 +94,7 @@ class InventoryController extends Controller
 
     public function adjustStock(Request $request, Product $product)
     {
-        Gate::authorize('adjustStock', Product::class);
+        Gate::authorize('adjustStock', $product);
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
             'type' => ['required', 'in:add,subtract'],

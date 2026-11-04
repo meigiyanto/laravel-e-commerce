@@ -34,7 +34,7 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        Gate::authorize('viewAny', Product::class);
+        Gate::authorize('viewAny', Order::class);
         $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $search = trim((string) $request->input('search', ''));
         $status = $request->input('status');
@@ -82,7 +82,7 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
-        Gate::authorize('show', Product::class);
+        Gate::authorize('view', $order);
         $tenantId = (int) app(TenantContext::class)->require()->getKey();
         // abort_unless((int) $order->tenant_id === $tenantId, 404);
         
@@ -101,7 +101,7 @@ class OrderController extends Controller
         Request $request,
         Order $order
     ) {
-        Gate::authorize('updateStatus', Product::class);
+        Gate::authorize('updateStatus', $order);
         $tenantId = (int) app(TenantContext::class)->require()->getKey();
         abort_unless((int) $order->tenant_id === $tenantId, 404);
         
