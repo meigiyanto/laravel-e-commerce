@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,36 +33,21 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $search = trim((string) $request->input('search', ''));
         $status = $request->input('status');
 
         $orders = Order::query()
+            ->where('tenant_id', $tenantId)
             ->with('user')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
-                    $query->where(
-                        'order_number',
-                        'like',
-                        "%{$search}%"
-                    )
-                        ->orWhere(
-                            'customer_name',
-                            'like',
-                            "%{$search}%"
-                        )
-                        ->orWhere(
-                            'phone',
-                            'like',
-                            "%{$search}%"
-                        )
+                    $query->where('order_number', 'like', "%{$search}%")
+                        ->orWhere('customer_name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
                         ->orWhereHas('user', function ($query) use ($search) {
-                            $query
-                                ->where('name', 'like', "%{$search}%")
-                                ->orWhere(
-                                    'email',
-                                    'like',
-                                    "%{$search}%"
-                                );
+                            $query->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
                         });
                 });
             })
@@ -71,11 +57,11 @@ class OrderController extends Controller
             )
             ->latest()
             ->get();
-
         /*
          * Jumlah order berdasarkan status.
          */
         $statusCounts = Order::query()
+            ->where('tenant_id', $tenantId)
             ->selectRaw('status, COUNT(*) as aggregate')
             ->groupBy('status')
             ->pluck('aggregate', 'status');
@@ -94,6 +80,9 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        abort_unless((int) $order->tenant_id === $tenantId, 404);
+        
         $order->load([
             'user',
             'items.product',
@@ -109,11 +98,11 @@ class OrderController extends Controller
         Request $request,
         Order $order
     ) {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        abort_unless((int) $order->tenant_id === $tenantId, 404);
+        
         $validated = $request->validate([
-            'status' => [
-                'required',
-                Rule::in(self::STATUSES),
-            ],
+            'status' => [ 'required', Rule::in(self::STATUSES)],
         ]);
     
         $newStatus = $validated['status'];
@@ -154,10 +143,7 @@ class OrderController extends Controller
                     // Pembayaran sudah terminal; tidak perlu membatalkan provider.
                 } elseif ($payment->provider === 'stripe') {
                     if (! $payment->stripe_payment_intent_id) {
-                        return back()->with(
-                            'error',
-                            'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.'
-                        );
+                        return back()->with('error', 'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.');
                     }
         
                     try {
@@ -253,33 +239,15 @@ class OrderController extends Controller
                             );
         
                             $verifiedTransactionStatus = strtolower(
-                                (string) (
-                                    $verifiedStatus->transaction_status ?? ''
-                                )
+                                (string) ($verifiedStatus->transaction_status ?? '')
                             );
         
-                            if (in_array(
-                                $verifiedTransactionStatus,
-                                ['cancel', 'expire', 'deny', 'failure'],
-                                true
-                            )) {
+                            if (in_array( $verifiedTransactionStatus, ['cancel', 'expire', 'deny', 'failure'], true)) {
                                 $midtransCancellationConfirmed = true;
                             } elseif (
                                 $verifiedTransactionStatus === 'settlement'
-                                || (
-                                    $verifiedTransactionStatus === 'capture'
-                                    && (
-                                        (string) ($verifiedStatus->status_code ?? '') === ''
-                                        || (string) $verifiedStatus->status_code === '200'
-                                    )
-                                    && in_array(
-                                        strtolower((string) (
-                                            $verifiedStatus->fraud_status ?? ''
-                                        )),
-                                        ['', 'accept'],
-                                        true
-                                    )
-                                )
+                                || ( $verifiedTransactionStatus === 'capture' && ((string) ($verifiedStatus->status_code ?? '') === ''|| (string) $verifiedStatus->status_code === '200') && in_array(
+                                        strtolower((string) ($verifiedStatus->fraud_status ?? '' )), ['', 'accept'], true))
                             ) {
                                 /*
                                  * Status berubah menjadi berhasil saat proses
@@ -330,11 +298,13 @@ class OrderController extends Controller
         $result = DB::transaction(function () use (
             $order,
             $newStatus,
+            $tenantId,
             $stripeCancellationConfirmed,
             $midtransCancellationConfirmed,
             $providerPaymentSucceeded
         ) {
             $lockedOrder = Order::query()
+                ->where('tenant_id', $tenantId)
                 ->lockForUpdate()
                 ->findOrFail($order->id);
     
@@ -460,9 +430,6 @@ class OrderController extends Controller
     
         return redirect()
             ->route('admin.orders.show', $order)
-            ->with(
-                'success',
-                'Status pesanan berhasil diperbarui.'
-            );
+            ->with( 'success', 'Status pesanan berhasil diperbarui.');
     }
 }

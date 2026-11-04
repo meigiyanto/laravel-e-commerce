@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Payment;
+use App\Support\Tenancy\TenantContext;
 use App\Services\VariantInventoryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -17,12 +18,17 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $orders = Order::query()
-            ->where('user_id', auth()->id())
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $user->id)
             ->with('payment')
             ->latest()
             ->paginate(10);
-
+        
+        abort_unless( (int) $order->tenant_id === $tenantId && (int) $order->user_id === (int) auth()->id(), 404);
+        
         return view('storefront.account.orders.index', compact('user', 'orders'));
     }
 
@@ -31,11 +37,12 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        abort_unless((int) $order->tenant_id === $tenantId && (int) $order->user_id === (int) auth()->id(), 404);
         /*
          * User hanya boleh melihat order miliknya sendiri.
          */
         abort_unless($order->user_id === auth()->id(), 403);
-
         $order->load(['items.product','payment','cancellationRequests']);
 
         /*

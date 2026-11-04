@@ -78,6 +78,6 @@ class Order extends Model
     
     public function tenant(): BelongsTo
     {
-        return $this->BelongsTo(Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 }
