@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Admin;
 
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -15,7 +15,7 @@ use App\Models\InventoryReservation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class AdminOrderStatusConsistencyTest extends TestCase
+class OrderStatusConsistencyTest extends TestCase
 {
     use RefreshDatabase;
 
