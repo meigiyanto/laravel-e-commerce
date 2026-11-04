@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\Middleware\SetTenantContext;
 use App\Models\Tenant;
-use App\Models\WebhookEvent;
+use App\Models\BillingWebhookEvent;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -49,7 +49,7 @@ class TenantQueueWebhookIsolationTest extends TestCase
 
     public function test_webhook_event_is_unique_per_provider_and_event_id(): void
     {
-        $first = WebhookEvent::create([
+        $first = BillingWebhookEvent::create([
             'provider' => 'test-provider',
             'event_id' => 'evt_123',
             'event_type' => 'payment.succeeded',
@@ -65,7 +65,7 @@ class TenantQueueWebhookIsolationTest extends TestCase
 
         $this->expectException(\Illuminate\Database\QueryException::class);
 
-        WebhookEvent::create([
+        BillingWebhookEvent::create([
             'provider' => 'test-provider',
             'event_id' => 'evt_123',
             'event_type' => 'payment.succeeded',
@@ -75,14 +75,14 @@ class TenantQueueWebhookIsolationTest extends TestCase
 
     public function test_same_event_id_can_exist_for_different_providers(): void
     {
-        WebhookEvent::create([
+        BillingWebhookEvent::create([
             'provider' => 'stripe',
             'event_id' => 'evt_123',
             'event_type' => 'payment.succeeded',
             'status' => 'pending',
         ]);
 
-        WebhookEvent::create([
+        BillingWebhookEvent::create([
             'provider' => 'midtrans',
             'event_id' => 'evt_123',
             'event_type' => 'payment.succeeded',

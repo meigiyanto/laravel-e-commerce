@@ -2,7 +2,7 @@
 
 namespace App\Services\Billing;
 
-use App\Models\WebhookEvent;
+use App\Models\BillingWebhookEvent;
 use Illuminate\Support\Facades\DB;
 
 class WebhookEventService
@@ -21,7 +21,7 @@ class WebhookEventService
             $payload,
             $tenantId
         ) {
-            $event = WebhookEvent::query()->firstOrCreate(
+            $event = BillingWebhookEvent::query()->firstOrCreate(
                 [
                     'provider' => $provider,
                     'event_id' => $eventId,
@@ -34,7 +34,7 @@ class WebhookEventService
                 ]
             );
 
-            $event = WebhookEvent::query()
+            $event = BillingWebhookEvent::query()
                 ->whereKey($event->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -47,7 +47,7 @@ class WebhookEventService
         });
     }
 
-    public function markProcessed(WebhookEvent $event): void
+    public function markProcessed(BillingWebhookEvent $event): void
     {
         $event->update([
             'status' => 'processed',
@@ -56,7 +56,7 @@ class WebhookEventService
         ]);
     }
 
-    public function markFailed(WebhookEvent $event, string $reason): void
+    public function markFailed(BillingWebhookEvent $event, string $reason): void
     {
         $event->update([
             'status' => 'failed',
