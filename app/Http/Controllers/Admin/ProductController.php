@@ -14,12 +14,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Gate; 
 use App\Support\Tenancy\TenantContext;
 
 class ProductController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', Product::class);
         $products = Product::with(['category', 'subCategory'])
             ->latest()
             ->get();
@@ -29,6 +31,7 @@ class ProductController extends Controller
 
     public function create()
     {
+        Gate::authorize('create', Product::class);
         [$categories, $attributes] = $this->formOptions();
 
         return view('admin.products.create', compact(
@@ -39,6 +42,7 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Product::class);
         $tenantId = app(TenantContext::class)->require()->getKey();
         $data = $request->validate([
             'category_id' => ['required', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
@@ -172,6 +176,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
+        Gate::authorize('update', Product::class);
         $product->load([
             'specifications',
             'variants.inventory',
@@ -190,6 +195,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        Gate::authorize('update', Product::class);
         $tenantId = app(TenantContext::class)->require()->getKey();
         $submittedIds = collect(
             is_array($request->input('variants', []))
@@ -655,6 +661,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        Gate::authorize('destroy', Product::class);
         if ($product->orderItems()->exists()) {
             return redirect()
                 ->route('admin.products.index')

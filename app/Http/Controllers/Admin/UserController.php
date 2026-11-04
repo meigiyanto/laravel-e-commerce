@@ -10,12 +10,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use App\Models\TenantMembership;
+use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
     /** Display users and their assigned roles. */
     public function index(Request $request): View
     {
+        Gate::authorize('viewAny', TenantMembership::class);
         $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $search = trim((string) $request->query('search', ''));
         $role = (string) $request->query('role', '');
@@ -83,38 +86,64 @@ class UserController extends Controller
     public function updateRole(Request $request, User $user): RedirectResponse
     {
         $validated = $request->validate([
-            'role' => ['required', 'string', Rule::in([
-                User::ROLE_ADMIN,
-                User::ROLE_STAFF,
-                User::ROLE_CUSTOMER,
-            ])],
+            'role' => [
+                'required',
+                Rule::in([
+                    TenantMembership::ROLE_ADMIN,
+                    TenantMembership::ROLE_PRODUCT_MANAGER,
+                    TenantMembership::ROLE_INVENTORY_MANAGER,
+                    TenantMembership::ROLE_ORDER_MANAGER,
+                    TenantMembership::ROLE_STAFF,
+                    User::ROLE_CUSTOMER,
+                ]),
+            ],
         ]);
 
-        $actor = $request->user();
+        $tenant = app(TenantContext::class)->require();
+        $tenantId = (int) $tenant->id;
+        $role = $validated['role'];
 
-        if (! $actor || ! $actor->isAdmin()) {
-            abort(403);
-        }
+        $membership = TenantMembership::query()
+        ->where('tenant_id', $tenantId)
+        ->where('user_id', $user->id)
+        ->where('status', 'active')
+        ->first();
 
-        if ($actor->is($user) && $validated['role'] !== User::ROLE_ADMIN) {
-            return back()->with('error', 'Anda tidak dapat mengubah role akun sendiri.');
-        }
-
-        if ($user->isAdmin() && $validated['role'] !== User::ROLE_ADMIN) {
-            $adminCount = User::where('role', User::ROLE_ADMIN)->count();
-
-            if ($adminCount <= 1) {
-                return back()->with('error', 'Role Admin terakhir tidak dapat diturunkan. Tetapkan Admin lain terlebih dahulu.');
+        if ($role === User::ROLE_CUSTOMER) {
+            if (! $membership) {
+                return back()->with('success', 'Pengguna tidak memiliki membership aktif.');
             }
+
+            Gate::authorize('delete', $membership);
+
+            $membership->update([
+                'status' => 'inactive',
+            ]);
+
+            return back()->with('success', 'Membership pengguna berhasil dinonaktifkan.');
         }
 
-        if ($user->role === $validated['role']) {
-            return back()->with('success', 'Role pengguna tidak berubah.');
-        }
+        Gate::authorize('assignRole', [
+            TenantMembership::class,
+            $user,
+            $role,
+        ]);
 
-        $user->role = $validated['role'];
-        $user->save();
+        TenantMembership::query()->updateOrCreate(
+            [
+                'tenant_id' => $tenantId,
+                'user_id' => $user->id,
+            ],
+            [
+                'role' => $role,
+                'status' => 'active',
+                'accepted_at' => now(),
+            ]
+        );
 
-        return back()->with('success', "Role {$user->name} berhasil diubah menjadi ".strtoupper($validated['role']).'.');
+        return back()->with(
+            'success',
+            "Role membership {$user->name} berhasil diubah."
+        );
     }
 }

@@ -9,32 +9,32 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
-    public function handle(Request $request, Closure $next, string ...$roles): Response
-    {
+    public function handle(
+        Request $request,
+        Closure $next,
+        string ...$roles
+    ): Response {
         $user = $request->user();
 
         if (! $user) {
             return redirect()->guest(route('login'));
         }
 
-        if ($user->isPlatformAdmin()) {
-            return $next($request);
-        }
-
-        if ($roles === [] || ! $user->hasAnyRole(...$roles)) {
-            abort(403, 'You are not authorized to access this resource.');
-        }
-
         $tenant = app(TenantContext::class)->current();
 
         abort_unless($tenant, 404);
 
-        $hasActiveMembership = $user->tenantMemberships()
-            ->where('tenant_id', $tenant->id)
-            ->where('status', 'active')
-            ->exists();
+        if ($user->hasPlatformTenantAccess((int) $tenant->id)) {
+            return $next($request);
+        }
 
-        abort_unless($hasActiveMembership, 403);
+        $membership = $user->activeTenantMembership((int) $tenant->id);
+
+        abort_unless($membership, 403, 'Tenant membership required.');
+
+        if ($roles !== [] && ! in_array($membership->role, $roles, true)) {
+            abort(403, 'Insufficient tenant role.');
+        }
 
         return $next($request);
     }

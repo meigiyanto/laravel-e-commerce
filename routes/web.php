@@ -145,7 +145,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
 |----------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([ 'auth', 'tenant.role:owner,admin,product_manager,inventory_manager,order_manager,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Attribute Product management
@@ -187,7 +187,7 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::resource('products', ProductController::class)->except(['show']);
 
     // Only administrators can manage user accounts or access the admin profile page.
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('tenant.role:owner,admin')->group(function () {
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');

@@ -24,7 +24,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: ['stripe/webhook', 'payment/midtrans/notification']);
         $middleware->web(prepend: [ResolveTenantFromDomain::class]);
-        $middleware->alias(['admin' => AdminMiddleware::class, 'role' => RoleMiddleware::class, RoleMiddleware::class, 'platform.admin' => PlatformAdminMiddleware::class]);
+        $middleware->alias([
+            'admin' => AdminMiddleware::class,
+            'role' => RoleMiddleware::class,
+            'tenant.role' => RoleMiddleware::class,
+            'platform.admin' => PlatformAdminMiddleware::class,
+        ]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

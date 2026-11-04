@@ -8,11 +8,13 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 
 class CategoryController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', Product::class);
         $categories = Category::withCount('subCategories')
             ->latest()
             ->get();
@@ -22,11 +24,13 @@ class CategoryController extends Controller
 
     public function create()
     {
+        Gate::authorize('viewAny', Product::class);
         return view('admin.categories.create');
     }
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Product::class);
         $tenantId = app(TenantContext::class)->require()->getKey();
 
         $validated = $request->validate([
@@ -63,11 +67,13 @@ class CategoryController extends Controller
 
     public function edit(Category $category)
     {
+        Gate::authorize('update', Product::class);
         return view('admin.categories.edit', compact('category'));
     }
 
     public function update(Request $request, Category $category)
     {
+        Gate::authorize('update', Product::class);
         $tenantId = app(TenantContext::class)->require()->getKey();
 
         $validated = $request->validate([
@@ -103,6 +109,7 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
+        Gate::authorize('destroy', Product::class);
         if ($category->products()->exists()) {
             return back()->with(
                 'error',

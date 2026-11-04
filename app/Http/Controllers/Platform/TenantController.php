@@ -126,6 +126,8 @@ class TenantController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        
+        $request->session()->put('platform_tenant_access', (int) $tenant->id);
 
         return redirect()->route('admin.dashboard');
     }

@@ -13,6 +13,14 @@ class TenantMembership extends Model
     public const ROLE_INVENTORY_MANAGER = 'inventory_manager';
     public const ROLE_ORDER_MANAGER = 'order_manager';
     public const ROLE_STAFF = 'staff';
+    public const ROLES = [
+        self::ROLE_OWNER,
+        self::ROLE_ADMIN,
+        self::ROLE_PRODUCT_MANAGER,
+        self::ROLE_INVENTORY_MANAGER,
+        self::ROLE_ORDER_MANAGER,
+        self::ROLE_STAFF,
+    ];
 
     protected $fillable = [
         'tenant_id',
