@@ -193,10 +193,7 @@ class MidtransPaymentController extends Controller
             }
 
 
-            $result = DB::transaction(function () use (
-                $order,
-                $transaction
-            ) {
+            $result = DB::transaction(function () use ($order,$transaction) {
                 $lockedOrder = Order::query()
                                 ->lockForUpdate()
                                 ->findOrFail($order->id);
@@ -330,6 +327,21 @@ class MidtransPaymentController extends Controller
                     'message' => 'Pesanan tidak ditemukan.',
                 ], 404);
             }
+            
+            // Tenant webhook harus mengikuti kepemilikan Order.
+            // Aktifkan sebelum mengakses proses yang menggunakan global scope.
+            $tenant = Tenant::query()
+                ->whereKey($order->tenant_id)
+                ->where('status', 'active')
+                ->first();
+            
+            if (! $tenant) {
+                return response()->json([
+                    'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
+                ], 404);
+            }
+            
+            $tenantContext->set($tenant);
 
             // 3. Pastikan pesanan memiliki pembayaran Midtrans.
             $payment = $order->payment;
@@ -372,20 +384,6 @@ class MidtransPaymentController extends Controller
                 ]);
             }
             
-            // Tenant webhook harus mengikuti kepemilikan Order.
-            $tenant = Tenant::query()
-                ->whereKey($order->tenant_id)
-                ->where('status', 'active')
-                ->first();
-            
-            if (! $tenant) {
-                return response()->json([
-                    'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
-                ], 404);
-            }
-            
-            $tenantContext->set($tenant);
-            
             $tenantIds = DB::table('order_items')
                 ->join('products', 'products.id', '=', 'order_items.product_id')
                 ->where('order_items.order_id', $order->id)
@@ -407,9 +405,7 @@ class MidtransPaymentController extends Controller
             );
 
             // 6. Pastikan respons API benar-benar milik pesanan ini.
-            if (
-                (string) ($transaction->order_id ?? '') !== (string) $order->order_number
-            ) {
+            if ((string) ($transaction->order_id ?? '') !== (string) $order->order_number) {
                 Log::critical('Midtrans API order ID mismatch.', [
                     'order_id' => $order->id,
                 ]);
@@ -474,12 +470,6 @@ class MidtransPaymentController extends Controller
 
             if ($payment) {
                 $this->handleLateCanceledOrderPayment($order, $payment);
-            }
-
-            $payment = Payment::query()->where('order_id', $order->id)->first();
-
-            if ($payment && $order->status === 'canceled' && $payment->status === 'succeeded') {
-                $this->refundService->requestLateCanceledOrderRefund($order, $payment);
             }
 
             if ($result === 'ignored_stale') {

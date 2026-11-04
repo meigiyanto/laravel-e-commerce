@@ -73,7 +73,7 @@ class MidtransNotificationTest extends TestCase
     ): array {
         $isCommitted = $reservationStatus === 'committed';
         
-        $tenant = Tenant::query()->findOrFail($order->tenant_id);
+        $tenant = Tenant::withoutGlobalScopes()->findOrFail($order->tenant_id);
         app(TenantContext::class)->set($tenant);
         
         $category = Category::factory()->create([
@@ -782,10 +782,25 @@ class MidtransNotificationTest extends TestCase
     ): void {
         [$order, $payment] = $this->createPendingMidtransPayment();
 
-        $product = Product::factory()->create([
-            'stock' => 8
+        $tenant = Tenant::withoutGlobalScopes()->findOrFail($order->tenant_id);
+        
+        app(TenantContext::class)->set($tenant);
+        
+        $category = Category::factory()->create([
+            'tenant_id' => $tenant->id,
         ]);
-
+        
+        $subCategory = SubCategory::factory()->create([
+            'category_id' => $category->id,
+        ]);
+        
+        $product = Product::factory()->create([
+            'tenant_id' => $tenant->id,
+            'category_id' => $category->id,
+            'sub_category_id' => $subCategory->id,
+            'stock' => 8,
+        ]);
+        
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'MIDTRANS-RESTORE-'.strtoupper($providerStatus).'-'.uniqid(),

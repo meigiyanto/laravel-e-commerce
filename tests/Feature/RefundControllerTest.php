@@ -24,6 +24,99 @@ use RuntimeException;
 class RefundControllerTest extends TestCase
 {
     use RefreshDatabase;
+    
+    private function createTenantDomain(Order $order): string
+    {
+        $tenantId = DB::table('order_items')
+            ->join('products', 'products.id', '=', 'order_items.product_id')
+            ->where('order_items.order_id', $order->id)
+            ->value('products.tenant_id');
+    
+        if (! $tenantId) {
+            throw new \LogicException(
+                "Tenant pemilik order {$order->id} tidak dapat ditemukan melalui order items."
+            );
+        }
+    
+        $tenant = Tenant::query()->findOrFail($tenantId);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'refund-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $domain;
+    }
+    
+    private function tenantUrl(
+        Order $order,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($order);
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
+    }
+    
+    private function createOrderFixture(User $user, array $attributes = []): Order
+    {
+        $tenant = Tenant::factory()->create();
+        app(TenantContext::class)->set($tenant);
+    
+        $category = Category::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Category '.Str::uuid(),
+            'slug' => 'category-'.Str::uuid(),
+        ]);
+    
+        $subCategory = SubCategory::create([
+            'category_id' => $category->id,
+            'name' => 'Subcategory '.Str::uuid(),
+            'slug' => 'subcategory-'.Str::uuid(),
+        ]);
+    
+        $product = Product::create([
+            'tenant_id' => $tenant->id,
+            'category_id' => $category->id,
+            'sub_category_id' => $subCategory->id,
+            'name' => 'Product '.Str::uuid(),
+            'slug' => 'product-'.Str::uuid(),
+            'description' => 'Refund test product',
+            'price' => 150000,
+            'stock' => 10,
+        ]);
+    
+        $order = Order::factory()->create(array_merge([
+            'tenant_id' => $tenant->id,
+            'user_id' => $user->id,
+        ], $attributes));
+    
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'price' => 150000,
+            'quantity' => 1,
+            'subtotal' => 150000,
+        ]);
+    
+        return $order;
+    }
 
     public function test_guest_cannot_request_refund(): void
     {
@@ -380,98 +473,5 @@ class RefundControllerTest extends TestCase
                 'success',
                 'Permintaan refund berhasil diajukan dan menunggu proses admin.'
             );
-    }
-    
-    private function createTenantDomain(Order $order): string
-    {
-        $tenantId = DB::table('order_items')
-            ->join('products', 'products.id', '=', 'order_items.product_id')
-            ->where('order_items.order_id', $order->id)
-            ->value('products.tenant_id');
-    
-        if (! $tenantId) {
-            throw new \LogicException(
-                "Tenant pemilik order {$order->id} tidak dapat ditemukan melalui order items."
-            );
-        }
-    
-        $tenant = Tenant::query()->findOrFail($tenantId);
-    
-        $store = Store::firstOrCreate(
-            ['tenant_id' => $tenant->id],
-            [
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-                'status' => 'active',
-            ]
-        );
-    
-        $domain = 'refund-test-'.$tenant->id.'.example.test';
-    
-        StoreDomain::updateOrCreate(
-            ['domain' => $domain],
-            [
-                'store_id' => $store->id,
-                'verification_status' => 'verified',
-                'is_primary' => true,
-            ]
-        );
-    
-        return $domain;
-    }
-    
-    private function tenantUrl(
-        Order $order,
-        string $routeName,
-        mixed $parameters = []
-    ): string {
-        $domain = $this->createTenantDomain($order);
-    
-        return 'http://'.$domain.route($routeName, $parameters, false);
-    }
-    
-    private function createOrderFixture(User $user, array $attributes = []): Order
-    {
-        $tenant = Tenant::factory()->create();
-    
-        app(TenantContext::class)->set($tenant);
-    
-        $category = Category::create([
-            'tenant_id' => $tenant->id,
-            'name' => 'Category '.Str::uuid(),
-            'slug' => 'category-'.Str::uuid(),
-        ]);
-    
-        $subCategory = SubCategory::create([
-            'category_id' => $category->id,
-            'name' => 'Subcategory '.Str::uuid(),
-            'slug' => 'subcategory-'.Str::uuid(),
-        ]);
-    
-        $product = Product::create([
-            'tenant_id' => $tenant->id,
-            'category_id' => $category->id,
-            'sub_category_id' => $subCategory->id,
-            'name' => 'Product '.Str::uuid(),
-            'slug' => 'product-'.Str::uuid(),
-            'description' => 'Refund test product',
-            'price' => 150000,
-            'stock' => 10,
-        ]);
-    
-        $order = Order::factory()->create(array_merge([
-            'user_id' => $user->id,
-        ], $attributes));
-    
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => $product->id,
-            'product_name' => $product->name,
-            'price' => 150000,
-            'quantity' => 1,
-            'subtotal' => 150000,
-        ]);
-    
-        return $order;
     }
 }

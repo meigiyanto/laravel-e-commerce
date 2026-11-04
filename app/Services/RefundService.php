@@ -41,10 +41,7 @@ class RefundService
                 ->firstOrFail();
 
             // Hanya kasus pembayaran sukses pada pesanan batal.
-            if (
-                $lockedOrder->status !== 'canceled'
-                || $lockedPayment->status !== 'succeeded'
-            ) {
+            if ($lockedOrder->status !== 'canceled'|| $lockedPayment->status !== 'succeeded') {
                 return null;
             }
 
@@ -255,11 +252,7 @@ class RefundService
                 ]);
             }
     
-            if (! in_array(
-                $payment->provider,
-                ['stripe', 'midtrans', 'cod'],
-                true
-            )) {
+            if (! in_array( $payment->provider, ['stripe', 'midtrans', 'cod'], true)) {
                 throw ValidationException::withMessages([
                     'provider' => "Provider pembayaran [{$payment->provider}] belum didukung untuk refund.",
                 ]);
@@ -481,9 +474,7 @@ class RefundService
             );
         }
 
-        $identifier =
-            $payment->transaction_id
-            ?: $refund->order?->order_number;
+        $identifier = $payment->transaction_id ?: $refund->order?->order_number;
 
         if (! $identifier) {
             return $this->markFailed(
@@ -614,9 +605,7 @@ class RefundService
         Refund $refund,
         Payment $payment
     ): Refund {
-        $identifier =
-            $payment->transaction_id
-            ?: $refund->order->order_number;
+        $identifier = $payment->transaction_id ?: $refund->order->order_number;
 
         if (! $identifier) {
             return $this->markFailed(
