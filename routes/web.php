@@ -41,6 +41,9 @@ use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\UserAddressController;
 
+use App\Http\Controllers\Platform\ManagementController;
+use App\Http\Controllers\Billing\SubscriptionController;
+
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
@@ -66,6 +69,22 @@ Route::get('/platform/tenant-access/{token}', [PlatformTenantController::class, 
 | Authenticated User Routes
 |-----------------------------------------------------------
 */
+
+Route::middleware(['auth', 'verified'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
+    Route::get('/{token}', function (string $token) {
+        return view('tenant.invitations.accept', compact('token'));
+    })->name('show');
+
+    Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
+});
+
+Route::middleware(['auth', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/domains', [ManagementController::class, 'createDomain'])->name('domains.store');
+    Route::post('/domains/{domain}/verify', [ManagementController::class, 'verifyDomain'])->name('domains.verify');
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Payment
@@ -132,7 +151,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platform.')->group(function () {
     Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
     Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
+    
     Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
+    Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
+    Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
 });
 
 /*

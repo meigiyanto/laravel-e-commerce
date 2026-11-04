@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class TenantMembership extends Model
 {
+    use HasFactory;
+    
     public const ROLE_OWNER = 'owner';
     public const ROLE_ADMIN = 'admin';
     public const ROLE_PRODUCT_MANAGER = 'product_manager';

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StoreDomain extends Model
 {
@@ -27,5 +28,11 @@ class StoreDomain extends Model
     public function store(): BelongsTo
     {
         return $this->belongsTo(Store::class);
+    }
+
+
+    public function verificationChallenge(): HasOne
+    {
+        return $this->hasOne(DomainVerificationChallenge::class);
     }
 }
