@@ -167,7 +167,7 @@
                         @if (auth()->user()->isPlatformAdmin())
                             <form method="POST" action="{{ route('platform.logout') }}">
                                 @csrf
-                        @if (auth()->user()->isAdmin())
+                        @elseif (auth()->user()->isAdmin())
                             <form method="POST" action="{{ route('admin.logout') }}">
                                 @csrf
                         @else

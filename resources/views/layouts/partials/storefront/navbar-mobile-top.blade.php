@@ -70,7 +70,7 @@
                         @elseif (auth()->user()->isAdmin())
                             <form method="POST" action="{{ route('admin.logout') }}">
                                 @csrf
-                        @elseif
+                        @else
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                         @endif
