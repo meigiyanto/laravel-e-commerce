@@ -24,7 +24,7 @@
                 <tbody>
                     @forelse ($tenants as $tenant)
                         @php
-                            $domain = $tenant->store?->domains->first();
+                            $domain = $tenant->store?->verifiedDomains->first();
                         @endphp
                         <tr>
                             <td>

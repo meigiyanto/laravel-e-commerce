@@ -20,8 +20,8 @@ class TenantController extends Controller
     public function index(): View
     {
         $tenants = Tenant::query()
-            ->with(['store.domains' => function ($query) {
-                $query->where('verification_status', 'verified');
+            ->with(['store.verifiedDomains' => function ($query) {
+                $query->orderByDesc('is_primary')->orderBy('id');
             }])
             ->latest()
             ->paginate(20);
@@ -33,13 +33,7 @@ class TenantController extends Controller
     {
         abort_unless($tenant->status === 'active', 404);
 
-        $domain = $tenant->store?->domains()
-            ->where('verification_status', 'verified')
-            ->where('is_primary', true)
-            ->first();
-
-        $domain ??= $tenant->store?->domains()->where('verification_status', 'verified')->first();
-
+        $domain = $tenant->store?->verifiedDomains()->orderByDesc('is_primary')->orderBy('id')->first();
         abort_unless($domain, 409, 'Tenant belum memiliki domain terverifikasi.');
 
         // Domain harus berupa hostname, bukan URL atau path bebas.
@@ -69,9 +63,7 @@ class TenantController extends Controller
 
         $scheme = app()->environment('local') ? 'http' : 'https';
 
-        return redirect()->away(
-            $scheme.'://'.$domain->domain.'/platform/tenant-access/'.$plainToken
-        );
+        return redirect()->away($scheme.'://'.$domain->domain.'/platform/tenant-access/'.$plainToken);
     }
 
     public function consume(Request $request, string $token): RedirectResponse
@@ -129,7 +121,9 @@ class TenantController extends Controller
     {
         $tenant->load([
             'creator:id,name,email',
-            'store.verifiedDomains',
+            'store.verifiedDomains' => function ($query) {
+                $query->orderByDesc('is_primary')->orderBy('id');
+            },
             'activeMemberships' => function ($query) {
                 $query->with('user:id,name,email')->latest();
             },
@@ -146,16 +140,6 @@ class TenantController extends Controller
                     'created_at',
                 ])->with('inviter:id,name,email')->latest();
             },
-            'auditLogs' => function ($query) {
-                $query->select([
-                    'id',
-                    'tenant_id',
-                    'user_id',
-                    'action',
-                    'ip_address',
-                    'created_at',
-                ])->with('user:id,name,email')->latest()->limit(15);
-            },
         ]);
 
         $tenant->loadCount([
@@ -168,6 +152,22 @@ class TenantController extends Controller
             'invoices',
         ]);
 
-        return view('platform.tenants.show', compact('tenant'));
+        $invoices = $tenant->invoices()
+            ->select([
+                'id',
+                'tenant_id',
+                'invoice_number',
+                'status',
+                'currency',
+                'total',
+                'issued_at',
+                'due_at',
+                'paid_at',
+            ])
+            ->latest('issued_at')
+            ->latest('id')
+            ->paginate(10, ['*'], 'invoices_page');
+
+        return view('platform.tenants.show', compact('tenant', 'invoices'));
     }
 }

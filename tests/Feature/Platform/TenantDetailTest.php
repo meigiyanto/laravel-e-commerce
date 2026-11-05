@@ -4,6 +4,11 @@ namespace Tests\Feature\Platform;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Store;
+use App\Models\StoreDomain;
+use App\Models\TenantInvitation;
+use App\Models\TenantMembership;
+use App\Models\Invoice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,12 +32,12 @@ class TenantDetailTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('platform.tenants.show', $tenant))
-            ->assertOk()
-            ->assertViewIs('platform.tenants.show')
-            ->assertViewHas('tenant', function ($result) use ($tenant) {
-                return $result->is($tenant);
-            });
+        ->get(route('platform.tenants.show', $tenant))
+        ->assertOk()
+        ->assertViewIs('platform.tenants.show')
+        ->assertViewHas('tenant', function ($result) use ($tenant) {
+            return $result->is($tenant);
+        });
     }
 
     public function test_regular_admin_cannot_open_tenant_detail(): void
@@ -51,14 +56,14 @@ class TenantDetailTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('platform.tenants.show', $tenant))
-            ->assertForbidden();
+        ->get(route('platform.tenants.show', $tenant))
+        ->assertForbidden();
     }
 
     public function test_guest_cannot_open_tenant_detail(): void
     {
         $this->get('/platform/tenants/1')
-            ->assertRedirect(route('login'));
+        ->assertRedirect(route('login'));
     }
 
     public function test_missing_tenant_returns_not_found(): void
@@ -68,7 +73,31 @@ class TenantDetailTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/platform/tenants/999999')
-            ->assertNotFound();
+        ->get('/platform/tenants/999999')
+        ->assertNotFound();
+    }
+
+    public function test_tenant_detail_displays_overview_information(): void
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $owner = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Tenant Overview',
+            'slug' => 'tenant-overview',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('platform.tenants.show', $tenant))
+            ->assertOk()
+            ->assertSee('Tenant Overview')
+            ->assertSee($owner->name)
+            ->assertSee('Tenant Information')
+            ->assertSee('Billing &amp; Invoices', false);
     }
 }
