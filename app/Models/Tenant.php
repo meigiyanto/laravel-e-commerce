@@ -38,8 +38,8 @@ class Tenant extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'tenant_memberships')
-            ->withPivot(['id', 'role', 'status', 'invited_at', 'accepted_at'])
-            ->withTimestamps();
+        ->withPivot(['id', 'role', 'status', 'invited_at', 'accepted_at'])
+        ->withTimestamps();
     }
 
     public function store(): HasOne
@@ -65,5 +65,10 @@ class Tenant extends Model
     public function subscriptionPayments(): HasMany
     {
         return $this->hasMany(SubscriptionPayment::class);
+    }
+
+    public function tenantAuditLogs(): HasMany
+    {
+        return $this->hasMany(TenantAuditLog::class);
     }
 }
