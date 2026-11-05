@@ -11,30 +11,30 @@ return new class extends Migration
 
     public function up(): void
     {
+        Schema::table('platform_audit_logs', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
+            $table->dropForeign(['tenant_id']);
+    
+            $table->foreign('user_id')
+                ->references('id')->on('users')->restrictOnDelete();
+    
+            $table->foreign('tenant_id')
+                ->references('id')->on('tenants')->restrictOnDelete();
+        });
+    
         $driver = DB::connection()->getDriverName();
-
+    
         match ($driver) {
             'sqlite' => $this->protectSqlite(),
-            'mysql',
-            'mariadb' => $this->protectMysql(),
+            'mysql', 'mariadb' => $this->protectMysql(),
             'pgsql' => $this->protectPostgres(),
             'sqlsrv' => $this->protectSqlServer(),
             default => throw new RuntimeException(
                 "Unsupported database driver: {$driver}"
             ),
         };
-        
-        Schema::table('platform_audit_logs', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropForeign(['tenant_id']);
-
-            $table->foreign('user_id')
-            ->references('id')->on('users')->restrictOnDelete();
-
-            $table->foreign('tenant_id')
-            ->references('id')->on('tenants')->restrictOnDelete();
-        });
     }
+
 
     private function protectSqlite(): void
     {

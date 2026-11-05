@@ -128,16 +128,6 @@ class PlatformAuditLogSecurityTest extends TestCase
     public function test_database_rejects_direct_audit_log_update(): void
     {
         $log = $this->createAuditLog();
-        
-        dump([
-            'driver' => DB::connection()->getDriverName(),
-            'triggers' => DB::select("
-                SELECT name, sql
-                FROM sqlite_master
-                WHERE type = 'trigger'
-                AND tbl_name = 'platform_audit_logs'
-            "),
-        ]);
 
         try {
             DB::table('platform_audit_logs')
@@ -161,16 +151,6 @@ class PlatformAuditLogSecurityTest extends TestCase
     public function test_database_rejects_direct_audit_log_delete(): void
     {
         $log = $this->createAuditLog();
-        
-        dump([
-            'driver' => DB::connection()->getDriverName(),
-            'triggers' => DB::select("
-                SELECT name, sql
-                FROM sqlite_master
-                WHERE type = 'trigger'
-                AND tbl_name = 'platform_audit_logs'
-            "),
-        ]);
 
         try {
             DB::table('platform_audit_logs')
@@ -221,26 +201,47 @@ class PlatformAuditLogSecurityTest extends TestCase
     {
         $driver = DB::connection()->getDriverName();
 
-        dump([
-            'driver' => $driver,
-            'database' => DB::connection()->getDatabaseName(),
-        ]);
-
         if ($driver === 'mysql') {
-            dump(DB::select(
+            DB::select(
                 "SHOW TRIGGERS WHERE `Table` = 'platform_audit_logs'"
-            ));
+            );
         }
 
         if ($driver === 'sqlite') {
-            dump(DB::select("
+            DB::select("
             SELECT name, sql
             FROM sqlite_master
             WHERE type = 'trigger'
             AND tbl_name = 'platform_audit_logs'
-        "));
+        ");
         }
 
         $this->assertTrue(true);
+    }
+
+    public function test_database_triggers_are_registered(): void
+    {
+        $driver = DB::connection()->getDriverName();
+
+        $this->assertSame('sqlite', $driver);
+
+        $triggers = DB::select("
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'trigger'
+        AND tbl_name = 'platform_audit_logs'
+    ");
+
+        $names = collect($triggers)->pluck('name')->all();
+
+        $this->assertContains(
+            'platform_audit_logs_prevent_update',
+            $names
+        );
+
+        $this->assertContains(
+            'platform_audit_logs_prevent_delete',
+            $names
+        );
     }
 }
