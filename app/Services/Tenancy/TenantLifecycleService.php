@@ -32,7 +32,7 @@ class TenantLifecycleService
             ]);
         }
 
-        return $this->changeStatus($tenant,$actor,'suspended',['reason' => $reason]);
+        return $this->changeStatus($tenant, $actor, 'suspended');
     }
 
     public function changeStatus(
@@ -72,7 +72,6 @@ class TenantLifecycleService
                 metadata: [
                     'from' => $previous,
                     'to' => $status,
-                    ...array_intersect_key($metadata, ['reason' => true]),
                 ],
             );
 

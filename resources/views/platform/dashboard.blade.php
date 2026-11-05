@@ -26,5 +26,13 @@
         </div>
     @endforeach
 </div>
-<a href="{{ route('platform.tenants.index') }}" class="btn btn-primary mt-3">Manage Tenants</a>
+
+<div class="d-flex flex-wrap gap-2 mt-3">
+    <a href="{{ route('platform.tenants.index') }}" class="btn btn-primary">
+        Manage Tenants
+    </a>
+    <a href="{{ route('platform.audit-logs.index') }}" class="btn btn-outline-primary">
+        View Audit Logs
+    </a>
+</div>
 @endsection

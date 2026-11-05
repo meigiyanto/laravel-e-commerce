@@ -41,6 +41,15 @@
                             <span class="nk-menu-text">Tenants Management</span>
                         </a>
                     </li>
+                    <li class="nk-menu-heading">
+                        <h6 class="overline-title text-primary-alt">Security</h6>
+                    </li>
+                    <li class="nk-menu-item {{ request()->routeIs('platform.audit-logs.*') ? 'active' : '' }}">
+                        <a href="{{ route('platform.audit-logs.index') }}" class="nk-menu-link">
+                            <span class="nk-menu-icon"><em class="icon ni ni-activity"></em></span>
+                            <span class="nk-menu-text">Audit Logs</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

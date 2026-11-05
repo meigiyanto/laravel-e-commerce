@@ -18,7 +18,7 @@ class TenantProvisioningService
     public function __construct(
         private readonly PlatformAuditLogger $auditLogger,
     ) {}
-    
+
     public function provision(
         User $platformAdmin,
         string $tenantName,
@@ -69,16 +69,15 @@ class TenantProvisioningService
                 'status' => 'pending',
                 'expires_at' => now()->addDays(3),
             ]);
-            
+
             $this->auditLogger->record(
                 actor: $platformAdmin,
                 action: PlatformAuditAction::TENANT_PROVISIONED,
                 tenant: $tenant,
                 metadata: [
-                    'store_id' => $store->id,
+                    'store_id' => (int) $store->id,
                     'tenant_name' => $tenant->name,
                     'store_name' => $store->name,
-                    'owner_email' => $ownerEmail,
                 ],
             );
 

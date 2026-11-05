@@ -20,6 +20,9 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Billing\SubscriptionController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+
+use App\Http\Controllers\Platform\AuditLogController;
+
 /**
  * Store Front
  */
@@ -150,6 +153,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
     Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
     Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
     Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
+    Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 });
 /*
 |-----------------------------------------------------------
