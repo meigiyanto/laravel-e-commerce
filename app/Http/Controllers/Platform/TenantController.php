@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Platform;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformAccessToken;
 use App\Models\PlatformAuditLog;
-use App\Models\StoreDomain;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Tenancy\TenantContext;
@@ -39,18 +38,12 @@ class TenantController extends Controller
             ->where('is_primary', true)
             ->first();
 
-        $domain ??= $tenant->store?->domains()
-            ->where('verification_status', 'verified')
-            ->first();
+        $domain ??= $tenant->store?->domains()->where('verification_status', 'verified')->first();
 
         abort_unless($domain, 409, 'Tenant belum memiliki domain terverifikasi.');
 
         // Domain harus berupa hostname, bukan URL atau path bebas.
-        abort_unless(
-            filter_var($domain->domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME),
-            409,
-            'Domain tenant tidak valid.'
-        );
+        abort_unless(filter_var($domain->domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME), 409, 'Domain tenant tidak valid.');
 
         $plainToken = Str::random(64);
 
@@ -126,9 +119,55 @@ class TenantController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
-        
+
         $request->session()->put('platform_tenant_access', (int) $tenant->id);
 
         return redirect()->route('admin.dashboard');
+    }
+
+    public function show(Tenant $tenant): View
+    {
+        $tenant->load([
+            'creator:id,name,email',
+            'store.verifiedDomains',
+            'activeMemberships' => function ($query) {
+                $query->with('user:id,name,email')->latest();
+            },
+            'invitations' => function ($query) {
+                $query->select([
+                    'id',
+                    'tenant_id',
+                    'invited_by',
+                    'email',
+                    'role',
+                    'status',
+                    'expires_at',
+                    'accepted_at',
+                    'created_at',
+                ])->with('inviter:id,name,email')->latest();
+            },
+            'auditLogs' => function ($query) {
+                $query->select([
+                    'id',
+                    'tenant_id',
+                    'user_id',
+                    'action',
+                    'ip_address',
+                    'created_at',
+                ])->with('user:id,name,email')->latest()->limit(15);
+            },
+        ]);
+
+        $tenant->loadCount([
+            'memberships as active_memberships_count' => function ($query) {
+                $query->where('status', 'active');
+            },
+            'invitations as pending_invitations_count' => function ($query) {
+                $query->where('status', 'pending');
+            },
+            'invoices',
+        ]);
+
+        return view('platform.tenants.show', compact('tenant'));
     }
 }

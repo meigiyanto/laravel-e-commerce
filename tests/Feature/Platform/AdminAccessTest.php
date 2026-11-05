@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Platform;
 
 use App\Models\PlatformAccessToken;
 use App\Models\Store;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-class PlatformAdminAccessTest extends TestCase
+class AdminAccessTest extends TestCase
 {
     use RefreshDatabase;
 
