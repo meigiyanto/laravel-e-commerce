@@ -153,7 +153,9 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
     Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
     Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
     Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
+    
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+    Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->whereNumber('auditLog')->name('audit-logs.show');
 });
 /*
 |-----------------------------------------------------------

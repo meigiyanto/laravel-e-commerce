@@ -20,38 +20,57 @@ class AuditLogController extends Controller
         ]);
 
         $logs = PlatformAuditLog::query()
-            ->with([
-                'user:id,name,email',
-                'tenant:id,name,slug',
-            ])
-            ->when($filters['action'] ?? null, function ($query, $action) {
-                $query->where('action', $action);
-            })
-            ->when($filters['tenant_id'] ?? null, function ($query, $tenantId) {
-                $query->where('tenant_id', $tenantId);
-            })
-            ->when($filters['user_id'] ?? null, function ($query, $userId) {
-                $query->where('user_id', $userId);
-            })
-            ->when($filters['from'] ?? null, function ($query, $date) {
-                $query->whereDate('created_at', '>=', $date);
-            })
-            ->when($filters['to'] ?? null, function ($query, $date) {
-                $query->whereDate('created_at', '<=', $date);
-            })
-            ->latest('id')
-            ->paginate(25)
-            ->withQueryString();
+        ->with([
+            'user:id,name,email',
+            'tenant:id,name,slug',
+        ])
+        ->when($filters['action'] ?? null, function ($query, $action) {
+            $query->where('action', $action);
+        })
+        ->when($filters['tenant_id'] ?? null, function ($query, $tenantId) {
+            $query->where('tenant_id', $tenantId);
+        })
+        ->when($filters['user_id'] ?? null, function ($query, $userId) {
+            $query->where('user_id', $userId);
+        })
+        ->when($filters['from'] ?? null, function ($query, $date) {
+            $query->whereDate('created_at', '>=', $date);
+        })
+        ->when($filters['to'] ?? null, function ($query, $date) {
+            $query->whereDate('created_at', '<=', $date);
+        })
+        ->latest('id')
+        ->paginate(25)
+        ->withQueryString();
 
         return view('platform.audit-logs.index', [
             'logs' => $logs,
             'filters' => $filters,
-            'actions' => [
-                'tenant.provisioned' => 'Tenant Provisioned',
-                'tenant.status_changed' => 'Tenant Status Changed',
-                'tenant.access_requested' => 'Tenant Access Requested',
-                'tenant.access_granted' => 'Tenant Access Granted',
-            ],
+            'actions' => $this->actions(),
         ]);
+    }
+
+    public function show(PlatformAuditLog $auditLog): View
+    {
+        $auditLog->load([
+            'user:id,name,email',
+            'tenant:id,name,slug',
+        ]);
+
+        return view('platform.audit-logs.show', [
+            'log' => $auditLog,
+            'metadata' => $auditLog->metadata ?? [],
+            'actions' => $this->actions(),
+        ]);
+    }
+
+    private function actions(): array
+    {
+        return [
+            'tenant.provisioned' => 'Tenant Provisioned',
+            'tenant.status_changed' => 'Tenant Status Changed',
+            'tenant.access_requested' => 'Tenant Access Requested',
+            'tenant.access_granted' => 'Tenant Access Granted',
+        ];
     }
 }

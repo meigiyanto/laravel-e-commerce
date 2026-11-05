@@ -123,6 +123,10 @@
                                     @default
                                         <span class="text-soft">No details available</span>
                                 @endswitch
+                                <a href="{{ route('platform.audit-logs.show', $log) }}"
+                                    class="btn btn-sm btn-outline-primary mt-2">
+                                    View Details
+                                </a>
                             </td>
                             <td>
                                 <div>IP: {{ $log->ip_address ?? '-' }}</div>
