@@ -52,9 +52,33 @@ class LoginRequest extends FormRequest
         ];
     }
 
-    public function authenticate(): void
+    public function authenticateStorefront(): void
+     {
+         $this->attemptAuthentication();
+
+        if (Auth::user()?->isPlatformAdmin()) {
+            $this->rejectAuthenticatedUser();
+        }
+     }
+
+
+    public function authenticatePlatform(): void
     {
         $this->attemptAuthentication();
+
+        if (! Auth::user()?->isPlatformAdmin()) {
+            $this->rejectAuthenticatedUser();
+        }
+    }
+
+    private function rejectAuthenticatedUser(): never
+    {
+        Auth::guard('web')->logout();
+        RateLimiter::hit($this->throttleKey());
+
+        throw ValidationException::withMessages([
+            'email' => trans('auth.failed'),
+        ]);
     }
 
     public function authenticateAdmin(): void

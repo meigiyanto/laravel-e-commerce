@@ -11,23 +11,29 @@ use Tests\TestCase;
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected Tenant $tenant;
 
     protected function setUp(): void
     {
         parent::setUp();
-    
+
         $tenant = Tenant::factory()->create([
             'name' => 'Default Tenant',
             'slug' => 'default',
             'status' => 'active',
         ]);
-        
+
         $this->tenant = $tenant;
 
+        TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $admin->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+        ]);
     }
-    
+
     public function test_login_screen_can_be_rendered(): void
     {
         $this->get('/login')->assertOk();
@@ -109,7 +115,7 @@ class AuthenticationTest extends TestCase
     public function test_guest_is_redirected_to_admin_login_when_accessing_admin_dashboard(): void
     {
         $this->get('/admin/dashboard')
-            ->assertRedirect(route('admin.login'));
+        ->assertRedirect(route('admin.login'));
     }
 
     public function test_customer_is_forbidden_from_accessing_admin_dashboard(): void
@@ -119,8 +125,8 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->actingAs($customer)
-            ->get('/admin/dashboard')
-            ->assertForbidden();
+        ->get('/admin/dashboard')
+        ->assertForbidden();
     }
 
     public function test_staff_can_access_the_operational_dashboard(): void
@@ -128,17 +134,19 @@ class AuthenticationTest extends TestCase
         $staff = User::factory()->create([
             'role' => User::ROLE_STAFF,
         ]);
-    
+
         TenantMembership::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $staff->id,
             'role' => TenantMembership::ROLE_STAFF,
             'status' => 'active',
         ]);
-    
+
         $this->actingAs($staff)
-            ->get('/admin/dashboard')
-            ->assertOk();
+        ->get('/admin/dashboard')
+        ->assertOk();
+        
+        $response->assertRedirect(route('account.index', absolute: false));
     }
 
     public function test_staff_cannot_access_user_management_or_admin_profile(): void
@@ -148,12 +156,12 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->actingAs($staff)
-            ->get('/admin/users')
-            ->assertForbidden();
+        ->get('/admin/users')
+        ->assertForbidden();
 
         $this->actingAs($staff)
-            ->get('/admin/profile')
-            ->assertForbidden();
+        ->get('/admin/profile')
+        ->assertForbidden();
     }
 
     public function test_staff_login_redirects_to_the_operational_dashboard(): void
