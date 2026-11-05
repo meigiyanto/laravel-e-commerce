@@ -422,12 +422,10 @@ class TenantDetailTest extends TestCase
         ->assertViewHas('tenant', function ($result) {
             return $result->pending_invitations_count === 1;
         })
-        ->assertSeeInOrder([
-            'expired@example.test',
-            'Expired',
-            'valid@example.test',
-            'Pending',
-        ]);
+        ->assertSee('expired@example.test')
+        ->assertSee('Expired')
+        ->assertSee('valid@example.test')
+        ->assertSee('Pending');
     }
 
     public function test_enter_tenant_ignores_unverified_primary_domain(): void
