@@ -28,7 +28,7 @@
                 @auth
                 {{-- Wishlist --}}
                 @php
-                $wishlistCount = auth()->user()->wishlistProducts()->count();
+                    $wishlistCount = auth()->user()->wishlistProducts()->count();
                 @endphp
 
                 <a href="{{ route('wishlist.index') }}" class="store-action d-none d-md-inline-flex" title="Wishlist">
@@ -48,7 +48,7 @@
 
                 {{-- Compare --}}
                 @php
-                $compareCount = count(session('compare', []));
+                    $compareCount = count(session('compare', []));
                 @endphp
 
                 <a href="{{ route('compare.index') }}" class="store-action d-md-none d-md-inline-flex" title="Komparasi Produk">
@@ -70,17 +70,14 @@
 
                 {{-- Cart --}}
                 @php
-                $cartCount = auth()->user()->cart?->items()->sum('quantity') ?? 0;
+                    $cartCount = auth()->user()->cart?->items()->sum('quantity') ?? 0;
                 @endphp
 
                 <a href="{{ route('cart.index') }}" class="store-action d-sm-none d-md-inline-flex" title="Keranjang">
                     <span class="store-action-icon">
                         <i class="bi bi-cart3"></i>
 
-                        <span
-                            id="cart-count-badge"
-                            class="store-badge {{ $cartCount < 1 ? 'd-none' : '' }}"
-                            >
+                        <span id="cart-count-badge" class="store-badge {{ $cartCount < 1 ? 'd-none' : '' }}">
                             {{ $cartCount }}
                         </span>
                     </span>

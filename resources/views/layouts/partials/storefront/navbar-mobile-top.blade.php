@@ -17,14 +17,7 @@
 
             {{-- User --}}
             <div class="dropdown store-mobile-user-dropdown">
-                <button
-                    type="button"
-                    class="store-mobile-user"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                    aria-label="Account"
-                    title="Account"
-                >
+                <button type="button" class="store-mobile-user" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account" title="Account">
                     <i class="bi bi-person-circle" aria-hidden="true"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
@@ -71,16 +64,17 @@
                         </li>
 
                         <li>
-                            <form
-                                method="POST"
-                                action="{{ route('logout') }}"
-                            >
+                        @if (auth()->user()->isPlatformAdmin())
+                            <form method="POST" action="{{ route('platform.logout') }}">
                                 @csrf
-
-                                <button
-                                    type="submit"
-                                    class="dropdown-item text-danger"
-                                >
+                        @elseif (auth()->user()->isAdmin())
+                            <form method="POST" action="{{ route('admin.logout') }}">
+                                @csrf
+                        @elseif
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                        @endif
+                                <button type="submit" class="dropdown-item text-danger">
                                     <i class="bi bi-box-arrow-right"></i>
                                     Logout
                                 </button>
@@ -88,20 +82,14 @@
                         </li>
                     @else
                         <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('login') }}"
-                            >
+                            <a class="dropdown-item" href="{{ route('login') }}">
                                 <i class="bi bi-box-arrow-in-right"></i>
                                 Login
                             </a>
                         </li>
                         @if (Route::has('register'))
                             <li>
-                                <a
-                                    class="dropdown-item"
-                                    href="{{ route('register') }}"
-                                >
+                                <a class="dropdown-item" href="{{ route('register') }}">
                                     <i class="bi bi-person-plus"></i>
                                     Daftar
                                 </a>
