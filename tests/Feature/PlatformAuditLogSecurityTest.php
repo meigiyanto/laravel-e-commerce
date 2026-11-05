@@ -128,6 +128,16 @@ class PlatformAuditLogSecurityTest extends TestCase
     public function test_database_rejects_direct_audit_log_update(): void
     {
         $log = $this->createAuditLog();
+        
+        dump([
+            'driver' => DB::connection()->getDriverName(),
+            'triggers' => DB::select("
+                SELECT name, sql
+                FROM sqlite_master
+                WHERE type = 'trigger'
+                AND tbl_name = 'platform_audit_logs'
+            "),
+        ]);
 
         try {
             DB::table('platform_audit_logs')
@@ -151,6 +161,16 @@ class PlatformAuditLogSecurityTest extends TestCase
     public function test_database_rejects_direct_audit_log_delete(): void
     {
         $log = $this->createAuditLog();
+        
+        dump([
+            'driver' => DB::connection()->getDriverName(),
+            'triggers' => DB::select("
+                SELECT name, sql
+                FROM sqlite_master
+                WHERE type = 'trigger'
+                AND tbl_name = 'platform_audit_logs'
+            "),
+        ]);
 
         try {
             DB::table('platform_audit_logs')

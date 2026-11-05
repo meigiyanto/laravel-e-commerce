@@ -41,20 +41,22 @@ return new class extends Migration
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER platform_audit_logs_prevent_update
             BEFORE UPDATE ON platform_audit_logs
+            FOR EACH ROW
             BEGIN
                 SELECT RAISE(ABORT, 'Platform audit logs are immutable.');
             END;
         SQL);
-
+    
         DB::unprepared(<<<'SQL'
             CREATE TRIGGER platform_audit_logs_prevent_delete
             BEFORE DELETE ON platform_audit_logs
+            FOR EACH ROW
             BEGIN
                 SELECT RAISE(ABORT, 'Platform audit logs are immutable.');
             END;
         SQL);
     }
-
+    
     private function protectMysql(): void
     {
         DB::unprepared(<<<'SQL'
