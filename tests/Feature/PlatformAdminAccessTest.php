@@ -176,4 +176,21 @@ class PlatformAdminAccessTest extends TestCase
             'http://tenant-b.example.test/platform/tenant-access/'.$plainToken
         )->assertNotFound();
     }
+    
+    public function test_platform_dashboard_renders_platform_navigation(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+    
+        $this->actingAs($user)
+            ->get(route('platform.dashboard'))
+            ->assertOk()
+            ->assertSee(route('platform.dashboard'))
+            ->assertSee(route('platform.tenants.index'))
+            ->assertSee(route('storefront.home'))
+            ->assertSee('Platform Administrator')
+            ->assertSee('Platform Dashboard')
+            ->assertDontSee(route('admin.dashboard'));
+    }
 }

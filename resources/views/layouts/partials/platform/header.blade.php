@@ -2,7 +2,7 @@
     <div class="container-fluid">
         <div class="nk-header-wrap">
             <div class="nk-menu-trigger d-xl-none ms-n1">
-                <a href="{{ route('platform.dashboard') }}" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu">
+                <a href="#" class="nk-nav-toggle nk-quick-nav-icon" data-target="sidebarMenu">
                     <em class="icon ni ni-menu"></em>
                 </a>
             </div>
@@ -138,7 +138,7 @@
                                         <li>
                                             <a href="{{ route('platform.dashboard') }}">
                                                 <em class="icon ni ni-dashboard"></em>
-                                                <span>Admin Dashboard</span>
+                                                <span>Platform Dashboard</span>
                                             </a>
                                         </li>
                                     @endif
