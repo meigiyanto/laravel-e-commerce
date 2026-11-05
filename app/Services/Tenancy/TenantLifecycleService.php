@@ -32,12 +32,7 @@ class TenantLifecycleService
             ]);
         }
 
-        return $this->changeStatus(
-            $tenant,
-            $actor,
-            'suspended',
-            ['reason' => $reason]
-        );
+        return $this->changeStatus($tenant,$actor,'suspended',['reason' => $reason]);
     }
 
     public function changeStatus(
