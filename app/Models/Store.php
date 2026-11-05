@@ -32,6 +32,11 @@ class Store extends Model
         return $this->hasMany(StoreDomain::class);
     }
 
+    public function verifiedDomains(): HasMany
+    {
+        return $this->domains()->where('verification_status', 'verified');
+    }
+
     public function primaryDomain(): HasMany
     {
         return $this->domains()->where('is_primary', true);

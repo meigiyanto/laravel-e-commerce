@@ -91,4 +91,62 @@ class TenancyFoundationTest extends TestCase
         $this->assertSame(1, Artisan::call('tenancy:bootstrap-default'));
         $this->assertDatabaseCount('tenants', 0);
     }
+
+    public function test_active_memberships_only_returns_active_members(): void
+    {
+        $owner = User::factory()->create();
+        $activeUser = User::factory()->create();
+        $pendingUser = User::factory()->create();
+
+        $tenant = $this->createTenant($owner, 'Tenant A', 'tenant-a');
+
+        $activeMembership = TenantMembership::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $activeUser->id,
+            'role' => TenantMembership::ROLE_STAFF,
+            'status' => 'active',
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $pendingUser->id,
+            'role' => TenantMembership::ROLE_STAFF,
+            'status' => 'pending',
+        ]);
+
+        $memberships = $tenant->activeMemberships()->get();
+
+        $this->assertCount(1, $memberships);
+        $this->assertTrue($memberships->first()->is($activeMembership));
+    }
+
+    public function test_verified_domains_only_returns_verified_domains(): void
+    {
+        $owner = User::factory()->create();
+        $tenant = $this->createTenant($owner, 'Tenant A', 'tenant-a');
+
+        $store = Store::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Store A',
+            'slug' => 'store-a',
+            'status' => 'active',
+        ]);
+
+        $verifiedDomain = StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'verified.example.test',
+            'verification_status' => 'verified',
+        ]);
+
+        StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'pending.example.test',
+            'verification_status' => 'pending',
+        ]);
+
+        $domains = $store->verifiedDomains()->get();
+
+        $this->assertCount(1, $domains);
+        $this->assertTrue($domains->first()->is($verifiedDomain));
+    }
 }
