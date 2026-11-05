@@ -25,6 +25,9 @@ class ResolveTenantFromDomain
             }
 
             $host = strtolower(rtrim($request->getHost(), '.'));
+            
+            $host = $request->getHost();
+
             Log::debug('Tenant resolver test', [
                 'host' => $host,
                 'path' => $request->path(),

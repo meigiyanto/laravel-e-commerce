@@ -13,11 +13,14 @@ class PlatformAuditLogger
 {
     private const CONTRACTS = [
         PlatformAuditAction::TENANT_PROVISIONED => [
-            'required' => ['store_id', 'tenant_name', 'store_name'],
+            'required' => ['store_id',
+                'tenant_name',
+                'store_name'],
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_STATUS_CHANGED => [
-            'required' => ['from', 'to'],
+            'required' => ['from',
+                'to'],
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_ACCESS_REQUESTED => [
@@ -25,7 +28,8 @@ class PlatformAuditLogger
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_ACCESS_GRANTED => [
-            'required' => ['access_token_id', 'domain'],
+            'required' => ['access_token_id',
+                'domain'],
             'optional' => [],
         ],
     ];
@@ -99,11 +103,25 @@ class PlatformAuditLogger
 
     private function sanitizeMetadata(array $metadata): array
     {
+        $sensitiveKeys = [
+            'password',
+            'password_confirmation',
+            'secret',
+            'access_token',
+            'plain_token',
+            'token',
+            'token_hash',
+            'authorization',
+            'cookie',
+            'set_cookie',
+            'email',
+            'owner_email',
+        ];
+
         foreach ($metadata as $key => $value) {
-            if (preg_match(
-                '/password|secret|token|authorization|cookie|email/i',
-                (string) $key
-            )) {
+            $normalizedKey = strtolower((string) $key);
+
+            if (in_array($normalizedKey, $sensitiveKeys, true)) {
                 unset($metadata[$key]);
                 continue;
             }
@@ -132,36 +150,36 @@ class PlatformAuditLogger
     {
         $valid = match ($action) {
             PlatformAuditAction::TENANT_PROVISIONED =>
-                is_int($metadata['store_id']) &&
-                is_string($metadata['tenant_name']) &&
-                mb_strlen($metadata['tenant_name']) <= 150 &&
-                is_string($metadata['store_name']) &&
-                mb_strlen($metadata['store_name']) <= 150,
+            is_int($metadata['store_id']) &&
+            is_string($metadata['tenant_name']) &&
+            mb_strlen($metadata['tenant_name']) <= 150 &&
+            is_string($metadata['store_name']) &&
+            mb_strlen($metadata['store_name']) <= 150,
 
             PlatformAuditAction::TENANT_STATUS_CHANGED =>
-                in_array($metadata['from'], [
-                    'pending', 'active', 'suspended',
-                ], true) &&
-                in_array($metadata['to'], [
-                    'pending', 'active', 'suspended',
-                ], true),
+            in_array($metadata['from'], [
+                'pending', 'active', 'suspended',
+            ], true) &&
+            in_array($metadata['to'], [
+                'pending', 'active', 'suspended',
+            ], true),
 
             PlatformAuditAction::TENANT_ACCESS_REQUESTED =>
-                is_string($metadata['domain']) &&
-                mb_strlen($metadata['domain']) <= 253,
+            is_string($metadata['domain']) &&
+            mb_strlen($metadata['domain']) <= 253,
 
             PlatformAuditAction::TENANT_ACCESS_GRANTED =>
-                is_int($metadata['access_token_id']) &&
-                is_string($metadata['domain']) &&
-                mb_strlen($metadata['domain']) <= 253,
+            is_int($metadata['access_token_id']) &&
+            is_string($metadata['domain']) &&
+            mb_strlen($metadata['domain']) <= 253,
 
             default => false,
-        };
+            };
 
-        if (!$valid) {
-            throw new InvalidArgumentException(
-                "Invalid metadata values for {$action}"
-            );
+            if (!$valid) {
+                throw new InvalidArgumentException(
+                    "Invalid metadata values for {$action}"
+                );
+            }
         }
     }
-}
