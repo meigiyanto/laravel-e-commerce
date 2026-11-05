@@ -38,10 +38,9 @@
                     <li class="nk-menu-item {{ request()->routeIs('platform.tenants.*') ? 'active' : '' }}">
                         <a href="{{ route('platform.tenants') }}" class="nk-menu-link">
                             <span class="nk-menu-icon"><em class="icon ni ni-package"></em></span>
-                            <span class="nk-menu-text">Platform Management</span>
+                            <span class="nk-menu-text">Tenants Management</span>
                         </a>
                     </li>
-
                 </ul>
             </div>
         </div>

@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ResolveTenantFromDomain
@@ -24,7 +25,7 @@ class ResolveTenantFromDomain
             }
 
             $host = strtolower(rtrim($request->getHost(), '.'));
-            \Illuminate\Support\Facades\Log::debug('Tenant resolver test', [
+            Log::debug('Tenant resolver test', [
                 'host' => $host,
                 'path' => $request->path(),
                 'domain_exists' => StoreDomain::query()
@@ -42,20 +43,13 @@ class ResolveTenantFromDomain
             $store = $storeDomain?->store;
             $tenant = $store?->tenant;
 
-            if (! $tenant && in_array($host, [
-                'localhost',
-                '127.0.0.1',
-                '::1',
-            ], true)) {
+            if (! $tenant && in_array($host, ['localhost','127.0.0.1','::1'], true)) {
                 $tenant = Tenant::query()
                     ->where('slug', 'default')
                     ->where('status', 'active')
                     ->first();
             } else {
-                abort_unless(
-                    $store && $store->status === 'active',
-                    404
-                );
+                abort_unless($store && $store->status === 'active',404);
             }
 
             abort_unless($tenant && $tenant->status === 'active', 404);
@@ -70,19 +64,10 @@ class ResolveTenantFromDomain
 
     private function isPlatformOrCallbackPath(string $path): bool
     {
-    if (in_array($path, [
-        'stripe/webhook',
-        'payment/midtrans/notification',
-        'platform',
-        'platform/dashboard',
-        'platform/tenants',
-    ], true)) {
-        return true;
+        if (in_array($path, [ 'stripe/webhook', 'payment/midtrans/notification', 'platform', 'platform/dashboard', 'platform/tenants'    ], true)) {
+            return true;
+        }
+    
+        return preg_match('#^platform/tenants/\d+/enter$#', $path) === 1;
     }
-
-    return preg_match(
-        '#^platform/tenants/\d+/enter$#',
-        $path
-    ) === 1;
-}
 }

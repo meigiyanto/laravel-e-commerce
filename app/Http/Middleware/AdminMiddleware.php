@@ -8,10 +8,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AdminMiddleware
 {
-    public function handle(
-        Request $request,
-        Closure $next
-    ): Response {
+    public function handle(Request $request, Closure $next): Response 
+    {
         if (! $request->user()) {
             return redirect()->guest(route('admin.login'));
         }
