@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Services\VariantInventoryService;
-
+use Illuminate\Support\Facades\Gate;
 
 class InventoryController extends Controller
 {
@@ -18,6 +18,7 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Product::class);
         $search = trim((string) $request->input('search', ''));
         $stockStatus = $request->input('stock_status');
 
@@ -70,6 +71,7 @@ class InventoryController extends Controller
 
     public function updateStock(Request $request, Product $product)
     {
+        Gate::authorize('updateStock', $product);
         $validated = $request->validate([
             'stock' => ['required', 'integer', 'min:0'],
         ], [
@@ -92,6 +94,7 @@ class InventoryController extends Controller
 
     public function adjustStock(Request $request, Product $product)
     {
+        Gate::authorize('adjustStock', $product);
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
             'type' => ['required', 'in:add,subtract'],

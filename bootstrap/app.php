@@ -2,14 +2,18 @@
 
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Http\Middleware\PlatformAdminMiddleware;
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+
+// use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+// use Illuminate\Auth\AuthenticationException;
+// use Illuminate\Auth\Access\AuthorizationException;
+// use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,21 +22,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->validateCsrfTokens(except: [
-            'stripe/webhook',
-            'payment/midtrans/notification',
-        ]);
-
+        $middleware->validateCsrfTokens(except: ['stripe/webhook', 'payment/midtrans/notification']);
+        $middleware->web(prepend: [ResolveTenantFromDomain::class]);
         $middleware->alias([
             'admin' => AdminMiddleware::class,
             'role' => RoleMiddleware::class,
+            'tenant.role' => RoleMiddleware::class,
+            'platform.admin' => PlatformAdminMiddleware::class,
         ]);
-
-        $middleware->redirectGuestsTo(
-            fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login')
-        );
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login'));
     })
-    /*
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) =>
@@ -40,7 +39,8 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->create();
-    */
+
+    /*
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*')
@@ -89,3 +89,4 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->create();
+    */

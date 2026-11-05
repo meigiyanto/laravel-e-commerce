@@ -10,6 +10,10 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\InventoryReservation;
@@ -29,6 +33,7 @@ class CheckoutStockTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
 
@@ -43,14 +48,16 @@ class CheckoutStockTest extends TestCase
         $stockBefore = $product->fresh()->stock;
 
         $response = $this->actingAs($user)
-            ->from(route('checkout.index'))
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
+            
+        $this->activateTenant($product);
 
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -113,6 +120,7 @@ class CheckoutStockTest extends TestCase
         ]);
         
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -122,16 +130,18 @@ class CheckoutStockTest extends TestCase
             'product_variant_id' => $selectedVariant->id,
             'quantity' => 2,
         ]);
-    
+
         $response = $this->actingAs($user)
-            ->post(route('checkout.store'), [
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
-    
+
+        $this->activateTenant($product);
+        
         $order = Order::where('user_id', $user->id)
             ->latest('id')
             ->first();
@@ -210,6 +220,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
         
@@ -221,14 +232,16 @@ class CheckoutStockTest extends TestCase
         ]);
         
         $response = $this->actingAs($user)
-            ->post(route('checkout.store'), [
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
-    
+
+        $this->activateTenant($product);
+        
         $order = Order::where('user_id', $user->id)
             ->latest('id')
             ->first();
@@ -308,6 +321,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -320,16 +334,17 @@ class CheckoutStockTest extends TestCase
     
         $ordersBefore = Order::count();
         $paymentsBefore = Payment::count();
-    
+        
         $response = $this->actingAs($user)
-            ->from(route('checkout.index'))
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
+
     
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -386,6 +401,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -400,14 +416,16 @@ class CheckoutStockTest extends TestCase
         $paymentsBefore = Payment::count();
     
         $response = $this->actingAs($user)
-            ->from(route('checkout.index'))
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
+        
+        $this->activateTenant($product);
     
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -464,6 +482,7 @@ class CheckoutStockTest extends TestCase
         ]);
 
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -483,14 +502,16 @@ class CheckoutStockTest extends TestCase
         $paymentsBefore = Payment::count();
     
         $response = $this->actingAs($user)
-            ->from(route('checkout.index'))
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'cod',
             ]);
+        
+        $this->activateTenant($product);
     
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
@@ -539,6 +560,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -550,13 +572,16 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $response = $this->actingAs($user)
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => $paymentMethod,
             ]);
+        
+        $this->activateTenant($product);
     
         $order = Order::query()
             ->where('user_id', $user->id)
@@ -565,9 +590,7 @@ class CheckoutStockTest extends TestCase
     
         $this->assertNotNull($order);
     
-        $expectedRoute = $paymentMethod === 'midtrans'
-            ? 'payment.midtrans.show'
-            : 'payment.show';
+        $expectedRoute = $paymentMethod === 'midtrans' ? 'payment.midtrans.show' : 'payment.show';
     
         $response->assertRedirect(route($expectedRoute, $order));
     
@@ -632,6 +655,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         $cart = Cart::create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
         ]);
     
@@ -643,6 +667,7 @@ class CheckoutStockTest extends TestCase
         ]);
     
         CartItem::create([
+            'tenant_id' => $product->tenant_id,
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $secondVariant->id,
@@ -686,17 +711,19 @@ class CheckoutStockTest extends TestCase
             );
     
         $this->app->instance(VariantInventoryService::class, $mock);
-    
+        
         $response = $this->actingAs($user)
-            ->from(route('checkout.index'))
-            ->post(route('checkout.store'), [
+            ->from($this->tenantUrl($product, 'checkout.index'))
+            ->post($this->tenantUrl($product, 'checkout.store'), [
                 'customer_name' => 'Test Customer',
                 'phone' => '08123456789',
                 'shipping_address' => 'Alamat pengujian',
                 'notes' => '',
                 'payment_method' => 'stripe',
             ]);
-    
+
+        $this->activateTenant($product);
+        
         $response->assertRedirect(route('checkout.index'));
         $response->assertSessionHasErrors('stock');
     
@@ -718,5 +745,49 @@ class CheckoutStockTest extends TestCase
         );
     
         $this->assertSame(2, $cart->items()->count());
+    }
+    
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $domain;
+    }
+    
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        app(TenantContext::class)->set($tenant);
+    }
+    
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }

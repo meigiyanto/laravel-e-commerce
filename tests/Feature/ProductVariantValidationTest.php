@@ -6,6 +6,11 @@ use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\Category;
+use App\Models\SubCategory;
+use App\Models\Tenant;
+use App\Models\TenantMembership;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,10 +18,69 @@ class ProductVariantValidationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+
+        app(TenantContext::class)->set($this->tenant);
+    }
+
+    private function admin(): User
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'email_verified_at' => now(),
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $admin->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+        ]);
+
+        return $admin;
+    }
+
+    private function product(array $attributes = []): Product
+    {
+        $category = Category::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Test Category',
+            'slug' => 'test-category',
+        ]);
+
+        $subCategory = SubCategory::create([
+            'tenant_id' => $this->tenant->id,
+            'category_id' => $category->id,
+            'name' => 'Test Subcategory',
+            'slug' => 'test-subcategory',
+        ]);
+
+        return Product::create(array_merge([
+            'tenant_id' => $this->tenant->id,
+            'category_id' => $category->id,
+            'sub_category_id' => $subCategory->id,
+            'name' => 'Test Product',
+            'slug' => 'test-product',
+            'description' => 'Product for validation testing',
+            'price' => 50000,
+            'stock' => 10,
+        ], $attributes));
+    }
+
     public function test_duplicate_sku_across_two_new_variants_is_rejected(): void
     {
         $admin = $this->admin();
-        $product = Product::factory()->create();
+        $product = $this->product();
 
         $payload = $this->validPayload($product, [
             $this->variantInput('New Variant A', 'DUPLICATE-SKU'),
@@ -24,8 +88,8 @@ class ProductVariantValidationTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->from(route('admin.products.edit', $product))
-            ->put(route('admin.products.update', $product), $payload);
+        ->from(route('admin.products.edit', $product))
+        ->put(route('admin.products.update', $product), $payload);
 
         $response->assertRedirect(route('admin.products.edit', $product));
         $response->assertSessionHasErrors();
@@ -39,7 +103,7 @@ class ProductVariantValidationTest extends TestCase
     public function test_duplicate_barcode_across_two_new_variants_is_rejected(): void
     {
         $admin = $this->admin();
-        $product = Product::factory()->create();
+        $product = $this->product();
 
         $payload = $this->validPayload($product, [
             $this->variantInput(
@@ -55,8 +119,8 @@ class ProductVariantValidationTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->from(route('admin.products.edit', $product))
-            ->put(route('admin.products.update', $product), $payload);
+        ->from(route('admin.products.edit', $product))
+        ->put(route('admin.products.update', $product), $payload);
 
         $response->assertRedirect(route('admin.products.edit', $product));
         $response->assertSessionHasErrors();
@@ -70,7 +134,7 @@ class ProductVariantValidationTest extends TestCase
     public function test_two_existing_variants_can_swap_skus_in_one_update(): void
     {
         $admin = $this->admin();
-        $product = Product::factory()->create();
+        $product = $this->product();
 
         $first = ProductVariant::create([
             'product_id' => $product->id,
@@ -124,8 +188,8 @@ class ProductVariantValidationTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->from(route('admin.products.edit', $product))
-            ->put(route('admin.products.update', $product), $payload);
+        ->from(route('admin.products.edit', $product))
+        ->put(route('admin.products.update', $product), $payload);
 
         $response->assertSessionHasNoErrors();
 
@@ -144,7 +208,7 @@ class ProductVariantValidationTest extends TestCase
     {
         $admin = $this->admin();
 
-        $product = Product::factory()->create([
+        $product = $this->product([
             'stock' => 7,
         ]);
 
@@ -164,11 +228,13 @@ class ProductVariantValidationTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)
-            ->from(route('admin.products.edit', $product))
-            ->put(route('admin.products.update', $product), $payload);
+        ->from(route('admin.products.edit', $product))
+        ->put(route('admin.products.update', $product), $payload);
 
         $response->assertSessionHasNoErrors();
-
+        
+        app(TenantContext::class)->set($this->tenant);
+        
         // Produk lama harus tetap menyimpan stok legacy.
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -184,8 +250,8 @@ class ProductVariantValidationTest extends TestCase
         ]);
 
         $newVariant = ProductVariant::where('product_id', $product->id)
-            ->where('sku', 'LEGACY-NEW-COLOR')
-            ->firstOrFail();
+        ->where('sku', 'LEGACY-NEW-COLOR')
+        ->firstOrFail();
 
         $this->assertDatabaseHas('inventories', [
             'product_variant_id' => $newVariant->id,
@@ -203,14 +269,6 @@ class ProductVariantValidationTest extends TestCase
             2,
             ProductVariant::where('product_id', $product->id)->count()
         );
-    }
-
-    private function admin(): User
-    {
-        return User::factory()->create([
-            'role' => 'admin',
-            'email_verified_at' => now(),
-        ]);
     }
 
     private function validPayload(

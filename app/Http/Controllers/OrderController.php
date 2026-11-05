@@ -5,23 +5,31 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Payment;
+use App\Support\Tenancy\TenantContext;
 use App\Services\VariantInventoryService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
     /**
      * Daftar order milik user yang sedang login.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $user = $request->user();
+
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $orders = Order::query()
-            ->where('user_id', auth()->id())
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $user->id)
             ->with('payment')
             ->latest()
             ->paginate(10);
-
-        return view('storefront.orders.index', compact('orders'));
+        
+        abort_unless( (int) $order->tenant_id === $tenantId && (int) $order->user_id === (int) auth()->id(), 404);
+        
+        return view('storefront.account.orders.index', compact('user', 'orders'));
     }
 
     /**
@@ -29,16 +37,13 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        abort_unless((int) $order->tenant_id === $tenantId && (int) $order->user_id === (int) auth()->id(), 404);
         /*
          * User hanya boleh melihat order miliknya sendiri.
          */
         abort_unless($order->user_id === auth()->id(), 403);
-
-        $order->load([
-            'items.product',
-            'payment',
-            'cancellationRequests'
-        ]);
+        $order->load(['items.product','payment','cancellationRequests']);
 
         /*
          * Jika pembayaran Stripe masih pending
@@ -49,17 +54,8 @@ class OrderController extends Controller
          * tidak akan terus menampilkan pending
          * jika Stripe sebenarnya sudah succeeded.
          */
-        if (
-            $order->payment &&
-            $order->payment->payment_method === 'stripe' &&
-            $order->payment->status !== 'succeeded' &&
-            $order->payment->stripe_payment_intent_id
-        ) {
-            app(PaymentController::class)
-                ->syncPaymentFromStripe(
-                    $order,
-                    $order->payment->stripe_payment_intent_id
-                );
+        if ( $order->payment && $order->payment->payment_method === 'stripe' && $order->payment->status !== 'succeeded' && $order->payment->stripe_payment_intent_id) {
+            app(PaymentController::class)->syncPaymentFromStripe($order, $order->payment->stripe_payment_intent_id);
 
             /*
              * Ambil ulang data terbaru setelah
@@ -67,15 +63,12 @@ class OrderController extends Controller
              */
             $order->refresh();
 
-            $order->load([
-                'items.product',
-                'payment',
-            ]);
+            $order->load(['items.product','payment']);
         }
         
         $canCancelOrder = $this->customerCanCancel($order);
 
-        return view('storefront.orders.show', compact('order', 'canCancelOrder'));
+        return view('storefront.account.orders.show', compact('order', 'canCancelOrder'));
     }
     
     /**
@@ -100,16 +93,10 @@ class OrderController extends Controller
             return false;
         }
     
-        $requests = $order->relationLoaded('cancellationRequests')
-            ? $order->cancellationRequests
-            : $order->cancellationRequests()->get();
+        $requests = $order->relationLoaded('cancellationRequests') ? $order->cancellationRequests : $order->cancellationRequests()->get();
     
         return ! $requests->contains(
-            fn ($request) => in_array(
-                $request->status,
-                ['pending', 'approved'],
-                true
-            )
+            fn ($request) => in_array($request->status, ['pending', 'approved'], true)
         );
     }
 }

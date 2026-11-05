@@ -1,229 +1,150 @@
 @extends('layouts.storefront')
 
-@section('title', config('app.name') . ' - My Account')
+@section('title', config('app.name') . ' - Account')
 
 @section('content')
-{{-- =========================================================
-    BREADCRUMB
-========================================================= --}}
 <div class="store-breadcrumb">
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item">
                     <a href="{{ route('storefront.home') }}">
-                        <i class="bi bi-house me-1"></i>
-                        Home
+                        <i class="bi bi-house me-1"></i> Home
                     </a>
                 </li>
-
+                <li class="breadcrumb-item">Account</li>
                 <li class="breadcrumb-item active" aria-current="page">
-                    My Account
+                    Account Overview
                 </li>
             </ol>
         </nav>
     </div>
 </div>
 
+@include('components.account.page-header', [
+    'title' => 'Account Overview',
+    'description' => 'Welcome back, ' . $user->name . '. Manage your account and orders here.',
+    'eyebrow' => 'My Account',
+])
 
-{{-- =========================================================
-    ACCOUNT HEADER
-========================================================= --}}
-<section class="store-section pb-3">
-    <div class="container">
-        <div class="store-section-header">
-            <div>
-                <span class="store-section-eyebrow">Account</span>
-                <h1 class="store-section-title">Account Overview</h1>
-                <p class="store-section-subtitle">
-                    Welcome back, <strong>{{ Auth::user()->name }}.</strong>
-                </p>
-            </div>
-        </div>
-    </div>
-</section>
-
-
-{{-- =========================================================
-    ACCOUNT OVERVIEW
-========================================================= --}}
 <section class="pb-5">
     <div class="container">
-
         <div class="row g-4">
+            {{-- Sidebar --}}
             <div class="col-lg-4">
-                <div class="store-profile-sidebar">
-                    <div class="store-profile-sidebar-item">
-                        <div class="store-profile-sidebar-icon">
-                            <i class="bi bi-person-circle"></i>
-                        </div>
+                @include('components.account.sidebar', ['user' => $user])
+            </div>
 
-                        <div>
-                            <strong>{{ Auth::user()->name }}</strong>
-                            <span>{{ Auth::user()->email }}</span>
+            {{-- Main Content --}}
+            <div class="col-lg-8">
+                {{-- Account Statistics --}}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="store-account-card h-100">
+                            <div class="store-account-card-icon">
+                                <i class="bi bi-bag"></i>
+                            </div>
+                            <div class="store-account-card-body">
+                                <h2 class="store-account-card-title">
+                                    My Orders
+                                </h2>
+                                <p class="store-account-card-text">
+                                    {{ $user->orders_count }} total orders
+                                </p>
+                                <a href="{{ route('orders.index') }}"
+                                    class="store-account-card-link">
+                                    View Orders
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="store-profile-sidebar-divider"></div>
-                    <a
-                        href="{{ route('account.index') }}"
-                        class="store-profile-sidebar-link {{ request()->routeIs('account.index') ? 'active' : '' }}"
-                    >
-                        <i class="bi bi-grid"></i>
-                        <span>Account</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="{{ route('profile.edit') }}"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-person"></i>
-                        <span>Manage Account Settings</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="{{ route('orders.index') }}"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-bag"></i>
-                        <span>Orders</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="{{ route('orders.index') }}"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-receipt"></i>
-                        <span>Invoices</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="#"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-yelp"></i>
-                        <span>Reviews</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="#"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-arrow-return-left"></i>
-                        <span>Refund</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="#"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-cloud-download"></i>
-                        <span>Downloads</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                    <a
-                        href="#"
-                        class="store-profile-sidebar-link"
-                    >
-                        <i class="bi bi-person"></i>
-                        <span>Address</span>
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
+                    <div class="col-md-6">
+                        <div class="store-account-card h-100">
+                            <div class="store-account-card-icon">
+                                <i class="bi bi-geo-alt"></i>
+                            </div>
+                            <div class="store-account-card-body">
+                                <h2 class="store-account-card-title">
+                                    My Addresses
+                                </h2>
+                                <p class="store-account-card-text">
+                                    {{ $user->addresses_count }} saved addresses
+                                </p>
+                                <a href="{{ route('account.addresses.index') }}"
+                                    class="store-account-card-link">
+                                    Manage Addresses
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            {{-- =================================================
-                PROFILE
-            ================================================= --}}
-            <div class="col-lg-8">
-                <div class="store-account-card mb-3">
-
+                {{-- Personal Information --}}
+                <div class="store-account-card mb-4">
                     <div class="store-account-card-icon">
                         <i class="bi bi-person-circle"></i>
                     </div>
-
                     <div class="store-account-card-body">
-                        <h2 class="store-account-card-title">Profile</h2>
-                        <p class="store-account-card-text">Manage your personal information and security account.</p>
-                        <a
-                            href="{{ route('profile.edit') }}"
-                            class="store-account-card-link"
-                        >
+                        <h2 class="store-account-card-title">
+                            Personal Information
+                        </h2>
+                        <p class="store-account-card-text">
+                            {{ $user->name }}<br>
+                            {{ $user->email }}<br>
+                            {{ $user->phone ?: 'Phone number not provided' }}
+                        </p>
+                        <a href="{{ route('profile.edit') }}"
+                            class="store-account-card-link">
                             Edit Profile
                             <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
-
                 </div>
 
-
-
-            {{-- =================================================
-                ORDERS
-            ================================================= --}}
-
-                <div class="store-account-card mb-3">
-
+                {{-- Default Address --}}
+                <div class="store-account-card mb-4">
                     <div class="store-account-card-icon">
-                        <i class="bi bi-bag"></i>
+                        <i class="bi bi-house-door"></i>
                     </div>
-
                     <div class="store-account-card-body">
-
                         <h2 class="store-account-card-title">
-                            My Orders
+                            Default Shipping Address
                         </h2>
 
-                        <p class="store-account-card-text">
-                            View your history orders and detail transaction
-                        </p>
+                        @if ($user->defaultAddress)
+                            <p class="store-account-card-text">
+                                <strong>
+                                    {{ $user->defaultAddress->label }}
+                                </strong><br>
+                                {{ $user->defaultAddress->recipient_name }}<br>
+                                {{ $user->defaultAddress->phone }}<br>
+                                {{ $user->defaultAddress->address_line }}<br>
+                                {{ $user->defaultAddress->village }},
+                                {{ $user->defaultAddress->district }},
+                                {{ $user->defaultAddress->city }},
+                                {{ $user->defaultAddress->province }}
+                                {{ $user->defaultAddress->postal_code }}<br>
+                                {{ $user->defaultAddress->country }}
+                            </p>
+                        @else
+                            <p class="store-account-card-text">
+                                You haven't added a default shipping address.
+                            </p>
+                        @endif
 
-                        <a
-                            href="{{ route('orders.index') }}"
-                            class="store-account-card-link"
-                        >
-                            View Orders
+                        <a href="{{ route('account.addresses.index') }}"
+                            class="store-account-card-link">
+                            Manage Addresses
                             <i class="bi bi-arrow-right"></i>
                         </a>
-
                     </div>
-
                 </div>
 
-
-            {{-- =================================================
-                Address
-            ================================================= --}}
-
-                <div class="store-account-card">
-
-                    <div class="store-account-card-icon">
-                        <i class="bi bi-geo-alt-fill"></i>
-                    </div>
-
-                    <div class="store-account-card-body">
-
-                        <h2 class="store-account-card-title">
-                            Address
-                        </h2>
-
-                        <p class="store-account-card-text"> Manage order delivery destination addresses.</p>
-
-                        <a
-                            href="#"
-                            class="store-account-card-link"
-                        >
-                            Manage Address
-                            <i class="bi bi-arrow-right"></i>
-                        </a>
-
-                    </div>
-
-                </div>
             </div>
         </div>
-
     </div>
 </section>
-
 @endsection

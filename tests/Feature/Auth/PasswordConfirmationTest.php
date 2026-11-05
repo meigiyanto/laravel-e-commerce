@@ -3,13 +3,29 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PasswordConfirmationTest extends TestCase
 {
     use RefreshDatabase;
+    protected Tenant $tenant;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+
+        $this->tenant = $tenant;
+
+    }
+    
     public function test_confirm_password_screen_can_be_rendered(): void
     {
         $user = User::factory()->create();

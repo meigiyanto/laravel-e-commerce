@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CompareController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $ids = $request->session()->get('compare', []);
+        $user = $request->user();
 
         $products = Product::with('category')
             ->whereIn('id', $ids)
@@ -17,7 +19,7 @@ class CompareController extends Controller
             ->sortBy(fn ($p) => array_search($p->id, $ids))
             ->values();
 
-        return view('storefront.compare', compact('products'));
+        return view('storefront.account.compare', compact('user', 'products'));
     }
 
     public function store(Request $request, Product $product)

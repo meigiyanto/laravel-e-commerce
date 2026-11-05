@@ -1,0 +1,39 @@
+:root {
+    --store-primary: #fcb800;
+    --store-primary-dark: #e5a800;
+    --store-dark: #1d232c;
+    --store-dark-soft: #343a40;
+    --store-text: #212529;
+    --store-muted: #6c757d;
+    --store-border: #e5e7eb;
+    --store-light: #f7f7f7;
+    --store-white: #ffffff;
+    --store-black: #000000;
+    --store-danger: #dc3545;
+    --store-radius: 8px;
+    --store-shadow: 0 4px 20px rgba(0, 0, 0, .06);
+}
+
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body, button, input, select, textarea {
+    font-size: .95rem;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+img {
+    max-width: 100%;
+}
+

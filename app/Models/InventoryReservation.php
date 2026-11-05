@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InventoryReservation extends Model
 {
+    use BelongsToTenant;
     public const STATUS_RESERVED = 'reserved';
     public const STATUS_COMMITTED = 'committed';
     public const STATUS_RELEASED = 'released';
-
-    protected $fillable = [
+    
+    protected $fillable = ['tenant_id',
         'product_variant_id',
         'idempotency_key',
         'reference_type',
@@ -19,24 +21,21 @@ class InventoryReservation extends Model
         'quantity',
         'status',
         'committed_at',
-        'released_at',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'reference_id' => 'integer',
+        'released_at'];
+    protected static function tenantParent(): ?array {
+        return ['product_variants',
+            'product_variant_id'];
+    }
+    protected function casts(): array {
+        return ['reference_id' => 'integer',
             'quantity' => 'integer',
             'committed_at' => 'datetime',
-            'released_at' => 'datetime',
-        ];
+            'released_at' => 'datetime'];
     }
-
-    public function variant(): BelongsTo
-    {
-        return $this->belongsTo(
-            ProductVariant::class,
-            'product_variant_id'
-        );
+    public function variant(): BelongsTo {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+    public function tenant(): BelongsTo {
+        return $this->belongsTo(Tenant::class);
     }
 }

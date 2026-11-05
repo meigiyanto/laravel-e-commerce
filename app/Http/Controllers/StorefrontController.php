@@ -17,6 +17,7 @@ class StorefrontController extends Controller
     {
         $categories = Category::withCount('products')
             ->orderBy('name')
+            ->take(8)
             ->get();
 
         $latestProducts = Product::with([

@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,10 +18,15 @@ class CheckoutController extends Controller
 {
     public function index()
     {
-        $cart = Cart::where('user_id', auth()->id())
+        $tenantId = app(TenantContext::class)->require()->getKey();
+
+        $cart = Cart::query()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', auth()->id())
             ->with([
                 'items.product.category',
                 'items.product.subCategory',
+                'items.variant',
             ])
             ->first();
 
@@ -79,8 +85,12 @@ class CheckoutController extends Controller
             ],
         ]);
         
-        $order = DB::transaction(function () use ($validated) {
-            $cart = Cart::where('user_id', auth()->id())
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        
+        $order = DB::transaction(function () use ($validated, $tenantId) {
+            $cart = Cart::query()
+                ->where('tenant_id', $tenantId)
+                ->where('user_id', auth()->id())
                 ->lockForUpdate()
                 ->first();
         
@@ -107,6 +117,16 @@ class CheckoutController extends Controller
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
+            
+            foreach ($cartItems as $cartItem) {
+                $product = $products->get($cartItem->product_id);
+            
+                if (! $product || (int) $product->tenant_id !== $tenantId) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Keranjang mengandung produk dari toko lain atau produk tidak tersedia.',
+                    ]);
+                }
+            }
         
             $stockService = app(VariantInventoryService::class);
         
@@ -135,15 +155,18 @@ class CheckoutController extends Controller
                 }
         
                 $requestedVariantId = $cartItem->product_variant_id ? (int) $cartItem->product_variant_id : null;
-        
-                $resolved = $stockService->resolve(
-                    $product,
-                    $requestedVariantId
-                );
-        
+                $resolved = $stockService->resolve($product, $requestedVariantId);
+                
                 $product = $resolved['product'];
                 $variant = $resolved['variant'];
                 $inventory = $resolved['inventory'];
+
+                
+                if ((int) $variant->tenant_id !== $tenantId|| (int) $variant->product_id !== (int) $product->id) {
+                    throw ValidationException::withMessages([
+                        'stock' => 'Varian produk tidak sesuai dengan toko aktif.',
+                    ]);
+                }
         
                 if ($variant->status !== 'active') {
                     throw ValidationException::withMessages([
@@ -162,8 +185,7 @@ class CheckoutController extends Controller
                 ];
         
                 // Gabungkan semua item yang menggunakan varian sama.
-                $requiredByVariant[$variantId] =
-                    ($requiredByVariant[$variantId] ?? 0) + $quantity;
+                $requiredByVariant[$variantId] = ($requiredByVariant[$variantId] ?? 0) + $quantity;
         
                 $subtotal += (float) $variant->price * $quantity;
             }
@@ -212,8 +234,9 @@ class CheckoutController extends Controller
             } while (
                 Order::where('order_number', $orderNumber)->exists()
             );
-        
+            
             $order = Order::create([
+                'tenant_id' => $tenantId,
                 'user_id' => auth()->id(),
                 'order_number' => $orderNumber,
                 'status' => 'pending',
@@ -328,6 +351,9 @@ class CheckoutController extends Controller
 
     public function success(Order $order)
     {
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        abort_unless( (int) $order->tenant_id === $tenantId && (int) $order->user_id === (int) auth()->id(), 404);
+        
         abort_unless($order->user_id === auth()->id(), 403);
         $order->load(['items.product', 'payment']);
         $payment = $order->payment;
@@ -335,7 +361,7 @@ class CheckoutController extends Controller
         /*
          * Order tanpa payment tidak boleh dianggap berhasil.
          */
-        if (! $payment) {
+        if (!$payment) {
             return redirect()->route('orders.show', $order)->with('error', 'Payment data for this order was not found.');
         }
 
@@ -344,8 +370,7 @@ class CheckoutController extends Controller
          * Tidak membutuhkan payment gateway.
          */
         if ($payment->provider === 'cod') {
-            return view('storefront.checkout-success', compact('order')
-            );
+            return view('storefront.checkout-success', compact('order'));
         }
 
         /*
@@ -353,13 +378,8 @@ class CheckoutController extends Controller
          * Pertahankan mekanisme sinkronisasi Stripe
          * yang sudah digunakan sebelumnya.
          */
-        if (
-            $payment->provider === 'stripe' &&
-            $payment->status !== 'succeeded' &&
-            $payment->stripe_payment_intent_id
-        ) {
-            app(PaymentController::class)
-                ->syncPaymentFromStripe($order, $payment->stripe_payment_intent_id);
+        if ($payment->provider === 'stripe' && $payment->status !== 'succeeded' && $payment->stripe_payment_intent_id) {
+            app(PaymentController::class)->syncPaymentFromStripe($order, $payment->stripe_payment_intent_id);
 
             $order->refresh();
 
@@ -380,10 +400,7 @@ class CheckoutController extends Controller
          * Webhook/HTTP Notification tetap menjadi mekanisme
          * utama untuk sinkronisasi pembayaran.
          */
-        if (
-            $payment->provider === 'midtrans' &&
-            $payment->status !== 'succeeded'
-        ) {
+        if ($payment->provider === 'midtrans' &&$payment->status !== 'succeeded') {
             return redirect()
                 ->route('payment.midtrans.show', $order)
                 ->with('error', 'Midtrans payment has not been successfully verified.');
@@ -393,8 +410,7 @@ class CheckoutController extends Controller
          * Pembayaran sudah berhasil diverifikasi.
          */
         if ($payment->status === 'succeeded') {
-            return view('storefront.checkout-success', compact('order')
-            );
+            return view('storefront.checkout-success', compact('order'));
         }
 
         /*
@@ -405,7 +421,6 @@ class CheckoutController extends Controller
          */
         return redirect()
             ->route('orders.show', $order)
-            ->with('error', 'Payment was unsuccessful. Please check your order status. '
-            );
+            ->with('error', 'Payment was unsuccessful. Please check your order status.');
     }
 }

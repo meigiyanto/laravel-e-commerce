@@ -247,8 +247,7 @@ class OrderCancellationRequestController extends Controller
                             (string) ($verified->fraud_status ?? '')
                         );
     
-                        $verifiedSucceeded =
-                            $verifiedStatus === 'settlement'
+                        $verifiedSucceeded = $verifiedStatus === 'settlement'
                             || (
                                 $verifiedStatus === 'capture'
                                 && in_array($verifiedCode, ['', '200'], true)
@@ -408,16 +407,9 @@ class OrderCancellationRequestController extends Controller
                         "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
                     );
                 }
-    
-                $inventoryService->restoreForOrder(
-                    $product,
-                    $item->product_variant_id
-                        ? (int) $item->product_variant_id
-                        : null,
-                    (int) $item->quantity,
-                    $order,
-                    (int) $item->id,
-                );
+                
+                $inventoryService = app(VariantInventoryService::class);
+                $inventoryService->cancelStockForOrder($order);
             }
     
             $order->update(['status' => 'canceled']);

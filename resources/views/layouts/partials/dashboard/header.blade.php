@@ -12,12 +12,19 @@
                     <img class="logo-dark logo-img" src="/demo2/images/logo-dark.png" srcset="/demo2/images/logo-dark2x.png 2x" alt="logo-dark">
                 </a>
             </div>
+            
+            <a href="{{ route('storefront.home') }}">
+                <em class="icon ni ni-home"></em>
+                <span aria-label="Visit Store">Visit Store</span>
+            </a>
+
             <!--
             <div class="nk-header-search ms-3 ms-xl-0">
                 <em class="icon ni ni-search"></em>
                 <input type="text" class="form-control border-transparent form-focus-none" placeholder="Search anything">
             </div>
             -->
+            
             <div class="nk-header-tools">
                 <ul class="nk-quick-nav">
                     @php

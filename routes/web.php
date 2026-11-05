@@ -20,6 +20,9 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\OrderCancellationRequestController as CustomerOrderCancellationRequestController;
 use App\Http\Controllers\Admin\OrderCancellationRequestController as AdminOrderCancellationRequestController;
 
+use App\Http\Controllers\Platform\DashboardController as PlatformDashboardController;
+use App\Http\Controllers\Platform\TenantController as PlatformTenantController;
+
 /**
  * Store Front
  */
@@ -35,19 +38,22 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StorefrontController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\UserAddressController;
+
+use App\Http\Controllers\Platform\ManagementController;
+use App\Http\Controllers\Billing\SubscriptionController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart', [CartController::class, 'store'])
-    ->name('cart.store');
+Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
 
 Route::patch('/cart/{product}', [CartController::class, 'update'])->name('cart.product.update');
 Route::delete('/cart/{product}', [CartController::class, 'destroy'])->name('cart.product.destroy');
 Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 
-Route::get('/cart/drawer', [CartController::class, 'drawer'])
-    ->name('cart.drawer');
+Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer');
 
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
@@ -56,37 +62,36 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
+Route::get('/platform/tenant-access/{token}', [PlatformTenantController::class, 'consume'])->middleware('throttle:10,1')->name('platform.tenant-access.consume');
+
 /*
 |-----------------------------------------------------------| 
 | Authenticated User Routes
 |-----------------------------------------------------------
 */
 
+Route::middleware(['auth', 'verified'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
+    Route::get('/{token}', function (string $token) {
+        return view('tenant.invitations.accept', compact('token'));
+    })->name('show');
+
+    Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
+});
+
+Route::middleware(['auth', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/domains', [ManagementController::class, 'createDomain'])->name('domains.store');
+    Route::post('/domains/{domain}/verify', [ManagementController::class, 'verifyDomain'])->name('domains.verify');
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Cancel Orders
-    Route::post('/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
-    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
-    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
-
-    // Refund
-    Route::post('/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
-
     // Payment
     Route::get('/payment/{order}', [PaymentController::class, 'show'])->name('payment.show');
     Route::post('/payment/{order}/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
     Route::get('/payment/midtrans/{order}', [MidtransPaymentController::class, 'show'])->name('payment.midtrans.show');
     Route::post('/payment/midtrans/{order}/confirm', [MidtransPaymentController::class, 'confirm'])->name('payment.midtrans.confirm');
-
-    // Wishlist
-    Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
-    Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
-    Route::delete('/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
-
-    // Product comparison
-    Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
-    Route::post('/compare/{product}', [CompareController::class, 'store'])->name('compare.store');
-    Route::delete('/compare/{product}', [CompareController::class, 'destroy'])->name('compare.destroy');
-    Route::delete('/compare', [CompareController::class, 'clear'])->name('compare.clear');
 
     // Product reviews
     Route::post('/shop/{product}/review', [ReviewController::class, 'store'])->name('reviews.store');
@@ -97,20 +102,59 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
     Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
-
-    // Customer orders
-    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
-    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     
-    // Account profile
+    Route::get('/account', [AccountController::class, 'index'])->name('account.index');
+    
+    // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/account', function () {
-        return view('storefront.account.index');
-    })->name('account.index');
+    // Address
+    Route::prefix('account/addresses')->name('account.addresses.')->controller(UserAddressController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        
+        Route::post('/', 'store')->name('store');
+        Route::get('/{address}/edit', 'edit')->name('edit');
+        Route::put('/{address}', 'update')->name('update');
+        Route::delete('/{address}', 'destroy')->name('destroy');
+        Route::patch('/{address}/default', 'makeDefault')->name('default');
+    });
+    
+    // Wishlist
+    Route::get('account/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
+    Route::post('account/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
+    Route::delete('account/wishlist/{product}', [WishlistController::class, 'destroy'])->name('wishlist.destroy');
+
+    // Product comparison
+    Route::get('account/compare', [CompareController::class, 'index'])->name('compare.index');
+    Route::post('account/compare/{product}', [CompareController::class, 'store'])->name('compare.store');
+    Route::delete('account/compare/{product}', [CompareController::class, 'destroy'])->name('compare.destroy');
+    Route::delete('account/compare', [CompareController::class, 'clear'])->name('compare.clear');
+    
+    // Orders
+    Route::get('account/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('account/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    // Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
+    // Cancel Orders
+    Route::post('account/orders/{order}/cancellation-requests', [CustomerOrderCancellationRequestController::class, 'store'])->name('orders.cancellation-requests.store');
+    Route::get('/notifications', [\App\Http\Controllers\CustomerNotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/{notification}/read', [\App\Http\Controllers\CustomerNotificationController::class, 'markRead'])->name('notifications.read');
+
+    // Refund
+    Route::post('account/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
+});
+
+Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platform.')->group(function () {
+    Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
+    
+    Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
+    Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
+    Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
 });
 
 /*
@@ -123,7 +167,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |----------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([ 'auth', 'tenant.role:owner,admin,product_manager,inventory_manager,order_manager,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Attribute Product management
@@ -165,7 +209,7 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::resource('products', ProductController::class)->except(['show']);
 
     // Only administrators can manage user accounts or access the admin profile page.
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('tenant.role:owner,admin')->group(function () {
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
