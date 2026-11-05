@@ -39,11 +39,10 @@
                             </td>
                             <td>{{ $domain?->domain ?? 'No verified domain' }}</td>
                             <td>
+                                <a href="{{ route('platform.tenants.show', $tenant) }}" class="btn btn-sm btn-outline-info" title="Detail tenant" aria-label="Detail {{ $tenant->slug }}">
+                                    <em class="icon ni ni-eye" aria-hidden="true"></em>
+                                </a>
                                 @if ($tenant->status === 'active' && $domain)
-                                    <a href="{{ route('platform.tenants.show', $tenant) }}" class="btn btn-sm btn-outline-info" title="Detail tenant" aria-label="Detail {{ $tenant->slug }}">
-                                        <em class="icon ni ni-eye" aria-hidden="true"></em>
-                                    </a>
-                                
                                     <form method="POST" action="{{ route('platform.tenants.enter', $tenant) }}">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-primary">Enter Tenant</button>

@@ -70,7 +70,6 @@ Route::middleware(['auth', 'verified'])->prefix('tenant/invitations')->name('ten
     Route::get('/{token}', function (string $token) {
         return view('tenant.invitations.accept', compact('token'));
     })->name('show');
-    Route::get('/tenants/{tenant}', [PlatformTenantController::class, 'show'])->name('tenants.show');
     Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
 });
 

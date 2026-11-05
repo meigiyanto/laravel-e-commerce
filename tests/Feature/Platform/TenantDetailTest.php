@@ -41,8 +41,17 @@ class TenantDetailTest extends TestCase
             'role' => User::ROLE_ADMIN,
         ]);
 
+        $owner = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Tenant Detail',
+            'slug' => 'tenant-detail',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
         $this->actingAs($user)
-            ->get('/platform/tenants/1')
+            ->get(route('platform.tenants.show', $tenant))
             ->assertForbidden();
     }
 
