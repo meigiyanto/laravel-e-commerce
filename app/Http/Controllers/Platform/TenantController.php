@@ -20,11 +20,11 @@ class TenantController extends Controller
     public function index(): View
     {
         $tenants = Tenant::query()
-            ->with(['store.verifiedDomains' => function ($query) {
-                $query->orderByDesc('is_primary')->orderBy('id');
-            }])
-            ->latest()
-            ->paginate(20);
+        ->with(['store.verifiedDomains' => function ($query) {
+            $query->orderByDesc('is_primary')->orderBy('id');
+        }])
+        ->latest()
+        ->paginate(20);
 
         return view('platform.tenants.index', compact('tenants'));
     }
@@ -73,20 +73,20 @@ class TenantController extends Controller
 
         $user = DB::transaction(function () use ($request, $token, $tenant) {
             $accessToken = PlatformAccessToken::query()
-                ->where('token_hash', hash('sha256', $token))
-                ->where('tenant_id', $tenant->id)
-                ->whereNull('consumed_at')
-                ->where('expires_at', '>', now())
-                ->first();
+            ->where('token_hash', hash('sha256', $token))
+            ->where('tenant_id', $tenant->id)
+            ->whereNull('consumed_at')
+            ->where('expires_at', '>', now())
+            ->first();
 
             abort_unless($accessToken, 404);
 
             // Update bersyarat untuk mencegah pemakaian token dua kali.
             $consumed = PlatformAccessToken::query()
-                ->whereKey($accessToken->id)
-                ->whereNull('consumed_at')
-                ->where('expires_at', '>', now())
-                ->update(['consumed_at' => now()]);
+            ->whereKey($accessToken->id)
+            ->whereNull('consumed_at')
+            ->where('expires_at', '>', now())
+            ->update(['consumed_at' => now()]);
 
             abort_unless($consumed === 1, 404);
 
@@ -147,26 +147,27 @@ class TenantController extends Controller
                 $query->where('status', 'active');
             },
             'invitations as pending_invitations_count' => function ($query) {
-                $query->where('status', 'pending');
+                $query->where('status', 'pending')
+                ->where('expires_at', '>', now());
             },
             'invoices',
         ]);
 
         $invoices = $tenant->invoices()
-            ->select([
-                'id',
-                'tenant_id',
-                'invoice_number',
-                'status',
-                'currency',
-                'total',
-                'issued_at',
-                'due_at',
-                'paid_at',
-            ])
-            ->latest('issued_at')
-            ->latest('id')
-            ->paginate(10, ['*'], 'invoices_page');
+        ->select([
+            'id',
+            'tenant_id',
+            'invoice_number',
+            'status',
+            'currency',
+            'total',
+            'issued_at',
+            'due_at',
+            'paid_at',
+        ])
+        ->latest('issued_at')
+        ->latest('id')
+        ->paginate(10, ['*'], 'invoices_page');
 
         return view('platform.tenants.show', compact('tenant', 'invoices'));
     }

@@ -18,7 +18,7 @@
             </div>
         </div>
         <div class="nk-block-head-content">
-            <a href="{{ route('platform.tenants.index') }}" class="btn btn-outline-light">
+            <a href="{{ route('platform.tenants.index') }}" class="btn btn-outline-secondary">
                 <em class="icon ni ni-arrow-left"></em>
                 <span>Go back</span>
             </a>
@@ -253,7 +253,12 @@
                             <td>{{ ucfirst(str_replace('_', ' ', $invitation->role)) }}</td>
                             <td>
                                 @php
-                                    $statusClass = match ($invitation->status) {
+                                    $displayStatus = $invitation->status === 'pending'
+                                        && $invitation->expires_at?->isPast()
+                                            ? 'expired'
+                                            : $invitation->status;
+                                
+                                    $statusClass = match ($displayStatus) {
                                         'pending' => 'bg-warning',
                                         'accepted' => 'bg-success',
                                         'expired', 'cancelled', 'revoked' => 'bg-secondary',
@@ -261,7 +266,7 @@
                                     };
                                 @endphp
                                 <span class="badge {{ $statusClass }}">
-                                    {{ ucfirst($invitation->status) }}
+                                    {{ ucfirst($displayStatus) }}
                                 </span>
                             </td>
                             <td>{{ $invitation->inviter?->name ?? 'Unknown user' }}</td>
