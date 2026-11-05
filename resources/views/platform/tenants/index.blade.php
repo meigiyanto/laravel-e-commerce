@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.platform')
 
 @section('title', 'Manage Tenants')
 
@@ -11,7 +11,7 @@
 <div class="card card-bordered">
     <div class="card-inner">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-bordered table-striped text-nowrap">
                 <thead>
                     <tr>
                         <th>Tenant</th>

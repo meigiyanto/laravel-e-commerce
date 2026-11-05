@@ -28,9 +28,7 @@
                     <i class="bi bi-person-circle" aria-hidden="true"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-
                     @auth
-
                         <li class="dropdown-user-info">
                             <div class="dropdown-user-name">
                                 {{ auth()->user()->name }}
@@ -46,31 +44,26 @@
                         </li>
 
                         <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('account.index') }}"
-                            >
+                            <a class="dropdown-item" href="{{ route('account.index') }}">
                                 <i class="bi bi-speedometer2"></i>
                                 Account
                             </a>
                         </li>
 
-                        @if (auth()->user()->isAdmin())
-
+                        @if (auth()->user()->isPlatformAdmin())
                             <li>
-                                <hr class="dropdown-divider">
+                                <a class="dropdown-item" href="{{ route('platform.dashboard') }}">
+                                    <i class="bi bi-shield-check"></i>
+                                    Platform Panel
+                                </a>
                             </li>
-
+                        @elseif (auth()->user()->activeTenantMembership())
                             <li>
-                                <a
-                                    class="dropdown-item"
-                                    href="{{ route('admin.dashboard') }}"
-                                >
+                                <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
                                     <i class="bi bi-shield-check"></i>
                                     Admin Panel
                                 </a>
                             </li>
-
                         @endif
 
                         <li>
@@ -93,9 +86,7 @@
                                 </button>
                             </form>
                         </li>
-
                     @else
-
                         <li>
                             <a
                                 class="dropdown-item"
@@ -105,9 +96,7 @@
                                 Login
                             </a>
                         </li>
-
                         @if (Route::has('register'))
-
                             <li>
                                 <a
                                     class="dropdown-item"
@@ -117,9 +106,7 @@
                                     Daftar
                                 </a>
                             </li>
-
                         @endif
-
                     @endauth
 
                 </ul>

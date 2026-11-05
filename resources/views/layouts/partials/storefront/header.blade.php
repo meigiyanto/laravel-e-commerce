@@ -149,7 +149,17 @@
                                     </a>
                                 </li>
 
-                                @if (auth()->user()->isAdmin())
+                                @if (auth()->user()->isPlatformAdmin())
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ route('platform.dashboard') }}">
+                                            <i class="bi bi-shield-check me-2"></i>
+                                            Platform Panel
+                                        </a>
+                                    </li>
+                                @elseif (auth()->user()->activeTenantMembership())
                                     <li>
                                         <hr class="dropdown-divider">
                                     </li>
@@ -165,16 +175,10 @@
                                     <hr class="dropdown-divider">
                                 </li>
                                 <li>
-                                    <form
-                                        method="POST"
-                                        action="{{ route('logout') }}"
-                                    >
+                                    <form method="POST" action="{{ route('logout') }}">
                                         @csrf
 
-                                        <button
-                                            type="submit"
-                                            class="dropdown-item text-danger"
-                                        >
+                                        <button type="submit" class="dropdown-item text-danger">
                                             <i class="bi bi-box-arrow-right me-2"></i>
                                             Keluar
                                         </button>

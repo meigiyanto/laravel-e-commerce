@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\CartService;
+use App\Models\TenantMembership;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,36 +25,19 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        $this->cartService->mergeGuestCartIntoUserCart(
-            $request->user()->id
-        );
+        $user = $request->user();
 
-        if ($request->user()->isAdmin() || $request->user()->isStaff()) {
-            return redirect()->intended(
-                route('admin.dashboard', absolute: false)
-            );
+        $this->cartService->mergeGuestCartIntoUserCart($user->id);
+
+        if ($user->isPlatformAdmin()) {
+            return redirect()->route('platform.dashboard');
         }
 
-        return redirect()->intended(
-            route('account.index', absolute: false)
-        );
-    }
+        if ($user->activeTenantMembership()) {
+            return redirect()->route('admin.dashboard');
+        }
 
-    public function destroy(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-    
-        $wasPlatformAdmin = $user?->isPlatformAdmin() ?? false;
-        $wasAdmin = $user?->isAdmin() ?? false;
-    
-        Auth::guard('web')->logout();
-    
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-    
-        return ($wasPlatformAdmin || $wasAdmin)
-            ? redirect()->route('admin.login')
-            : redirect()->route('login');
+        return redirect()->route('account.index');
     }
 
     public function createAdmin(): View
@@ -65,8 +49,21 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticateAdmin();
         $request->session()->regenerate();
-    
-        return $request->user()->isPlatformAdmin() ? redirect()->route('platform.dashboard') : redirect()->route('admin.dashboard');
+
+        if ($request->user()->isPlatformAdmin()) {
+            return redirect()->route('platform.dashboard');
+        }
+
+        return redirect()->route('admin.dashboard');
+    }
+
+    public function destroy(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login');
     }
 }
-
