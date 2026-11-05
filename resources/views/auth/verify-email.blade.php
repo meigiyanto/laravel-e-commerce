@@ -24,15 +24,21 @@
                 Resend email verification
             </button>
         </form>
-
+    
+    @if (auth()->user()->isPlatformAdmin())
+        <form method="POST" action="{{ route('platform.logout') }}">
+            @csrf
+    @elseif (auth()->user()->isAdmin())
+        <form method="POST" action="{{ route('admin.logout') }}">
+            @csrf
+    @else
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-
+    @endif
             <button type="submit" class="btn btn-secondary btn-full">
                 Logout
             </button>
         </form>
 
     </div>
-
 @endsection

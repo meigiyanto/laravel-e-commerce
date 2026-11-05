@@ -159,14 +159,23 @@
                             <div class="dropdown-inner">
                                 <ul class="link-list">
                                     <li>
+                                    @if (auth()->user()->isPlatformAdmin())
+                                        <form method="POST" action="{{ route('platform.logout') }}">
+                                            @csrf
+                                    @elseif (auth()->user()->isAdmin())
+                                        <form method="POST" action="{{ route('admin.logout') }}">
+                                            @csrf
+                                    @else
                                         <form method="POST" action="{{ route('logout') }}">
                                             @csrf
+                                    @endif
                                             <button type="submit" class="btn btn-link p-0 border-0 bg-transparent w-100 text-start">
                                                 <em class="icon ni ni-signout"></em>
                                                 <span>Sign out</span>
                                             </button>
                                         </form>
                                     </li>
+
                                 </ul>
                             </div>
                         </div>
