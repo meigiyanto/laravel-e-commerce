@@ -64,7 +64,7 @@ class ResolveTenantFromDomain
 
     private function isPlatformOrCallbackPath(string $path): bool
     {
-        if (in_array($path, [ 'stripe/webhook', 'payment/midtrans/notification', 'platform', 'platform/dashboard', 'platform/tenants'    ], true)) {
+        if (in_array($path, ['stripe/webhook', 'payment/midtrans/notification', 'platform', 'platform/dashboard', 'platform/tenants'    ], true)) {
             return true;
         }
     

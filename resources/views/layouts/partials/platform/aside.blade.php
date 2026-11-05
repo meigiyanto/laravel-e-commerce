@@ -25,7 +25,7 @@
                         <h6 class="overline-title text-primary-alt">Workspace</h6>
                     </li>
                     
-                    <li class="nk-menu-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    <li class="nk-menu-item {{ request()->routeIs('platform.dashboard') ? 'active' : '' }}">
                         <a href="{{ route('platform.dashboard') }}" class="nk-menu-link">
                             <span class="nk-menu-icon"><em class="icon ni ni-dashboard"></em></span>
                             <span class="nk-menu-text">Dashboard</span>
@@ -36,7 +36,7 @@
                         <h6 class="overline-title text-primary-alt">Tenant</h6>
                     </li>
                     <li class="nk-menu-item {{ request()->routeIs('platform.tenants.*') ? 'active' : '' }}">
-                        <a href="{{ route('platform.tenants') }}" class="nk-menu-link">
+                        <a href="{{ route('platform.tenants.index') }}" class="nk-menu-link">
                             <span class="nk-menu-icon"><em class="icon ni ni-package"></em></span>
                             <span class="nk-menu-text">Tenants Management</span>
                         </a>

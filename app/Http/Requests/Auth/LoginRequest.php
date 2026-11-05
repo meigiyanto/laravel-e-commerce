@@ -68,7 +68,7 @@ class LoginRequest extends FormRequest
 
         $user = Auth::user();
 
-        $canAccessPanel = $user && ( $user->isPlatformAdmin() || in_array($user->activeTenantMembership()?->role, TenantMembership::ROLES, true));
+        $canAccessPanel = $user && ($user->isPlatformAdmin() || in_array($user->activeTenantMembership()?->role, TenantMembership::ROLES, true));
 
         if (! $canAccessPanel) {
             Auth::logout();

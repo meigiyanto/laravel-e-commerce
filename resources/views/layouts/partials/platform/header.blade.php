@@ -136,22 +136,9 @@
                                 <ul class="link-list">
                                     @if (Auth::user()->isPlatformAdmin())
                                         <li>
-                                            <a href="{{ route('admin.dashboard') }}">
+                                            <a href="{{ route('platform.dashboard') }}">
                                                 <em class="icon ni ni-dashboard"></em>
                                                 <span>Admin Dashboard</span>
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a href="{{ route('admin.profile') }}">
-                                                <em class="icon ni ni-user-alt"></em>
-                                                <span>Account Setting</span>
-                                            </a>
-                                        </li>
-                                    @else
-                                        <li>
-                                            <a href="{{ route('profile.edit') }}">
-                                                <em class="icon ni ni-user-alt"></em>
-                                                <span>My Profile</span>
                                             </a>
                                         </li>
                                     @endif
