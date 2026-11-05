@@ -259,7 +259,7 @@
                             <td>
                                 @php
                                     $displayStatus = $invitation->status === 'pending' && $invitation->expires_at?->isPast() ? 'expired' : $invitation->status;
-                                
+                            
                                     $statusClass = match ($displayStatus) {
                                         'pending' => 'bg-warning',
                                         'accepted' => 'bg-success',
@@ -267,8 +267,8 @@
                                         default => 'bg-light text-dark',
                                     };
                                 @endphp
-                                <span class="badge bg-light text-dark">
-                                    {{ number_format($tenant->invitations_count) }} invitations
+                                <span class="badge {{ $statusClass }}">
+                                    {{ ucfirst($displayStatus) }}
                                 </span>
                             </td>
                             <td>{{ $invitation->inviter?->name ?? 'Unknown user' }}</td>
