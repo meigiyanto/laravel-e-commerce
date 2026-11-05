@@ -17,7 +17,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'),$this->boolean('remember'))) {
+        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -44,8 +44,11 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required',
+                'string',
+                'email'],
+            'password' => ['required',
+                'string'],
         ];
     }
 
@@ -56,32 +59,17 @@ class LoginRequest extends FormRequest
 
     public function authenticateAdmin(): void
     {
-        $this->ensureIsNotRateLimited();
-
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
-        }
+        $this->attemptAuthentication();
 
         $user = Auth::user();
+        $membership = $user?->activeTenantMembership();
 
-        $canAccessPanel = $user && ($user->isPlatformAdmin() || in_array($user->activeTenantMembership()?->role, TenantMembership::ROLES, true));
-
-        if (! $canAccessPanel) {
-            Auth::logout();
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
-            ]);
+        if (
+            ! $user || $user->isPlatformAdmin() || ! $membership || ! in_array($membership->role, TenantMembership::ROLES, true)
+        ) {
+            $this->rejectAuthenticatedUser();
         }
-
-        RateLimiter::clear($this->throttleKey());
     }
-
     /**
     * Ensure the login request is not rate limited.
     *

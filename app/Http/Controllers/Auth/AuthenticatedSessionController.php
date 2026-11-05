@@ -22,27 +22,13 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        $request->authenticateStorefront();
         $request->session()->regenerate();
 
         $user = $request->user();
 
         $this->cartService->mergeGuestCartIntoUserCart($user->id);
-
-        if ($user->isPlatformAdmin()) {
-            return redirect()->route('platform.dashboard');
-        }
-
-        if ($user->activeTenantMembership()) {
-            return redirect()->route('admin.dashboard');
-        }
-
         return redirect()->route('account.index');
-    }
-
-    public function createAdmin(): View
-    {
-        return view('auth.admin-login');
     }
 
     public function storeAdmin(LoginRequest $request): RedirectResponse
@@ -50,11 +36,25 @@ class AuthenticatedSessionController extends Controller
         $request->authenticateAdmin();
         $request->session()->regenerate();
 
-        if ($request->user()->isPlatformAdmin()) {
-            return redirect()->route('platform.dashboard');
-        }
-
         return redirect()->route('admin.dashboard');
+    }
+
+    public function createPlatform(): View
+    {
+        return view('auth.platform-login');
+    }
+
+    public function storePlatform(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticatePlatform();
+        $request->session()->regenerate();
+
+        return redirect()->route('platform.dashboard');
+    }
+
+    public function createAdmin(): View
+    {
+        return view('auth.admin-login');
     }
 
     public function destroy(Request $request): RedirectResponse

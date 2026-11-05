@@ -24,6 +24,8 @@ Route::middleware('guest')->group(function () {
 
     Route::get('admin/login', [AuthenticatedSessionController::class, 'createAdmin'])->name('admin.login');
     Route::post('admin/login', [AuthenticatedSessionController::class, 'storeAdmin'])->name('admin.login.authenticate');
+    Route::get('platform/login', [AuthenticatedSessionController::class, 'createPlatform'])->name('platform.login');
+    Route::post('platform/login', [AuthenticatedSessionController::class, 'storePlatform'])->name('platform.login.authenticate');
 });
 
 Route::middleware('auth')->group(function () {
