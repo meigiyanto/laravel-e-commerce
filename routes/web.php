@@ -20,6 +20,9 @@ use App\Http\Controllers\Admin\AttributeValueController;
 use App\Http\Controllers\OrderCancellationRequestController as CustomerOrderCancellationRequestController;
 use App\Http\Controllers\Admin\OrderCancellationRequestController as AdminOrderCancellationRequestController;
 
+use App\Http\Controllers\Platform\DashboardController as PlatformDashboardController;
+use App\Http\Controllers\Platform\TenantController as PlatformTenantController;
+
 /**
  * Store Front
  */
@@ -37,6 +40,9 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\UserAddressController;
+
+use App\Http\Controllers\Platform\ManagementController;
+use App\Http\Controllers\Billing\SubscriptionController;
 
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -56,11 +62,29 @@ Route::get('/category/{slug}', [StorefrontController::class, 'category'])->name(
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
+Route::get('/platform/tenant-access/{token}', [PlatformTenantController::class, 'consume'])->middleware('throttle:10,1')->name('platform.tenant-access.consume');
+
 /*
 |-----------------------------------------------------------| 
 | Authenticated User Routes
 |-----------------------------------------------------------
 */
+
+Route::middleware(['auth', 'verified'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
+    Route::get('/{token}', function (string $token) {
+        return view('tenant.invitations.accept', compact('token'));
+    })->name('show');
+
+    Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
+});
+
+Route::middleware(['auth', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/domains', [ManagementController::class, 'createDomain'])->name('domains.store');
+    Route::post('/domains/{domain}/verify', [ManagementController::class, 'verifyDomain'])->name('domains.verify');
+    Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
+    Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Payment
@@ -124,6 +148,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('account/orders/{order}/refund', [RefundController::class, 'store'])->name('orders.refund.store');
 });
 
+Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platform.')->group(function () {
+    Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
+    
+    Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
+    Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
+    Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
+});
+
 /*
 |-----------------------------------------------------------
 | Admin and Staff Operational Routes
@@ -134,7 +167,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |----------------------------------------------------------
 */
 
-Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([ 'auth', 'tenant.role:owner,admin,product_manager,inventory_manager,order_manager,staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Attribute Product management
@@ -176,7 +209,7 @@ Route::middleware(['auth', 'role:admin,staff'])->prefix('admin')->name('admin.')
     Route::resource('products', ProductController::class)->except(['show']);
 
     // Only administrators can manage user accounts or access the admin profile page.
-    Route::middleware('role:admin')->group(function () {
+    Route::middleware('tenant.role:owner,admin')->group(function () {
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');

@@ -6,6 +6,8 @@ use App\Http\Controllers\PaymentController;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
 use Stripe\PaymentIntent;
@@ -15,108 +17,18 @@ class StripePaymentSynchronizationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_successful_payment_moves_pending_order_to_processing(): void
-    {
-        [$order, $payment] = $this->createPaymentAndOrder();
-
-        $this->syncPaymentIntent($order, $payment, [
-            'id' => 'pi_test_success',
-            'status' => 'succeeded',
-            'amount' => 10000000,
-            'currency' => 'idr',
-        ]);
-
-        $this->assertSame(
-            'succeeded',
-            $payment->fresh()->status
-        );
-
-        $this->assertSame(
-            'processing',
-            $order->fresh()->status
-        );
-    }
-
-    public function test_successful_payment_does_not_move_shipped_order_back_to_processing(): void
-    {
-        [$order, $payment] = $this->createPaymentAndOrder(
-            orderStatus: 'shipped'
-        );
-
-        $this->syncPaymentIntent($order, $payment, [
-            'id' => 'pi_test_shipped',
-            'status' => 'succeeded',
-            'amount' => 10000000,
-            'currency' => 'idr',
-        ]);
-
-        $this->assertSame(
-            'succeeded',
-            $payment->fresh()->status
-        );
-
-        $this->assertSame(
-            'shipped',
-            $order->fresh()->status
-        );
-    }
-
-    public function test_successful_payment_does_not_change_completed_order(): void
-    {
-        [$order, $payment] = $this->createPaymentAndOrder(
-            orderStatus: 'completed'
-        );
-
-        $this->syncPaymentIntent($order, $payment, [
-            'id' => 'pi_test_completed',
-            'status' => 'succeeded',
-            'amount' => 10000000,
-            'currency' => 'idr',
-        ]);
-
-        $this->assertSame(
-            'succeeded',
-            $payment->fresh()->status
-        );
-
-        $this->assertSame(
-            'completed',
-            $order->fresh()->status
-        );
-    }
-
-    public function test_already_succeeded_payment_is_not_downgraded(): void
-    {
-        [$order, $payment] = $this->createPaymentAndOrder(
-            orderStatus: 'shipped',
-            paymentStatus: 'succeeded'
-        );
-
-        $this->syncPaymentIntent($order, $payment, [
-            'id' => 'pi_test_already_paid',
-            'status' => 'canceled',
-            'amount' => 10000000,
-            'currency' => 'idr',
-        ]);
-
-        $this->assertSame(
-            'succeeded',
-            $payment->fresh()->status
-        );
-
-        $this->assertSame(
-            'shipped',
-            $order->fresh()->status
-        );
-    }
-
     private function createPaymentAndOrder(
         string $orderStatus = 'pending',
         string $paymentStatus = 'pending'
     ): array {
+        $tenant = Tenant::factory()->create();
+
+        app(TenantContext::class)->set($tenant);
+
         $user = User::factory()->create();
 
         $order = Order::factory()->create([
+            'tenant_id' => $tenant->id,
             'user_id' => $user->id,
             'status' => $orderStatus,
             'total' => 100000,
@@ -132,9 +44,9 @@ class StripePaymentSynchronizationTest extends TestCase
             'currency' => 'IDR',
         ]);
 
-        return [$order, $payment];
+        return [$order,
+            $payment];
     }
-
     private function syncPaymentIntent(
         Order $order,
         Payment $payment,
@@ -158,6 +70,105 @@ class StripePaymentSynchronizationTest extends TestCase
             $order,
             $payment,
             $paymentIntent
+        );
+    }
+
+    public function test_successful_payment_moves_pending_order_to_processing(): void
+    {
+        [$order,
+            $payment] = $this->createPaymentAndOrder();
+
+        $this->syncPaymentIntent($order, $payment, [
+            'id' => 'pi_test_success',
+            'status' => 'succeeded',
+            'amount' => 10000000,
+            'currency' => 'idr',
+        ]);
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            'processing',
+            $order->fresh()->status
+        );
+    }
+
+    public function test_successful_payment_does_not_move_shipped_order_back_to_processing(): void
+    {
+        [$order,
+            $payment] = $this->createPaymentAndOrder(
+            orderStatus: 'shipped'
+        );
+
+        $this->syncPaymentIntent($order, $payment, [
+            'id' => 'pi_test_shipped',
+            'status' => 'succeeded',
+            'amount' => 10000000,
+            'currency' => 'idr',
+        ]);
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            'shipped',
+            $order->fresh()->status
+        );
+    }
+
+    public function test_successful_payment_does_not_change_completed_order(): void
+    {
+        [$order,
+            $payment] = $this->createPaymentAndOrder(
+            orderStatus: 'completed'
+        );
+
+        $this->syncPaymentIntent($order, $payment, [
+            'id' => 'pi_test_completed',
+            'status' => 'succeeded',
+            'amount' => 10000000,
+            'currency' => 'idr',
+        ]);
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            'completed',
+            $order->fresh()->status
+        );
+    }
+
+    public function test_already_succeeded_payment_is_not_downgraded(): void
+    {
+        [$order,
+            $payment] = $this->createPaymentAndOrder(
+            orderStatus: 'shipped',
+            paymentStatus: 'succeeded'
+        );
+
+        $this->syncPaymentIntent($order, $payment, [
+            'id' => 'pi_test_already_paid',
+            'status' => 'canceled',
+            'amount' => 10000000,
+            'currency' => 'idr',
+        ]);
+
+        $this->assertSame(
+            'succeeded',
+            $payment->fresh()->status
+        );
+
+        $this->assertSame(
+            'shipped',
+            $order->fresh()->status
         );
     }
 }

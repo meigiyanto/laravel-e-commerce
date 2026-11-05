@@ -92,22 +92,26 @@ class LoginRequest extends FormRequest
     public function authenticateAdmin(): void
     {
         $this->ensureIsNotRateLimited();
-
-        $credentials = $this->only('email', 'password');
-        $credentials['role'] = 'admin';
-
-        if (! Auth::attempt(
-            $credentials,
-            $this->boolean('remember')
-        )) {
+    
+        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
-
+    
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
-
+    
+        $user = Auth::user();
+    
+        if (! $user || ! in_array($user->role, ['admin', 'platform_admin'], true)) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+    
+            throw ValidationException::withMessages([
+                'email' => trans('auth.failed'),
+            ]);
+        }
+    
         RateLimiter::clear($this->throttleKey());
     }
-
 }

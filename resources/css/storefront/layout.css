@@ -397,6 +397,23 @@
     color: var(--store-dark);
 }
 
+.store-btn-category {
+    font-weight: 500;
+    padding: .25rem .75rem;
+    border: 1px solid var(--store-primary);
+    border-radius: 15px;
+    background-color: var(--store-primary);
+    color: var(--store-black)!important;
+}
+
+.store-btn-category:hover {
+    padding: .25rem .75rem;
+    border: 1px solid var(--store-primary);
+    border-radius: 15px;
+    background-color: var(--store-black);
+    color: var(--store-white)!important;
+}
+
 .store-home-promotion {
     overflow: hidden;
     border: 1px solid #f1e2a8;

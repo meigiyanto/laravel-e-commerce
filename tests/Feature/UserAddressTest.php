@@ -4,12 +4,16 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class UserAddressTest extends TestCase
 {
     use RefreshDatabase;
+    private ?string $tenantDomain = null;
 
     public function test_user_has_many_addresses_and_address_belongs_to_user(): void
     {
@@ -19,17 +23,17 @@ class UserAddressTest extends TestCase
         $this->assertCount(2, $user->addresses);
         $this->assertTrue($addresses->first()->user->is($user));
     }
-
+    
     public function test_user_can_only_see_their_own_addresses(): void
     {
         $owner = User::factory()->create();
         $other = User::factory()->create();
-
+    
         $ownedAddress = UserAddress::factory()->for($owner)->create();
         $otherAddress = UserAddress::factory()->for($other)->create();
-
+    
         $this->actingAs($owner)
-            ->get(route('account.addresses.index'))
+            ->get($this->tenantUrl($owner, 'account.addresses.index'))
             ->assertOk()
             ->assertSee($ownedAddress->label)
             ->assertDontSee($otherAddress->recipient_name);
@@ -40,17 +44,17 @@ class UserAddressTest extends TestCase
         $owner = User::factory()->create();
         $other = User::factory()->create();
         $address = UserAddress::factory()->for($other)->create();
-
+        
         $this->actingAs($owner)
-            ->get(route('account.addresses.edit', $address))
+            ->get($this->tenantUrl($owner, 'account.addresses.edit', $address))
             ->assertNotFound();
 
         $this->actingAs($owner)
-            ->put(route('account.addresses.update', $address), $this->validAddressData())
+            ->put($this->tenantUrl($owner, 'account.addresses.update', $address), $this->validAddressData())
             ->assertNotFound();
 
         $this->actingAs($owner)
-            ->delete(route('account.addresses.destroy', $address))
+            ->delete($this->tenantUrl($owner, 'account.addresses.destroy', $address))
             ->assertNotFound();
 
         $this->assertDatabaseHas('user_addresses', [
@@ -62,13 +66,13 @@ class UserAddressTest extends TestCase
     public function test_first_address_becomes_default_automatically(): void
     {
         $user = User::factory()->create();
-
+        
         $this->actingAs($user)
             ->post(
-                route('account.addresses.store'),
+                $this->tenantUrl($user, 'account.addresses.store'),
                 $this->validAddressData()
             )
-            ->assertRedirect(route('account.addresses.index'));
+            ->assertRedirect($this->tenantUrl($user, 'account.addresses.index'));
 
         $this->assertDatabaseHas('user_addresses', [
             'user_id' => $user->id,
@@ -83,10 +87,10 @@ class UserAddressTest extends TestCase
 
         $first = UserAddress::factory()->for($user)->default()->create();
         $second = UserAddress::factory()->for($user)->create();
-
+        
         $this->actingAs($user)
-            ->patch(route('account.addresses.default', $second))
-            ->assertRedirect(route('account.addresses.index'));
+            ->patch($this->tenantUrl($user, 'account.addresses.default', $second))
+            ->assertRedirect($this->tenantUrl($user, 'account.addresses.index'));
 
         $this->assertDatabaseHas('user_addresses', [
             'id' => $first->id,
@@ -102,13 +106,13 @@ class UserAddressTest extends TestCase
     public function test_deleting_default_address_promotes_another_address(): void
     {
         $user = User::factory()->create();
-
+        
         $default = UserAddress::factory()->for($user)->default()->create();
         $next = UserAddress::factory()->for($user)->create();
 
         $this->actingAs($user)
-            ->delete(route('account.addresses.destroy', $default))
-            ->assertRedirect(route('account.addresses.index'));
+            ->delete($this->tenantUrl($user, 'account.addresses.destroy', $default))
+            ->assertRedirect($this->tenantUrl($user, 'account.addresses.index'));
 
         $this->assertDatabaseMissing('user_addresses', [
             'id' => $default->id,
@@ -139,9 +143,9 @@ class UserAddressTest extends TestCase
     public function test_user_can_view_create_address_page(): void
     {
         $user = User::factory()->create();
-    
+        
         $this->actingAs($user)
-            ->get(route('account.addresses.create'))
+            ->get($this->tenantUrl($user, 'account.addresses.create'))
             ->assertOk()
             ->assertViewIs('storefront.account.addresses.form');
     }
@@ -150,9 +154,9 @@ class UserAddressTest extends TestCase
     {
         $user = User::factory()->create();
         $address = UserAddress::factory()->for($user)->create();
-    
+        
         $this->actingAs($user)
-            ->get(route('account.addresses.edit', $address))
+            ->get($this->tenantUrl($user, 'account.addresses.edit', $address))
             ->assertOk()
             ->assertViewIs('storefront.account.addresses.form')
             ->assertViewHas('address', $address);
@@ -161,13 +165,13 @@ class UserAddressTest extends TestCase
     public function test_user_can_create_an_address(): void
     {
         $user = User::factory()->create();
-    
+        
         $this->actingAs($user)
             ->post(
-                route('account.addresses.store'),
+                $this->tenantUrl($user, 'account.addresses.store'),
                 $this->validAddressData()
             )
-            ->assertRedirect(route('account.addresses.index'));
+            ->assertRedirect($this->tenantUrl($user, 'account.addresses.index'));
     
         $this->assertDatabaseHas('user_addresses', [
             'user_id' => $user->id,
@@ -180,14 +184,14 @@ class UserAddressTest extends TestCase
     {
         $user = User::factory()->create();
         $address = UserAddress::factory()->for($user)->create();
-    
+        
         $data = $this->validAddressData();
         $data['label'] = 'Kantor';
         $data['city'] = 'Jakarta Pusat';
     
         $this->actingAs($user)
-            ->put(route('account.addresses.update', $address), $data)
-            ->assertRedirect(route('account.addresses.index'));
+            ->put($this->tenantUrl($user, 'account.addresses.update', $address), $data)
+            ->assertRedirect($this->tenantUrl($user, 'account.addresses.index'));
     
         $this->assertDatabaseHas('user_addresses', [
             'id' => $address->id,
@@ -201,7 +205,7 @@ class UserAddressTest extends TestCase
         $user = User::factory()->create();
     
         $this->actingAs($user)
-            ->post(route('account.addresses.store'), [])
+            ->post($this->tenantUrl($user, 'account.addresses.store'), [])
             ->assertSessionHasErrors([
                 'label',
                 'recipient_name',
@@ -218,10 +222,55 @@ class UserAddressTest extends TestCase
     
     public function test_guest_cannot_access_address_pages(): void
     {
-        $this->get(route('account.addresses.index'))
-            ->assertRedirect(route('login'));
+        $domain = $this->createTenantDomain();
     
-        $this->get(route('account.addresses.create'))
-            ->assertRedirect(route('login'));
+        $this->get($this->tenantUrl($domain, 'account.addresses.index'))
+            ->assertRedirect($this->tenantUrl($domain, 'login'));
+    
+        $this->get($this->tenantUrl($domain, 'account.addresses.create'))
+            ->assertRedirect($this->tenantUrl($domain, 'login'));
+    }
+    
+    private function tenantUrl(
+        User|string $context,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = is_string($context) ? $context : $this->createTenantDomain();
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
+    }
+    
+    private function createTenantDomain(): string
+    {
+        if ($this->tenantDomain !== null) {
+            return $this->tenantDomain;
+        }
+    
+        $tenant = Tenant::factory()->create([
+            'status' => 'active',
+        ]);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'address-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $this->tenantDomain = $domain;
     }
 }

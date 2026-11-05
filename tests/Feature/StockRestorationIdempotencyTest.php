@@ -11,6 +11,10 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Models\Store;
+use App\Models\StoreDomain;
+use App\Support\Tenancy\TenantContext;
 use App\Services\StripePaymentService;
 use App\Services\VariantInventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +34,9 @@ class StockRestorationIdempotencyTest extends TestCase
         $product = Product::factory()->create([
             'stock' => $quantity,
         ]);
-
+    
+        $this->activateTenant($product);
+    
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'TEST-'.uniqid(),
@@ -39,24 +45,63 @@ class StockRestorationIdempotencyTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-
+    
         $inventory = Inventory::create([
             'product_variant_id' => $variant->id,
             'quantity' => $quantity,
             'reserved_quantity' => 0,
             'reorder_level' => 0,
         ]);
-
+    
         return compact('product', 'variant', 'inventory');
     }
+    
+    private function createTenantAdminContext(Product $product): array
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'stock-restoration-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+    
+        $admin->tenantMemberships()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'admin',
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+    
+        return [$admin, $domain];
+    }
 
-    private function createOrder(): Order
+    private function createOrder(int $tenantId): Order
     {
         return Order::factory()->create([
+            'tenant_id' => $tenantId,
             'status' => 'pending',
         ]);
     }
-
+    
     private function createOrderItem(
         Order $order,
         Product $product,
@@ -77,7 +122,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_deduct_for_order_only_deducts_stock_once_for_same_idempotency_key(): void
     {
         $fixture = $this->createInventoryFixture(10);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
         $service = app(VariantInventoryService::class);
 
         DB::transaction(function () use ($fixture, $order, $service) {
@@ -98,23 +143,14 @@ class StockRestorationIdempotencyTest extends TestCase
             );
         });
 
-        $this->assertSame(
-            8,
-            $fixture['inventory']->fresh()->quantity
-        );
-
-        $this->assertSame(
-            1,
-            InventoryMovement::query()
-                ->where('idempotency_key', "order:{$order->id}:variant:{$fixture['variant']->id}:sale")
-                ->count()
-        );
+        $this->assertSame(8, $fixture['inventory']->fresh()->quantity);
+        $this->assertSame(1, InventoryMovement::query()->where('idempotency_key', "order:{$order->id}:variant:{$fixture['variant']->id}:sale")->count());
     }
 
     public function test_restore_for_order_only_restores_stock_once_for_same_order_item(): void
     {
         $fixture = $this->createInventoryFixture(8);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
 
         $item = $this->createOrderItem(
             $order,
@@ -143,10 +179,7 @@ class StockRestorationIdempotencyTest extends TestCase
             );
         });
 
-        $this->assertSame(
-            10,
-            $fixture['inventory']->fresh()->quantity
-        );
+        $this->assertSame(10,$fixture['inventory']->fresh()->quantity);
 
         $this->assertSame(
             1,
@@ -159,7 +192,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_restore_for_order_handles_multiple_items_with_same_variant(): void
     {
         $fixture = $this->createInventoryFixture(8);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
 
         $firstItem = $this->createOrderItem(
             $order,
@@ -222,7 +255,7 @@ class StockRestorationIdempotencyTest extends TestCase
     public function test_deduct_for_order_rejects_reusing_key_with_different_data(): void
     {
         $fixture = $this->createInventoryFixture(10);
-        $order = $this->createOrder();
+        $order = $this->createOrder($fixture['product']->tenant_id);
         $service = app(VariantInventoryService::class);
 
         DB::transaction(function () use ($fixture, $order, $service) {
@@ -279,6 +312,7 @@ class StockRestorationIdempotencyTest extends TestCase
         ]);
 
         $order = Order::factory()->create([
+            'tenant_id' => $product->tenant_id,
             'user_id' => $user->id,
             'status' => 'pending',
             'total' => 200000,
@@ -326,14 +360,19 @@ class StockRestorationIdempotencyTest extends TestCase
             StripePaymentService::class,
             $stripeService
         );
+        
+        [$admin, $domain] = $this->createTenantAdminContext($product);
 
-        $response = $this->actingAs(
-            User::factory()->create(['role' => 'admin'])
-        )->patch(
-            route('admin.orders.status', $order),
-            ['status' => 'canceled']
+        $uri = 'http://'.$domain.route(
+            'admin.orders.status',
+            $order,
+            false
         );
-
+        
+        $response = $this->actingAs($admin)->patch($uri, [
+            'status' => 'canceled',
+        ]);
+        
         $response->assertSessionHas('success');
 
         $this->assertSame('canceled', $order->fresh()->status);
@@ -366,5 +405,49 @@ class StockRestorationIdempotencyTest extends TestCase
         $this->assertSame(10, $product->fresh()->stock);
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame('canceled', $payment->fresh()->status);
+    }
+    
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+    
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+    
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+    
+        return $domain;
+    }
+    
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+    
+        app(TenantContext::class)->set($tenant);
+    }
+    
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+    
+        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }

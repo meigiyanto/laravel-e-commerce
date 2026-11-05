@@ -12,10 +12,7 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function __construct(
-        protected CartService $cartService
-    ) {
-    }
+    public function __construct(protected CartService $cartService) {}
 
     public function create(): View
     {
@@ -44,14 +41,17 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request): RedirectResponse
     {
-        $wasAdmin = $request->user()?->isAdmin() ?? false;
-
+        $user = $request->user();
+    
+        $wasPlatformAdmin = $user?->isPlatformAdmin() ?? false;
+        $wasAdmin = $user?->isAdmin() ?? false;
+    
         Auth::guard('web')->logout();
-
+    
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
-        return $wasAdmin
+    
+        return ($wasPlatformAdmin || $wasAdmin)
             ? redirect()->route('admin.login')
             : redirect()->route('login');
     }
@@ -65,8 +65,8 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticateAdmin();
         $request->session()->regenerate();
-
-        return redirect()->route('admin.dashboard');
+    
+        return $request->user()->isPlatformAdmin() ? redirect()->route('platform.dashboard') : redirect()->route('admin.dashboard');
     }
 }
 

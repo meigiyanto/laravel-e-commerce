@@ -180,6 +180,7 @@ class VariantInventoryService
              */
             $inserted = DB::table('inventory_reservations')
                 ->insertOrIgnore([
+                    'tenant_id' => $variant->tenant_id,
                     'product_variant_id' => $variant->id,
                     'idempotency_key' => $idempotencyKey,
                     'reference_type' => $referenceType,

@@ -14,11 +14,14 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Gate; 
+use App\Support\Tenancy\TenantContext;
 
 class ProductController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', Product::class);
         $products = Product::with(['category', 'subCategory'])
             ->latest()
             ->get();
@@ -28,6 +31,7 @@ class ProductController extends Controller
 
     public function create()
     {
+        Gate::authorize('create', Product::class);
         [$categories, $attributes] = $this->formOptions();
 
         return view('admin.products.create', compact(
@@ -38,45 +42,37 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Product::class);
+        $tenantId = app(TenantContext::class)->require()->getKey();
         $data = $request->validate([
-            'category_id' => ['required', 'exists:categories,id'],
-            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('category_id', $request->input('category_id'))],
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
+            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('tenant_id', $tenantId)->where('category_id', $request->input('category_id'))],
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:products,slug'],
+            'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->where('tenant_id', $tenantId)],
             'description' => ['nullable', 'string'],
-
-            'sku' => ['required', 'string', 'max:100', 'unique:product_variants,sku'],
-            'barcode' => ['nullable', 'string', 'max:100', 'unique:product_variants,barcode'],
-            'variant_name' => ['nullable', 'string', 'max:255'],
-            
+            'sku' => ['required', 'string', 'max:100', Rule::unique('product_variants', 'sku')->where('tenant_id', $tenantId)],
+            'barcode' => ['nullable', 'string', 'max:100', Rule::unique('product_variants', 'barcode')->where('tenant_id', $tenantId)],
+            'variant_name' => ['nullable', 'string', 'max:255'],'variant_name' => ['nullable', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
             'weight' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
-
             'quantity' => ['required', 'integer', 'min:0'],
             'reserved_quantity' => ['required', 'integer', 'min:0', 'lte:quantity'],
             'reorder_level' => ['required', 'integer', 'min:0'],
-
-            'attribute_value_ids' => ['nullable', 'array'],
-            'attribute_value_ids.*' => ['integer', 'distinct', 'exists:attribute_values,id'],
-
+            'attribute_value_ids.*' => ['integer', 'distinct', Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
             'specifications' => ['nullable', 'array'],
             'specifications.*.specification_group' => ['required', 'string', 'max:255'],
             'specifications.*.specification_name' => ['required', 'string', 'max:255'],
             'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
             'specifications.*.sort_order' => ['nullable', 'integer', 'min:0'],
-
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if (
-            filled($data['compare_at_price'] ?? null)
-            && (float) $data['compare_at_price'] < (float) $data['price']
-        ) {
+        if (filled($data['compare_at_price'] ?? null) && (float) $data['compare_at_price'] < (float) $data['price']) {
             throw ValidationException::withMessages([
                 'compare_at_price' => 'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
             ]);
@@ -180,6 +176,7 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
+        Gate::authorize('update', $product);
         $product->load([
             'specifications',
             'variants.inventory',
@@ -198,6 +195,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        Gate::authorize('update', $product);
+        $tenantId = app(TenantContext::class)->require()->getKey();
         $submittedIds = collect(
             is_array($request->input('variants', []))
                 ? $request->input('variants', [])
@@ -246,22 +245,14 @@ class ProductController extends Controller
         }
 
         $validationRules = [
-            'category_id' => ['required', 'exists:categories,id'],
-            'sub_category_id' => [
-                'required',
-                Rule::exists('sub_categories', 'id')
-                    ->where('category_id', $request->input('category_id')),
-            ],
+            'category_id' => ['required', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
+            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('tenant_id', $tenantId)->where('category_id', $request->input('category_id'))],
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
 
             'specifications' => ['nullable', 'array'],
-            'specifications.*.id' => [
-                'nullable', 'integer',
-                Rule::exists('product_specifications', 'id')
-                    ->where('product_id', $product->id),
-            ],
+            'specifications.*.id' => ['nullable', 'integer', Rule::exists('product_specifications', 'id')->where('product_id', $product->id)],
             'specifications.*.specification_group' => ['required', 'string', 'max:255'],
             'specifications.*.specification_name' => ['required', 'string', 'max:255'],
             'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
@@ -281,31 +272,20 @@ class ProductController extends Controller
             'variants.*.quantity' => ['required', 'integer', 'min:0'],
             'variants.*.reorder_level' => ['required', 'integer', 'min:0'],
             'variants.*.attribute_value_ids' => ['nullable', 'array'],
-            'variants.*.attribute_value_ids.*' => [
-                'integer', 'distinct', 'exists:attribute_values,id',
-            ],
+            'variants.*.attribute_value_ids.*' => ['integer', 'distinct', Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
 
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'image_alt_text' => ['nullable', 'string', 'max:255'],
             'delete_images' => ['nullable', 'array'],
-            'delete_images.*' => [
-                'integer', 'distinct',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
-            ],
-            'primary_image_id' => [
-                'nullable', 'integer',
-                Rule::exists('product_images', 'id')
-                    ->where('product_id', $product->id),
-            ],
+            'delete_images.*' => ['integer', 'distinct', Rule::exists('product_images', 'id')->where('product_id', $product->id)],
+            'primary_image_id' => ['nullable', 'integer', Rule::exists('product_images', 'id')->where('product_id', $product->id)],
         ];
         
         foreach ($request->input('variants', []) as $key => $input) {
             $validationRules["variants.$key.sku"][] =
                 function ($attribute, $value, $fail) use ($submittedVariantIds) {
-                    $query = ProductVariant::query()
-                        ->where('sku', $value);
+                    $query = ProductVariant::query()->where('sku', $value);
         
                     if ($submittedVariantIds !== []) {
                         $query->whereNotIn('id', $submittedVariantIds);
@@ -321,8 +301,7 @@ class ProductController extends Controller
         
                 $validationRules["variants.$key.barcode"][] =
                     function ($attribute, $value, $fail) use ($submittedVariantIds) {
-                        $query = ProductVariant::query()
-                            ->where('barcode', $value);
+                        $query = ProductVariant::query()->where('barcode', $value);
         
                         if ($submittedVariantIds !== []) {
                             $query->whereNotIn('id', $submittedVariantIds);
@@ -682,6 +661,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        Gate::authorize('delete', $product);
         if ($product->orderItems()->exists()) {
             return redirect()
                 ->route('admin.products.index')

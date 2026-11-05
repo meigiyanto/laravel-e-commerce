@@ -28,11 +28,13 @@ class InventoryIntegrityTest extends TestCase
     }
 
     private function insertInventory(
+        int $tenantId,
         int $variantId,
         int $quantity,
         int $reservedQuantity,
     ): void {
         DB::table('inventories')->insert([
+            'tenant_id' => $tenantId,
             'product_variant_id' => $variantId,
             'quantity' => $quantity,
             'reserved_quantity' => $reservedQuantity,
@@ -49,6 +51,7 @@ class InventoryIntegrityTest extends TestCase
         $this->expectException(QueryException::class);
 
         $this->insertInventory(
+            $variant->tenant_id,
             $variant->id,
             10,
             11,
@@ -60,6 +63,7 @@ class InventoryIntegrityTest extends TestCase
         $variant = $this->createVariant();
 
         $this->insertInventory(
+            $variant->tenant_id,
             $variant->id,
             10,
             5,
@@ -68,10 +72,10 @@ class InventoryIntegrityTest extends TestCase
         $this->expectException(QueryException::class);
 
         DB::table('inventories')
-            ->where('product_variant_id', $variant->id)
-            ->update([
-                'reserved_quantity' => 11,
-            ]);
+        ->where('product_variant_id', $variant->id)
+        ->update([
+            'reserved_quantity' => 11,
+        ]);
     }
 
     public function test_database_accepts_inventory_insert_when_reserved_quantity_is_valid(): void
@@ -79,6 +83,7 @@ class InventoryIntegrityTest extends TestCase
         $variant = $this->createVariant();
 
         $this->insertInventory(
+            $variant->tenant_id,
             $variant->id,
             10,
             5,
@@ -96,17 +101,18 @@ class InventoryIntegrityTest extends TestCase
         $variant = $this->createVariant();
 
         $this->insertInventory(
+            $variant->tenant_id,
             $variant->id,
             10,
             5,
         );
 
         DB::table('inventories')
-            ->where('product_variant_id', $variant->id)
-            ->update([
-                'quantity' => 8,
-                'reserved_quantity' => 8,
-            ]);
+        ->where('product_variant_id', $variant->id)
+        ->update([
+            'quantity' => 8,
+            'reserved_quantity' => 8,
+        ]);
 
         $this->assertDatabaseHas('inventories', [
             'product_variant_id' => $variant->id,

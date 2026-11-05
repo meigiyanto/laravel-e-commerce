@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -14,9 +16,16 @@ class OrderHistoryRetentionTest extends TestCase
     
     public function test_deleting_user_preserves_order_and_detaches_user(): void
     {
+        $tenant = Tenant::factory()->create([
+            'status' => 'active',
+        ]);
+        
+        app(TenantContext::class)->set($tenant);
+        
         $user = User::factory()->create();
-
+        
         $order = Order::create([
+            'tenant_id' => $tenant->id,
             'user_id' => $user->id,
             'order_number' => 'RETENTION-TEST-001',
             'status' => 'completed',
@@ -27,7 +36,7 @@ class OrderHistoryRetentionTest extends TestCase
             'shipping_cost' => 10000,
             'total' => 110000,
         ]);
-
+        
         $user->delete();
 
         $this->assertDatabaseHas('orders', [
