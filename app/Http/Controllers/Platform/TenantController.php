@@ -124,22 +124,6 @@ class TenantController extends Controller
             'store.verifiedDomains' => function ($query) {
                 $query->orderByDesc('is_primary')->orderBy('id');
             },
-            'activeMemberships' => function ($query) {
-                $query->with('user:id,name,email')->latest();
-            },
-            'invitations' => function ($query) {
-                $query->select([
-                    'id',
-                    'tenant_id',
-                    'invited_by',
-                    'email',
-                    'role',
-                    'status',
-                    'expires_at',
-                    'accepted_at',
-                    'created_at',
-                ])->with('inviter:id,name,email')->latest();
-            },
         ]);
 
         $tenant->loadCount([
@@ -150,8 +134,30 @@ class TenantController extends Controller
                 $query->where('status', 'pending')
                 ->where('expires_at', '>', now());
             },
+            'invitations',
             'invoices',
         ]);
+
+        $memberships = $tenant->activeMemberships()
+        ->with('user:id,name,email')
+        ->latest()
+        ->paginate(10, ['*'], 'memberships_page');
+
+        $invitations = $tenant->invitations()
+        ->select([
+            'id',
+            'tenant_id',
+            'invited_by',
+            'email',
+            'role',
+            'status',
+            'expires_at',
+            'accepted_at',
+            'created_at',
+        ])
+        ->with('inviter:id,name,email')
+        ->latest()
+        ->paginate(10, ['*'], 'invitations_page');
 
         $invoices = $tenant->invoices()
         ->select([
@@ -169,6 +175,11 @@ class TenantController extends Controller
         ->latest('id')
         ->paginate(10, ['*'], 'invoices_page');
 
-        return view('platform.tenants.show', compact('tenant', 'invoices'));
+        return view('platform.tenants.show', compact(
+            'tenant',
+            'memberships',
+            'invitations',
+            'invoices'
+        ));
     }
 }

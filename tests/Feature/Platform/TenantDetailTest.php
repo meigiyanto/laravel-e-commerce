@@ -326,8 +326,7 @@ class TenantDetailTest extends TestCase
             'due_at' => now()->addDays(3),
         ]);
 
-        $response = $this->actingAs($admin)
-        ->get(route('platform.tenants.show', $tenant));
+        $response = $this->actingAs($admin)->get(route('platform.tenants.show', $tenant));
 
         $response->assertOk()
         ->assertSee('INV-TENANT-001')
@@ -417,14 +416,180 @@ class TenantDetailTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->actingAs($admin)
-        ->get(route('platform.tenants.show', $tenant))
-        ->assertOk()
+        $response = $this->actingAs($admin)->get(route('platform.tenants.show', $tenant));
+
+        $response->assertOk()
+        ->assertViewHas('tenant', function ($result) {
+            return $result->pending_invitations_count === 1;
+        })
         ->assertSeeInOrder([
             'expired@example.test',
             'Expired',
             'valid@example.test',
             'Pending',
         ]);
+    }
+
+    public function test_enter_tenant_ignores_unverified_primary_domain(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_PLATFORM_ADMIN]);
+        $owner = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Unverified Primary Tenant',
+            'slug' => 'unverified-primary-tenant',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
+        $store = Store::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Unverified Primary Store',
+            'slug' => 'unverified-primary-store',
+            'status' => 'active',
+        ]);
+
+        StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'unverified-primary.example.test',
+            'type' => 'custom',
+            'is_primary' => true,
+            'verification_status' => 'pending',
+        ]);
+
+        StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'verified-secondary.example.test',
+            'type' => 'custom',
+            'is_primary' => false,
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
+        $targetUrl = $response->getTargetUrl();
+        $path = parse_url($targetUrl, PHP_URL_PATH);
+        
+        $this->assertSame('verified-secondary.example.test', parse_url($targetUrl, PHP_URL_HOST));
+        $this->assertStringStartsWith('/platform/tenant-access/', $path);
+    }
+
+    public function test_enter_tenant_selects_first_verified_primary_domain_when_multiple_exist(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_PLATFORM_ADMIN]);
+        $owner = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Multiple Primary Tenant',
+            'slug' => 'multiple-primary-tenant',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
+        $store = Store::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Multiple Primary Store',
+            'slug' => 'multiple-primary-store',
+            'status' => 'active',
+        ]);
+
+        StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'first-primary.example.test',
+            'type' => 'custom',
+            'is_primary' => true,
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+        ]);
+
+        StoreDomain::create([
+            'store_id' => $store->id,
+            'domain' => 'second-primary.example.test',
+            'type' => 'custom',
+            'is_primary' => true,
+            'verification_status' => 'verified',
+            'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
+        $targetUrl = $response->getTargetUrl();
+        $path = parse_url($targetUrl, PHP_URL_PATH);
+        
+        $this->assertSame('first-primary.example.test', parse_url($targetUrl, PHP_URL_HOST));
+        $this->assertStringStartsWith('/platform/tenant-access/', $path);
+    }
+
+    public function test_tenant_detail_paginates_active_memberships_without_changing_total_count(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_PLATFORM_ADMIN]);
+        $owner = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Paginated Membership Tenant',
+            'slug' => 'paginated-membership-tenant',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
+        foreach (range(1, 12) as $number) {
+            $user = User::factory()->create([
+                'name' => "Membership User {$number}",
+                'email' => "membership{$number}@example.test",
+            ]);
+
+            TenantMembership::create([
+                'tenant_id' => $tenant->id,
+                'user_id' => $user->id,
+                'role' => TenantMembership::ROLE_STAFF,
+                'status' => 'active',
+                'accepted_at' => now(),
+            ]);
+        }
+
+        $this->actingAs($admin)
+        ->get(route('platform.tenants.show', $tenant).'?memberships_page=2')
+        ->assertOk()
+        ->assertViewHas('memberships', function ($memberships) {
+            return $memberships->total() === 12 && $memberships->count() === 2 && $memberships->currentPage() === 2;
+        })
+        ->assertViewHas('tenant', function ($result) {
+            return $result->active_memberships_count === 12;
+        });
+    }
+
+    public function test_tenant_detail_paginates_invitations_without_changing_total_count(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_PLATFORM_ADMIN]);
+        $owner = User::factory()->create();
+        $inviter = User::factory()->create();
+
+        $tenant = Tenant::create([
+            'name' => 'Paginated Invitation Tenant',
+            'slug' => 'paginated-invitation-tenant',
+            'status' => 'active',
+            'created_by_user_id' => $owner->id,
+        ]);
+
+        foreach (range(1, 12) as $number) {
+            TenantInvitation::create([
+                'tenant_id' => $tenant->id,
+                'invited_by' => $inviter->id,
+                'email' => "invitation{$number}@example.test",
+                'role' => TenantMembership::ROLE_STAFF,
+                'token_hash' => hash('sha256', "invitation-token-{$number}"),
+                'status' => 'pending',
+                'expires_at' => now()->addDays(2),
+            ]);
+        }
+
+        $this->actingAs($admin)
+        ->get(route('platform.tenants.show', $tenant).'?invitations_page=2')
+        ->assertOk()
+        ->assertViewHas('invitations', function ($invitations) {
+            return $invitations->total() === 12 && $invitations->count() === 2 && $invitations->currentPage() === 2;
+        })
+        ->assertViewHas('tenant', function ($result) {
+            return $result->pending_invitations_count === 12;
+        });
     }
 }

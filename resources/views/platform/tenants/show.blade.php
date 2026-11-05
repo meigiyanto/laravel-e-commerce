@@ -202,7 +202,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($tenant->activeMemberships as $membership)
+                    @forelse ($memberships as $membership)
                         <tr>
                             <td>{{ $membership->user?->name ?? 'Unknown user' }}</td>
                             <td>{{ $membership->user?->email ?? '-' }}</td>
@@ -220,6 +220,11 @@
                     @endforelse
                 </tbody>
             </table>
+            @if ($memberships->hasPages())
+                <div class="mt-3">
+                    {{ $memberships->links() }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -247,16 +252,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($tenant->invitations as $invitation)
+                    @forelse ($invitations as $invitation)
                         <tr>
                             <td>{{ $invitation->email }}</td>
                             <td>{{ ucfirst(str_replace('_', ' ', $invitation->role)) }}</td>
                             <td>
                                 @php
-                                    $displayStatus = $invitation->status === 'pending'
-                                        && $invitation->expires_at?->isPast()
-                                            ? 'expired'
-                                            : $invitation->status;
+                                    $displayStatus = $invitation->status === 'pending' && $invitation->expires_at?->isPast() ? 'expired' : $invitation->status;
                                 
                                     $statusClass = match ($displayStatus) {
                                         'pending' => 'bg-warning',
@@ -265,8 +267,8 @@
                                         default => 'bg-light text-dark',
                                     };
                                 @endphp
-                                <span class="badge {{ $statusClass }}">
-                                    {{ ucfirst($displayStatus) }}
+                                <span class="badge bg-light text-dark">
+                                    {{ number_format($tenant->invitations_count) }} invitations
                                 </span>
                             </td>
                             <td>{{ $invitation->inviter?->name ?? 'Unknown user' }}</td>
@@ -280,6 +282,11 @@
                     @endforelse
                 </tbody>
             </table>
+            @if ($invitations->hasPages())
+                <div class="mt-3">
+                    {{ $invitations->links() }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
