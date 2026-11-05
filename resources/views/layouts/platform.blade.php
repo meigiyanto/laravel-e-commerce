@@ -4,7 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Platform Dashboard') - {{ config('app.name', 'Laravel E-Commerce Store') }}</title>    <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
+    <title>@yield('title', 'Platform Dashboard') - {{ config('app.name', 'Laravel E-Commerce Store') }}</title>    
+    <link rel="shortcut icon" href="{{ asset('images/favicon.ico') }}">
     @vite(['resources/css/dashboard.css', 'resources/js/dashboard.js'])
     @if (app()->environment('local'))
     <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
