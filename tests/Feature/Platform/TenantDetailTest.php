@@ -62,12 +62,12 @@ class TenantDetailTest extends TestCase
         ->assertForbidden();
     }
 
-    public function test_guest_cannot_open_tenant_detail(): void
+    public function test_guest_is_redirected_to_platform_login_when_opening_tenant_detail(): void
     {
         $this->get('/platform/tenants/1')
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('platform.login'));
     }
-
+    
     public function test_missing_tenant_returns_not_found(): void
     {
         $user = User::factory()->create([
@@ -467,7 +467,7 @@ class TenantDetailTest extends TestCase
         $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
         $targetUrl = $response->getTargetUrl();
         $path = parse_url($targetUrl, PHP_URL_PATH);
-        
+
         $this->assertSame('verified-secondary.example.test', parse_url($targetUrl, PHP_URL_HOST));
         $this->assertStringStartsWith('/platform/tenant-access/', $path);
     }
@@ -512,7 +512,7 @@ class TenantDetailTest extends TestCase
         $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
         $targetUrl = $response->getTargetUrl();
         $path = parse_url($targetUrl, PHP_URL_PATH);
-        
+
         $this->assertSame('first-primary.example.test', parse_url($targetUrl, PHP_URL_HOST));
         $this->assertStringStartsWith('/platform/tenant-access/', $path);
     }

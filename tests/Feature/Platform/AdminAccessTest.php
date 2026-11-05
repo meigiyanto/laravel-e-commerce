@@ -52,8 +52,8 @@ class AdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/platform/dashboard')
-            ->assertOk();
+        ->get('/platform/dashboard')
+        ->assertOk();
     }
 
     public function test_regular_admin_cannot_open_platform_dashboard(): void
@@ -63,16 +63,16 @@ class AdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/platform/dashboard')
-            ->assertForbidden();
+        ->get('/platform/dashboard')
+        ->assertForbidden();
     }
 
-    public function test_guest_is_redirected_from_platform_dashboard(): void
+    public function test_guest_is_redirected_to_platform_login_from_platform_dashboard(): void
     {
         $this->get('/platform/dashboard')
-            ->assertRedirect(route('login'));
+        ->assertRedirect(route('platform.login'));
     }
-
+    
     public function test_platform_admin_can_request_tenant_access(): void
     {
         $user = User::factory()->create([
@@ -82,7 +82,7 @@ class AdminAccessTest extends TestCase
         $tenant = $this->createTenant('tenant-a');
 
         $response = $this->actingAs($user)
-            ->post(route('platform.tenants.enter', $tenant));
+        ->post(route('platform.tenants.enter', $tenant));
 
         $response->assertRedirect();
 
@@ -184,14 +184,14 @@ class AdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('platform.dashboard'))
-            ->assertOk()
-            ->assertSee(route('platform.dashboard'))
-            ->assertSee(route('platform.tenants.index'))
-            ->assertSee(route('storefront.home'))
-            ->assertSee('Platform Administrator')
-            ->assertSee('Platform Dashboard')
-            ->assertDontSee(route('admin.dashboard'));
+        ->get(route('platform.dashboard'))
+        ->assertOk()
+        ->assertSee(route('platform.dashboard'))
+        ->assertSee(route('platform.tenants.index'))
+        ->assertSee(route('storefront.home'))
+        ->assertSee('Platform Administrator')
+        ->assertSee('Platform Dashboard')
+        ->assertDontSee(route('admin.dashboard'));
     }
 
     public function test_platform_admin_can_provision_tenant(): void
@@ -203,12 +203,12 @@ class AdminAccessTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)
-            ->from(route('platform.tenants.index'))
-            ->post(route('platform.tenants.provision'), [
-                'tenant_name' => 'Tenant Provisioned',
-                'store_name' => 'Store Provisioned',
-                'owner_email' => 'owner@example.test',
-            ]);
+        ->from(route('platform.tenants.index'))
+        ->post(route('platform.tenants.provision'), [
+            'tenant_name' => 'Tenant Provisioned',
+            'store_name' => 'Store Provisioned',
+            'owner_email' => 'owner@example.test',
+        ]);
 
         $response->assertRedirect(route('platform.tenants.index'));
 
@@ -232,10 +232,10 @@ class AdminAccessTest extends TestCase
         $tenant = $this->createTenant('tenant-status');
 
         $response = $this->actingAs($user)
-            ->patch(route('platform.tenants.status', $tenant), [
-                'status' => 'suspended',
-                'reason' => 'Suspended for testing.',
-            ]);
+        ->patch(route('platform.tenants.status', $tenant), [
+            'status' => 'suspended',
+            'reason' => 'Suspended for testing.',
+        ]);
 
         $response->assertRedirect();
 
@@ -265,12 +265,12 @@ class AdminAccessTest extends TestCase
         $tenant = $this->createTenant('tenant-protected');
 
         $this->actingAs($user)
-            ->post(route('platform.tenants.provision'), [
-                'tenant_name' => 'Unauthorized Tenant',
-                'store_name' => 'Unauthorized Store',
-                'owner_email' => 'owner@example.test',
-            ])
-            ->assertForbidden();
+        ->post(route('platform.tenants.provision'), [
+            'tenant_name' => 'Unauthorized Tenant',
+            'store_name' => 'Unauthorized Store',
+            'owner_email' => 'owner@example.test',
+        ])
+        ->assertForbidden();
 
         $this->patch(route('platform.tenants.status', $tenant), [
             'status' => 'suspended',
