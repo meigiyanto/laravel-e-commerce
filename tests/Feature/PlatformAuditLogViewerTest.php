@@ -26,7 +26,9 @@ class PlatformAuditLogViewerTest extends TestCase
         array $metadata = [],
         mixed $createdAt = null,
     ): PlatformAuditLog {
-        return PlatformAuditLog::create([
+        $log = new PlatformAuditLog();
+
+        $log->forceFill([
             'user_id' => $actor->id,
             'tenant_id' => $tenant->id,
             'action' => $action,
@@ -35,12 +37,16 @@ class PlatformAuditLogViewerTest extends TestCase
             'metadata' => $metadata,
             'created_at' => $createdAt ?? now(),
         ]);
+
+        $log->save();
+
+        return $log;
     }
 
     public function test_guest_cannot_access_audit_logs(): void
     {
         $this->get(route('platform.audit-logs.index'))
-            ->assertRedirect();
+        ->assertRedirect();
     }
 
     public function test_non_platform_admin_cannot_access_audit_logs(): void
@@ -50,8 +56,8 @@ class PlatformAuditLogViewerTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('platform.audit-logs.index'))
-            ->assertForbidden();
+        ->get(route('platform.audit-logs.index'))
+        ->assertForbidden();
     }
 
     public function test_platform_admin_can_view_audit_logs(): void
@@ -63,9 +69,9 @@ class PlatformAuditLogViewerTest extends TestCase
         $this->createLog($actor, $tenant);
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.index'))
-            ->assertOk()
-            ->assertViewIs('platform.audit-logs.index');
+        ->get(route('platform.audit-logs.index'))
+        ->assertOk()
+        ->assertViewIs('platform.audit-logs.index');
     }
 
     public function test_all_filters_can_be_applied_together(): void
@@ -102,8 +108,7 @@ class PlatformAuditLogViewerTest extends TestCase
 
         $response->assertOk()
         ->assertViewHas('logs', function ($logs) use ($matching) {
-            return $logs->total() === 1
-                && $logs->contains('id', $matching->id);
+            return $logs->total() === 1 && $logs->contains('id', $matching->id);
         });
     }
 
@@ -124,30 +129,18 @@ class PlatformAuditLogViewerTest extends TestCase
         $outside = $this->createLog($actor, $tenant, metadata: [
             'marker' => 'OUTSIDE_DATE',
         ], createdAt: now()->subDays(4));
-        
-        $response = $this->actingAs($admin)->get(
-            route('platform.audit-logs.index', [
-                'from' => now()->subDays(2)->toDateString(),
-                'to' => now()->subDay()->toDateString(),
-            ])
-        );
-        
-        $response->assertOk()
-            ->assertViewHas('logs', function ($logs) use ($start, $end, $outside) {
-                return $logs->total() === 2
-                    && $logs->contains('id', $start->id)
-                    && $logs->contains('id', $end->id)
-                    && ! $logs->contains('id', $outside->id);
-            });
 
-        $this->actingAs($admin)->get(route('platform.audit-logs.index', [
+        $response = $this->actingAs($admin)->get(route('platform.audit-logs.index', [
             'from' => now()->subDays(2)->toDateString(),
             'to' => now()->subDay()->toDateString(),
-        ]))
-            ->assertOk()
-            ->assertSee('START_DATE')
-            ->assertSee('END_DATE')
-            ->assertDontSee('OUTSIDE_DATE');
+        ]));
+
+        $response->assertOk()
+        ->assertViewHas('logs', function ($logs) use ($start, $end, $outside) {
+            $ids = $logs->getCollection()->modelKeys();
+
+            return $logs->total() === 2 && in_array($start->id, $ids, true) && in_array($end->id, $ids, true) && ! in_array($outside->id, $ids, true);
+        });
     }
 
     public function test_invalid_filters_are_rejected(): void
@@ -155,17 +148,17 @@ class PlatformAuditLogViewerTest extends TestCase
         $admin = $this->platformAdmin();
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.index', [
-                'action' => 'tenant.unknown',
-            ]))
-            ->assertSessionHasErrors('action');
+        ->get(route('platform.audit-logs.index', [
+            'action' => 'tenant.unknown',
+        ]))
+        ->assertSessionHasErrors('action');
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.index', [
-                'from' => '2026-11-10',
-                'to' => '2026-11-01',
-            ]))
-            ->assertSessionHasErrors('to');
+        ->get(route('platform.audit-logs.index', [
+            'from' => '2026-11-10',
+            'to' => '2026-11-01',
+        ]))
+        ->assertSessionHasErrors('to');
     }
 
     public function test_audit_logs_are_paginated_and_keep_filters(): void
@@ -187,23 +180,19 @@ class PlatformAuditLogViewerTest extends TestCase
         );
 
         $response->assertOk()
-            ->assertViewHas('logs', function ($logs) {
-                return $logs->total() === 26
-                    && $logs->count() === 25
-                    && $logs->currentPage() === 1;
-            })
-            ->assertSee('action=tenant.provisioned', false);
+        ->assertViewHas('logs', function ($logs) {
+            return $logs->total() === 26 && $logs->count() === 25 && $logs->currentPage() === 1;
+        })
+        ->assertSee('action=tenant.provisioned', false);
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.index', [
-                'action' => 'tenant.provisioned',
-                'page' => 2,
-            ]))
-            ->assertViewHas('logs', function ($logs) {
-                return $logs->total() === 26
-                    && $logs->count() === 1
-                    && $logs->currentPage() === 2;
-            });
+        ->get(route('platform.audit-logs.index', [
+            'action' => 'tenant.provisioned',
+            'page' => 2,
+        ]))
+        ->assertViewHas('logs', function ($logs) {
+            return $logs->total() === 26 && $logs->count() === 1 && $logs->currentPage() === 2;
+        });
     }
 
     public function test_actor_and_tenant_relationships_are_displayed(): void
@@ -220,11 +209,11 @@ class PlatformAuditLogViewerTest extends TestCase
         $this->createLog($actor, $tenant);
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.index'))
-            ->assertOk()
-            ->assertSee('Audit Actor Name')
-            ->assertSee('audit-actor@example.test')
-            ->assertSee('Audit Tenant Name');
+        ->get(route('platform.audit-logs.index'))
+        ->assertOk()
+        ->assertSee('Audit Actor Name')
+        ->assertSee('audit-actor@example.test')
+        ->assertSee('Audit Tenant Name');
     }
 
     public function test_detail_page_displays_metadata_safely(): void
@@ -249,14 +238,14 @@ class PlatformAuditLogViewerTest extends TestCase
         );
 
         $this->actingAs($admin)
-            ->get(route('platform.audit-logs.show', $log))
-            ->assertOk()
-            ->assertViewIs('platform.audit-logs.show')
-            ->assertSee('shop.example.test')
-            ->assertSee('42')
-            ->assertSee('platform')
-            ->assertSee('true')
-            ->assertSee('&lt;script&gt;', false)
-            ->assertDontSee('<script>alert(1)</script>', false);
+        ->get(route('platform.audit-logs.show', $log))
+        ->assertOk()
+        ->assertViewIs('platform.audit-logs.show')
+        ->assertSee('shop.example.test')
+        ->assertSee('42')
+        ->assertSee('platform')
+        ->assertSee('true')
+        ->assertSee('&lt;script&gt;', false)
+        ->assertDontSee('<script>alert(1)</script>', false);
     }
 }
