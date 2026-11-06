@@ -213,10 +213,6 @@ class PlatformAuditLogSecurityTest extends TestCase
 
         $names = collect($triggers)->pluck('name')->all();
         
-        $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
-
-        $response->dump();
-
         $this->assertContains('platform_audit_logs_prevent_update',$names);
 
         $this->assertContains('platform_audit_logs_prevent_delete',$names);

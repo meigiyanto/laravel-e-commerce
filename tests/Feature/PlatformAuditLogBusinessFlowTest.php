@@ -185,8 +185,10 @@ class PlatformAuditLogBusinessFlowTest extends TestCase
         $admin = $this->platformAdmin();
         $tenant = $this->tenantWithVerifiedDomain();
 
-        $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
-
+        $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
+        
+        $response->assertRedirect();
+        
         $this->assertDatabaseHas('platform_audit_logs', [
             'user_id' => $admin->id,
             'tenant_id' => $tenant->id,
