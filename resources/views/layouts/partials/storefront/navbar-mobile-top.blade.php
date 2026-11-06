@@ -17,20 +17,11 @@
 
             {{-- User --}}
             <div class="dropdown store-mobile-user-dropdown">
-                <button
-                    type="button"
-                    class="store-mobile-user"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                    aria-label="Account"
-                    title="Account"
-                >
+                <button type="button" class="store-mobile-user" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account" title="Account">
                     <i class="bi bi-person-circle" aria-hidden="true"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-
                     @auth
-
                         <li class="dropdown-user-info">
                             <div class="dropdown-user-name">
                                 {{ auth()->user()->name }}
@@ -46,31 +37,26 @@
                         </li>
 
                         <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('account.index') }}"
-                            >
+                            <a class="dropdown-item" href="{{ route('account.index') }}">
                                 <i class="bi bi-speedometer2"></i>
                                 Account
                             </a>
                         </li>
 
-                        @if (auth()->user()->isAdmin())
-
+                        @if (auth()->user()->isPlatformAdmin())
                             <li>
-                                <hr class="dropdown-divider">
+                                <a class="dropdown-item" href="{{ route('platform.dashboard') }}">
+                                    <i class="bi bi-shield-check"></i>
+                                    Platform Panel
+                                </a>
                             </li>
-
+                        @elseif (auth()->user()->activeTenantMembership())
                             <li>
-                                <a
-                                    class="dropdown-item"
-                                    href="{{ route('admin.dashboard') }}"
-                                >
+                                <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
                                     <i class="bi bi-shield-check"></i>
                                     Admin Panel
                                 </a>
                             </li>
-
                         @endif
 
                         <li>
@@ -78,48 +64,37 @@
                         </li>
 
                         <li>
-                            <form
-                                method="POST"
-                                action="{{ route('logout') }}"
-                            >
+                        @if (auth()->user()->isPlatformAdmin())
+                            <form method="POST" action="{{ route('platform.logout') }}">
                                 @csrf
-
-                                <button
-                                    type="submit"
-                                    class="dropdown-item text-danger"
-                                >
+                        @elseif (auth()->user()->isAdmin())
+                            <form method="POST" action="{{ route('admin.logout') }}">
+                                @csrf
+                        @else
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                        @endif
+                                <button type="submit" class="dropdown-item text-danger">
                                     <i class="bi bi-box-arrow-right"></i>
                                     Logout
                                 </button>
                             </form>
                         </li>
-
                     @else
-
                         <li>
-                            <a
-                                class="dropdown-item"
-                                href="{{ route('login') }}"
-                            >
+                            <a class="dropdown-item" href="{{ route('login') }}">
                                 <i class="bi bi-box-arrow-in-right"></i>
                                 Login
                             </a>
                         </li>
-
                         @if (Route::has('register'))
-
                             <li>
-                                <a
-                                    class="dropdown-item"
-                                    href="{{ route('register') }}"
-                                >
+                                <a class="dropdown-item" href="{{ route('register') }}">
                                     <i class="bi bi-person-plus"></i>
                                     Daftar
                                 </a>
                             </li>
-
                         @endif
-
                     @endauth
 
                 </ul>

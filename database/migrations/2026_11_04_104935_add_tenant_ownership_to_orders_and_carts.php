@@ -10,9 +10,16 @@ return new class extends Migration
     /**
     * Memeriksa apakah index dengan susunan kolom tertentu sudah ada.
     */
-    private function hasIndex(string $table, array $columns, bool $unique = false): bool
-    {
-        if (DB::connection()->getDriverName() === 'sqlite') {
+
+    private function hasIndex(
+        string $table,
+        array $columns,
+        bool $unique = false
+    ): bool {
+        $expected = implode(',', $columns);
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
             $indexes = DB::select("PRAGMA index_list('{$table}')");
 
             foreach ($indexes as $index) {
@@ -21,7 +28,10 @@ return new class extends Migration
                 }
 
                 $indexColumns = DB::select("PRAGMA index_info('{$index->name}')");
-                $actualColumns = array_map(fn ($item) => $item->name, $indexColumns);
+                $actualColumns = array_map(
+                    fn ($item) => $item->name,
+                    $indexColumns
+                );
 
                 if ($actualColumns === $columns) {
                     return true;
@@ -31,10 +41,10 @@ return new class extends Migration
             return false;
         }
 
-        $expected = implode(',', $columns);
-
         return DB::table('information_schema.statistics')
-        ->selectRaw('GROUP_CONCAT(column_name ORDER BY seq_in_index) as columns_list')
+        ->selectRaw(
+            'index_name, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) as columns_list'
+        )
         ->where('table_schema', DB::connection()->getDatabaseName())
         ->where('table_name', $table)
         ->groupBy('index_name', 'non_unique')

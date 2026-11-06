@@ -30,7 +30,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.role' => RoleMiddleware::class,
             'platform.admin' => PlatformAdminMiddleware::class,
         ]);
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin/*') ? route('admin.login') : route('login'));
+        $middleware->redirectGuestsTo(fn (Request $request) =>
+            $request->is('platform/*') ? route('platform.login') : ($request->is('admin/*') ? route('admin.login') : route('login'))
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

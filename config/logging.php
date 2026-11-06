@@ -51,6 +51,14 @@ return [
     */
 
     'channels' => [
+        
+        'audit_ops' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit-operations.log'),
+            'level' => env('AUDIT_LOG_LEVEL', 'warning'),
+            'days' => (int) env('AUDIT_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
 
         'stack' => [
             'driver' => 'stack',
@@ -136,5 +144,4 @@ return [
         ],
 
     ],
-
 ];

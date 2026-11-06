@@ -10,9 +10,15 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Services\Platform\PlatformAuditLogger;
+use App\Support\Platform\PlatformAuditAction;
 
 class TenantProvisioningService
 {
+    public function __construct(
+        private readonly PlatformAuditLogger $auditLogger,
+    ) {}
+
     public function provision(
         User $platformAdmin,
         string $tenantName,
@@ -63,6 +69,17 @@ class TenantProvisioningService
                 'status' => 'pending',
                 'expires_at' => now()->addDays(3),
             ]);
+
+            $this->auditLogger->record(
+                actor: $platformAdmin,
+                action: PlatformAuditAction::TENANT_PROVISIONED,
+                tenant: $tenant,
+                metadata: [
+                    'store_id' => (int) $store->id,
+                    'tenant_name' => $tenant->name,
+                    'store_name' => $store->name,
+                ],
+            );
 
             return compact('tenant', 'store', 'invitation');
         });

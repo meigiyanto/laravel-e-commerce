@@ -2,32 +2,48 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
 use App\Models\Tenant;
 use App\Models\TenantMembership;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected Tenant $tenant;
 
     protected function setUp(): void
     {
         parent::setUp();
-    
-        $tenant = Tenant::factory()->create([
+
+        $this->tenant = Tenant::factory()->create([
             'name' => 'Default Tenant',
             'slug' => 'default',
             'status' => 'active',
         ]);
-        
-        $this->tenant = $tenant;
-
     }
-    
+
+    private function createMembership(
+        User $user,
+        string $role,
+        string $status = 'active'
+    ): TenantMembership {
+        return TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $user->id,
+            'role' => $role,
+            'status' => $status,
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storefront Authentication
+    |--------------------------------------------------------------------------
+    */
+
     public function test_login_screen_can_be_rendered(): void
     {
         $this->get('/login')->assertOk();
@@ -45,10 +61,13 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticatedAs($customer);
-        $response->assertRedirect(route('account.index', absolute: false));
+
+        $response->assertRedirect(
+            route('account.index', absolute: false)
+        );
     }
 
-    public function test_users_can_not_authenticate_with_invalid_password(): void
+    public function test_users_cannot_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
 
@@ -60,26 +79,74 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_users_can_logout(): void
+    public function test_platform_admin_cannot_login_through_storefront_login(): void
     {
-        $customer = User::factory()->create();
+        $platformAdmin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $response = $this->from('/login')->post('/login', [
+            'email' => $platformAdmin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
+        $response->assertRedirect('/login');
+        $response->assertSessionHasErrors('email');
+    }
+
+    public function test_staff_without_tenant_membership_can_login_to_storefront(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => $staff->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($staff);
+
+        $response->assertRedirect(
+            route('account.index', absolute: false)
+        );
+    }
+
+    public function test_storefront_users_can_logout(): void
+    {
+        $customer = User::factory()->create([
+            'role' => User::ROLE_CUSTOMER,
+        ]);
 
         $response = $this->actingAs($customer)->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/login');
+        $response->assertRedirect(route('login'));
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Admin Authentication
+    |--------------------------------------------------------------------------
+    */
 
     public function test_admin_login_screen_can_be_rendered(): void
     {
         $this->get('/admin/login')->assertOk();
     }
 
-    public function test_admin_can_login_through_admin_login_screen(): void
+    public function test_admin_with_active_membership_can_login(): void
     {
         $admin = User::factory()->create([
             'role' => User::ROLE_ADMIN,
         ]);
+
+        $this->createMembership(
+            $admin,
+            TenantMembership::ROLE_ADMIN
+        );
 
         $response = $this->post('/admin/login', [
             'email' => $admin->email,
@@ -87,7 +154,33 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticatedAs($admin);
-        $response->assertRedirect(route('admin.dashboard', absolute: false));
+
+        $response->assertRedirect(
+            route('admin.dashboard', absolute: false)
+        );
+    }
+
+    public function test_admin_without_active_membership_cannot_login(): void
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $this->createMembership(
+            $admin,
+            TenantMembership::ROLE_ADMIN,
+            'inactive'
+        );
+
+        $response = $this->from('/admin/login')->post('/admin/login', [
+            'email' => $admin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
+        $response->assertRedirect('/admin/login');
+        $response->assertSessionHasErrors('email');
     }
 
     public function test_customer_cannot_login_through_admin_login_screen(): void
@@ -102,6 +195,24 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+
+        $response->assertRedirect('/admin/login');
+        $response->assertSessionHasErrors('email');
+    }
+
+    public function test_platform_admin_cannot_login_through_admin_login_screen(): void
+    {
+        $platformAdmin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $response = $this->from('/admin/login')->post('/admin/login', [
+            'email' => $platformAdmin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
         $response->assertRedirect('/admin/login');
         $response->assertSessionHasErrors('email');
     }
@@ -123,22 +234,43 @@ class AuthenticationTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_staff_can_access_the_operational_dashboard(): void
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Staff Authorization
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_staff_with_active_membership_can_access_operational_dashboard(): void
     {
         $staff = User::factory()->create([
             'role' => User::ROLE_STAFF,
         ]);
-    
-        TenantMembership::create([
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $staff->id,
-            'role' => TenantMembership::ROLE_STAFF,
-            'status' => 'active',
-        ]);
-    
+
+        $this->createMembership(
+            $staff,
+            TenantMembership::ROLE_STAFF
+        );
+
         $this->actingAs($staff)
             ->get('/admin/dashboard')
             ->assertOk();
+    }
+
+    public function test_staff_without_active_membership_cannot_access_operational_dashboard(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+
+        $this->createMembership(
+            $staff,
+            TenantMembership::ROLE_STAFF,
+            'inactive'
+        );
+
+        $this->actingAs($staff)
+            ->get('/admin/dashboard')
+            ->assertForbidden();
     }
 
     public function test_staff_cannot_access_user_management_or_admin_profile(): void
@@ -146,6 +278,11 @@ class AuthenticationTest extends TestCase
         $staff = User::factory()->create([
             'role' => User::ROLE_STAFF,
         ]);
+
+        $this->createMembership(
+            $staff,
+            TenantMembership::ROLE_STAFF
+        );
 
         $this->actingAs($staff)
             ->get('/admin/users')
@@ -156,20 +293,51 @@ class AuthenticationTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_staff_login_redirects_to_the_operational_dashboard(): void
+    public function test_staff_with_active_membership_can_login_through_admin_login(): void
     {
         $staff = User::factory()->create([
             'role' => User::ROLE_STAFF,
         ]);
 
-        $response = $this->post('/login', [
+        $this->createMembership(
+            $staff,
+            TenantMembership::ROLE_STAFF
+        );
+
+        $response = $this->post('/admin/login', [
             'email' => $staff->email,
             'password' => 'password',
         ]);
 
         $this->assertAuthenticatedAs($staff);
-        $response->assertRedirect(route('admin.dashboard', absolute: false));
+
+        $response->assertRedirect(
+            route('admin.dashboard', absolute: false)
+        );
     }
+
+    public function test_staff_without_membership_is_rejected_from_admin_login(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+
+        $response = $this->from('/admin/login')->post('/admin/login', [
+            'email' => $staff->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
+        $response->assertRedirect('/admin/login');
+        $response->assertSessionHasErrors('email');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tenant Admin Logout
+    |--------------------------------------------------------------------------
+    */
 
     public function test_admin_logout_clears_authentication_and_redirects_to_admin_login(): void
     {
@@ -177,9 +345,114 @@ class AuthenticationTest extends TestCase
             'role' => User::ROLE_ADMIN,
         ]);
 
-        $response = $this->actingAs($admin)->post('/logout');
+        $this->createMembership(
+            $admin,
+            TenantMembership::ROLE_ADMIN
+        );
+
+        $response = $this->actingAs($admin)->post('/admin/logout');
 
         $this->assertGuest();
+
         $response->assertRedirect(route('admin.login'));
+    }
+
+    public function test_staff_logout_redirects_to_admin_login(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+
+        $this->createMembership(
+            $staff,
+            TenantMembership::ROLE_STAFF
+        );
+
+        $response = $this->actingAs($staff)->post('/admin/logout');
+
+        $this->assertGuest();
+
+        $response->assertRedirect(route('admin.login'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Platform Authentication
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_platform_login_screen_can_be_rendered(): void
+    {
+        $this->get('/platform/login')->assertOk();
+    }
+
+    public function test_platform_admin_can_login_through_platform_login_screen(): void
+    {
+        $platformAdmin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $response = $this->post('/platform/login', [
+            'email' => $platformAdmin->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($platformAdmin);
+
+        $response->assertRedirect(
+            route('platform.dashboard', absolute: false)
+        );
+    }
+
+    public function test_regular_user_cannot_login_through_platform_login_screen(): void
+    {
+        $customer = User::factory()->create([
+            'role' => User::ROLE_CUSTOMER,
+        ]);
+
+        $response = $this->from('/platform/login')->post('/platform/login', [
+            'email' => $customer->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertGuest();
+
+        $response->assertRedirect('/platform/login');
+        $response->assertSessionHasErrors('email');
+    }
+
+    public function test_platform_admin_can_access_platform_dashboard(): void
+    {
+        $platformAdmin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $this->actingAs($platformAdmin)
+            ->get('/platform/dashboard')
+            ->assertOk();
+    }
+
+    public function test_regular_user_cannot_access_platform_dashboard(): void
+    {
+        $customer = User::factory()->create([
+            'role' => User::ROLE_CUSTOMER,
+        ]);
+
+        $this->actingAs($customer)
+            ->get('/platform/dashboard')
+            ->assertForbidden();
+    }
+
+    public function test_platform_admin_logout_redirects_to_platform_login(): void
+    {
+        $platformAdmin = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $response = $this->actingAs($platformAdmin)->post('/platform/logout');
+
+        $this->assertGuest();
+
+        $response->assertRedirect(route('platform.login'));
     }
 }

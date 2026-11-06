@@ -5,11 +5,17 @@ namespace App\Services\Tenancy;
 use App\Models\PlatformAuditLog;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Platform\PlatformAuditLogger;
+use App\Support\Platform\PlatformAuditAction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TenantLifecycleService
 {
+    public function __construct(
+        private readonly PlatformAuditLogger $auditLogger,
+    ) {}
+
     public function activate(Tenant $tenant, User $actor): Tenant
     {
         return $this->changeStatus($tenant, $actor, 'active');
@@ -26,12 +32,7 @@ class TenantLifecycleService
             ]);
         }
 
-        return $this->changeStatus(
-            $tenant,
-            $actor,
-            'suspended',
-            ['reason' => $reason]
-        );
+        return $this->changeStatus($tenant, $actor, 'suspended');
     }
 
     public function changeStatus(
@@ -64,16 +65,15 @@ class TenantLifecycleService
                 ]);
             }
 
-            PlatformAuditLog::create([
-                'user_id' => $actor->id,
-                'tenant_id' => $locked->id,
-                'action' => 'tenant.status_changed',
-                'metadata' => [
+            $this->auditLogger->record(
+                actor: $actor,
+                action: PlatformAuditAction::TENANT_STATUS_CHANGED,
+                tenant: $locked,
+                metadata: [
                     'from' => $previous,
                     'to' => $status,
-                    ...$metadata,
                 ],
-            ]);
+            );
 
             return $locked->fresh('store');
         });

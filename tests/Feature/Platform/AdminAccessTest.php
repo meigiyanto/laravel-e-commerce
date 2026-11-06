@@ -1,19 +1,19 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Platform;
 
 use App\Models\PlatformAccessToken;
-use App\Models\PlatformAuditLog;
 use App\Models\Store;
 use App\Models\StoreDomain;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
-class PlatformAdminAccessTest extends TestCase
+class AdminAccessTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -52,8 +52,8 @@ class PlatformAdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/platform/dashboard')
-            ->assertOk();
+        ->get('/platform/dashboard')
+        ->assertOk();
     }
 
     public function test_regular_admin_cannot_open_platform_dashboard(): void
@@ -63,16 +63,16 @@ class PlatformAdminAccessTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/platform/dashboard')
-            ->assertForbidden();
+        ->get('/platform/dashboard')
+        ->assertForbidden();
     }
 
-    public function test_guest_is_redirected_from_platform_dashboard(): void
+    public function test_guest_is_redirected_to_platform_login_from_platform_dashboard(): void
     {
         $this->get('/platform/dashboard')
-            ->assertRedirect(route('login'));
+        ->assertRedirect(route('platform.login'));
     }
-
+    
     public function test_platform_admin_can_request_tenant_access(): void
     {
         $user = User::factory()->create([
@@ -82,7 +82,7 @@ class PlatformAdminAccessTest extends TestCase
         $tenant = $this->createTenant('tenant-a');
 
         $response = $this->actingAs($user)
-            ->post(route('platform.tenants.enter', $tenant));
+        ->post(route('platform.tenants.enter', $tenant));
 
         $response->assertRedirect();
 
@@ -175,5 +175,111 @@ class PlatformAdminAccessTest extends TestCase
         $this->get(
             'http://tenant-b.example.test/platform/tenant-access/'.$plainToken
         )->assertNotFound();
+    }
+
+    public function test_platform_dashboard_renders_platform_navigation(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $this->actingAs($user)
+        ->get(route('platform.dashboard'))
+        ->assertOk()
+        ->assertSee(route('platform.dashboard'))
+        ->assertSee(route('platform.tenants.index'))
+        ->assertSee(route('storefront.home'))
+        ->assertSee('Platform Administrator')
+        ->assertSee('Platform Dashboard')
+        ->assertDontSee(route('admin.dashboard'));
+    }
+
+    public function test_platform_admin_can_provision_tenant(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $response = $this->actingAs($user)
+        ->from(route('platform.tenants.index'))
+        ->post(route('platform.tenants.provision'), [
+            'tenant_name' => 'Tenant Provisioned',
+            'store_name' => 'Store Provisioned',
+            'owner_email' => 'owner@example.test',
+        ]);
+
+        $response->assertRedirect(route('platform.tenants.index'));
+
+        $this->assertDatabaseHas('tenants', [
+            'slug' => 'tenant-provisioned',
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('stores', [
+            'slug' => 'store-provisioned',
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_platform_admin_can_suspend_tenant(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_PLATFORM_ADMIN,
+        ]);
+
+        $tenant = $this->createTenant('tenant-status');
+
+        $response = $this->actingAs($user)
+        ->patch(route('platform.tenants.status', $tenant), [
+            'status' => 'suspended',
+            'reason' => 'Suspended for testing.',
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenant->id,
+            'status' => 'suspended',
+        ]);
+
+        $this->assertDatabaseHas('stores', [
+            'tenant_id' => $tenant->id,
+            'status' => 'suspended',
+        ]);
+
+        $this->assertDatabaseHas('platform_audit_logs', [
+            'user_id' => $user->id,
+            'tenant_id' => $tenant->id,
+            'action' => 'tenant.status_changed',
+        ]);
+    }
+
+    public function test_regular_admin_cannot_access_platform_management_endpoints(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        $tenant = $this->createTenant('tenant-protected');
+
+        $this->actingAs($user)
+        ->post(route('platform.tenants.provision'), [
+            'tenant_name' => 'Unauthorized Tenant',
+            'store_name' => 'Unauthorized Store',
+            'owner_email' => 'owner@example.test',
+        ])
+        ->assertForbidden();
+
+        $this->patch(route('platform.tenants.status', $tenant), [
+            'status' => 'suspended',
+            'reason' => 'Unauthorized attempt.',
+        ])->assertForbidden();
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenant->id,
+            'status' => 'active',
+        ]);
     }
 }

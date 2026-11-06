@@ -21,39 +21,34 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
+        $request->authenticateStorefront();
         $request->session()->regenerate();
 
-        $this->cartService->mergeGuestCartIntoUserCart(
-            $request->user()->id
-        );
+        $user = $request->user();
 
-        if ($request->user()->isAdmin() || $request->user()->isStaff()) {
-            return redirect()->intended(
-                route('admin.dashboard', absolute: false)
-            );
-        }
-
-        return redirect()->intended(
-            route('account.index', absolute: false)
-        );
+        $this->cartService->mergeGuestCartIntoUserCart($user->id);
+        return redirect()->route('account.index');
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function storeAdmin(LoginRequest $request): RedirectResponse
     {
-        $user = $request->user();
-    
-        $wasPlatformAdmin = $user?->isPlatformAdmin() ?? false;
-        $wasAdmin = $user?->isAdmin() ?? false;
-    
-        Auth::guard('web')->logout();
-    
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-    
-        return ($wasPlatformAdmin || $wasAdmin)
-            ? redirect()->route('admin.login')
-            : redirect()->route('login');
+        $request->authenticateAdmin();
+        $request->session()->regenerate();
+
+        return redirect()->route('admin.dashboard');
+    }
+
+    public function createPlatform(): View
+    {
+        return view('auth.platform-login');
+    }
+
+    public function storePlatform(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticatePlatform();
+        $request->session()->regenerate();
+
+        return redirect()->route('platform.dashboard');
     }
 
     public function createAdmin(): View
@@ -61,12 +56,43 @@ class AuthenticatedSessionController extends Controller
         return view('auth.admin-login');
     }
 
-    public function storeAdmin(LoginRequest $request): RedirectResponse
+    public function destroy(Request $request): RedirectResponse
     {
-        $request->authenticateAdmin();
-        $request->session()->regenerate();
-    
-        return $request->user()->isPlatformAdmin() ? redirect()->route('platform.dashboard') : redirect()->route('admin.dashboard');
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login');
+    }
+
+    public function destroyStorefront(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login');
+    }
+
+    public function destroyAdmin(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('admin.login');
+    }
+
+    public function destroyPlatform(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('platform.login');
     }
 }
-

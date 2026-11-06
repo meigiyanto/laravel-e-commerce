@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Builders\ImmutableAuditLogBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class PlatformAuditLog extends Model
 {
@@ -15,6 +17,32 @@ class PlatformAuditLog extends Model
         'user_agent',
         'metadata',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new LogicException('Platform audit logs are immutable.');
+        });
+
+        static::deleting(function () {
+            throw new LogicException('Platform audit logs cannot be deleted.');
+        });
+    }
+
+    public function newEloquentBuilder($query): ImmutableAuditLogBuilder
+    {
+        return new ImmutableAuditLogBuilder($query);
+    }
+
+    protected function performUpdate($query): bool
+    {
+        throw new LogicException('Platform audit logs are immutable.');
+    }
+
+    protected function performDeleteOnModel(): void
+    {
+        throw new LogicException('Platform audit logs cannot be deleted.');
+    }
 
     protected function casts(): array
     {

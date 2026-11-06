@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.platform')
 
 @section('title', 'Manage Tenants')
 
@@ -8,10 +8,11 @@
         <h3 class="nk-block-title page-title">Manage Tenants</h3>
     </div>
 </div>
+
 <div class="card card-bordered">
     <div class="card-inner">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-bordered table-striped text-nowrap">
                 <thead>
                     <tr>
                         <th>Tenant</th>
@@ -23,16 +24,24 @@
                 <tbody>
                     @forelse ($tenants as $tenant)
                         @php
-                            $domain = $tenant->store?->domains->first();
+                            $domain = $tenant->store?->verifiedDomains->first();
                         @endphp
                         <tr>
                             <td>
                                 <strong>{{ $tenant->name }}</strong>
-                                <div class="text-soft">{{ $tenant->slug }}</div>
                             </td>
-                            <td>{{ $tenant->status }}</td>
+                            <td>
+                                @if ($tenant->status === 'active') 
+                                    <span class="text-success">{{ \Illuminate\Support\Str::ucfirst($tenant->status) }}</span>
+                                @else
+                                    <span class="text-muted">{{ \Illuminate\Support\Str::ucfirst($tenant->status) }}</span> 
+                                @endif
+                            </td>
                             <td>{{ $domain?->domain ?? 'No verified domain' }}</td>
                             <td>
+                                <a href="{{ route('platform.tenants.show', $tenant) }}" class="btn btn-sm btn-outline-info" title="Detail tenant" aria-label="Detail {{ $tenant->slug }}">
+                                    <em class="icon ni ni-eye" aria-hidden="true"></em>
+                                </a>
                                 @if ($tenant->status === 'active' && $domain)
                                     <form method="POST" action="{{ route('platform.tenants.enter', $tenant) }}">
                                         @csrf
