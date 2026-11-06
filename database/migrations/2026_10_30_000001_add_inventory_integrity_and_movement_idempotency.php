@@ -20,8 +20,8 @@ return new class extends Migration
         }
 
         $invalidInventoryExists = DB::table('inventories')
-            ->whereColumn('reserved_quantity', '>', 'quantity')
-            ->exists();
+        ->whereColumn('reserved_quantity', '>', 'quantity')
+        ->exists();
 
         if ($invalidInventoryExists) {
             throw new RuntimeException(
@@ -29,41 +29,64 @@ return new class extends Migration
             );
         }
 
-        Schema::table('inventory_movements', function (Blueprint $table) {
-            $table->string('idempotency_key', 191)
-                ->nullable()
-                ->unique('inventory_movements_idempotency_key_unique');
-        });
+        if (! Schema::hasColumn('inventory_movements', 'idempotency_key')) {
+            Schema::table('inventory_movements', function (Blueprint $table) {
+                $table->string('idempotency_key', 191)->nullable();
+            });
+        }
+
+        if (! Schema::hasIndex(
+            'inventory_movements',
+            'inventory_movements_idempotency_key_unique'
+        )) {
+            Schema::table('inventory_movements', function (Blueprint $table) {
+                $table->unique(
+                    'idempotency_key',
+                    'inventory_movements_idempotency_key_unique'
+                );
+            });
+        }
 
         if ($driver === 'sqlite') {
             DB::unprepared("
-                CREATE TRIGGER inventories_reserved_quantity_insert_check
-                BEFORE INSERT ON inventories
-                FOR EACH ROW
-                WHEN NEW.reserved_quantity > NEW.quantity
-                BEGIN
-                    SELECT RAISE(ABORT, 'reserved_quantity cannot exceed quantity');
-                END
-            ");
+            CREATE TRIGGER IF NOT EXISTS inventories_reserved_quantity_insert_check
+            BEFORE INSERT ON inventories
+            FOR EACH ROW
+            WHEN NEW.reserved_quantity > NEW.quantity
+            BEGIN
+                SELECT RAISE(ABORT, 'reserved_quantity cannot exceed quantity');
+            END
+        ");
 
             DB::unprepared("
-                CREATE TRIGGER inventories_reserved_quantity_update_check
-                BEFORE UPDATE OF quantity, reserved_quantity ON inventories
-                FOR EACH ROW
-                WHEN NEW.reserved_quantity > NEW.quantity
-                BEGIN
-                    SELECT RAISE(ABORT, 'reserved_quantity cannot exceed quantity');
-                END
-            ");
+            CREATE TRIGGER IF NOT EXISTS inventories_reserved_quantity_update_check
+            BEFORE UPDATE OF quantity, reserved_quantity ON inventories
+            FOR EACH ROW
+            WHEN NEW.reserved_quantity > NEW.quantity
+            BEGIN
+                SELECT RAISE(ABORT, 'reserved_quantity cannot exceed quantity');
+            END
+        ");
 
             return;
         }
 
-        DB::statement(
-            'ALTER TABLE inventories ADD CONSTRAINT '
-            .self::CONSTRAINT
-            .' CHECK (reserved_quantity <= quantity)'
-        );
+        $constraintExists = DB::table('information_schema.TABLE_CONSTRAINTS')
+        ->where('TABLE_SCHEMA', $driver === 'mysql'
+            ? DB::getDatabaseName()
+            : DB::raw('current_schema()'))
+        ->where('TABLE_NAME', 'inventories')
+        ->where('CONSTRAINT_NAME', self::CONSTRAINT)
+        ->where('CONSTRAINT_TYPE', 'CHECK')
+        ->exists();
+
+        if (! $constraintExists) {
+            DB::statement(
+                'ALTER TABLE inventories ADD CONSTRAINT '
+                .self::CONSTRAINT
+                .' CHECK (reserved_quantity <= quantity)'
+            );
+        }
     }
 
     public function down(): void
@@ -79,21 +102,38 @@ return new class extends Migration
                 'DROP TRIGGER IF EXISTS inventories_reserved_quantity_update_check'
             );
         } elseif ($driver === 'mysql') {
-            DB::statement(
-                'ALTER TABLE inventories DROP CHECK '.self::CONSTRAINT
-            );
+            $constraintExists = DB::table('information_schema.TABLE_CONSTRAINTS')
+            ->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->where('TABLE_NAME', 'inventories')
+            ->where('CONSTRAINT_NAME', self::CONSTRAINT)
+            ->exists();
+
+            if ($constraintExists) {
+                DB::statement(
+                    'ALTER TABLE inventories DROP CHECK '.self::CONSTRAINT
+                );
+            }
         } elseif ($driver === 'pgsql') {
             DB::statement(
-                'ALTER TABLE inventories DROP CONSTRAINT '.self::CONSTRAINT
+                'ALTER TABLE inventories DROP CONSTRAINT IF EXISTS '.self::CONSTRAINT
             );
         }
 
-        Schema::table('inventory_movements', function (Blueprint $table) {
-            $table->dropUnique(
-                'inventory_movements_idempotency_key_unique'
-            );
+        if (Schema::hasIndex(
+            'inventory_movements',
+            'inventory_movements_idempotency_key_unique'
+        )) {
+            Schema::table('inventory_movements', function (Blueprint $table) {
+                $table->dropUnique(
+                    'inventory_movements_idempotency_key_unique'
+                );
+            });
+        }
 
-            $table->dropColumn('idempotency_key');
-        });
+        if (Schema::hasColumn('inventory_movements', 'idempotency_key')) {
+            Schema::table('inventory_movements', function (Blueprint $table) {
+                $table->dropColumn('idempotency_key');
+            });
+        }
     }
 };

@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Support\Platform\PlatformAuditAction;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class PlatformAuditLogger
 {
@@ -68,23 +70,38 @@ class PlatformAuditLogger
         );
 
         if ($missing || $unexpected) {
-            throw new InvalidArgumentException(
-                'Invalid metadata contract for '.$action.
-                '. Missing: '.implode(', ', $missing).
-                '. Unexpected: '.implode(', ', $unexpected)
-            );
+            throw new InvalidArgumentException('Invalid metadata contract for '.$action.'. Missing: '.implode(', ', $missing).'. Unexpected: '.implode(', ', $unexpected));
         }
 
         $this->validateValues($action, $metadata);
 
-        return PlatformAuditLog::create([
-            'user_id' => $actor->id,
-            'tenant_id' => $tenant?->id,
-            'action' => $action,
-            'ip_address' => $this->request->ip(),
-            'user_agent' => $this->safeUserAgent(),
-            'metadata' => $this->sanitizeMetadata($metadata),
-        ]);
+        try {
+            return PlatformAuditLog::create([
+                'user_id' => $actor->id,
+                'tenant_id' => $tenant?->id,
+                'action' => $action,
+                'ip_address' => $this->request->ip(),
+                'user_agent' => $this->safeUserAgent(),
+                'metadata' => $this->sanitizeMetadata($metadata),
+            ]);
+        } catch (Throwable $exception) {
+            try {
+                Log::channel('audit_ops')->error(
+                    'Platform audit log persistence failed',
+                    [
+                        'action' => $action,
+                        'actor_id' => $actor->id,
+                        'tenant_id' => $tenant?->id,
+                        'exception_class' => $exception::class,
+                    ]
+                );
+            } catch (Throwable) {
+                // Jangan sampai kegagalan operational logger menutupi
+                // exception asli dari penyimpanan audit.
+            }
+
+            throw $exception;
+        }
     }
 
     private function safeUserAgent(): ?string
