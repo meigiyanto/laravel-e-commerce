@@ -13,7 +13,7 @@ use InvalidArgumentException;
 use LogicException;
 use Tests\TestCase;
 
-class PlatformAuditLoggingTest extends TestCase
+class AuditLoggingTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -48,7 +48,7 @@ class PlatformAuditLoggingTest extends TestCase
         $this->assertSame($store->id, $log->metadata['store_id']);
         $this->assertSame('Audit Tenant', $log->metadata['tenant_name']);
         $this->assertSame('Audit Store', $log->metadata['store_name']);
-        $this->assertSame('owner@example.test', $log->metadata['owner_email']);
+        $this->assertArrayNotHasKey('owner_email', $log->metadata);
         $this->assertArrayNotHasKey('token', $log->metadata);
         $this->assertArrayNotHasKey('token_hash', $log->metadata);
     }

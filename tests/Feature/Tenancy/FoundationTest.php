@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Tenancy;
 
 use App\Models\Category;
 use App\Models\Product;
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class TenancyFoundationTest extends TestCase
+class FoundationTest extends TestCase
 {
     use RefreshDatabase;
 

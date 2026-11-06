@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Platform;
 
 use App\Models\PlatformAccessToken;
 use App\Models\PlatformAuditLog;
@@ -18,7 +18,7 @@ use Mockery;
 use RuntimeException;
 use Tests\TestCase;
 
-class PlatformAuditLogBusinessFlowTest extends TestCase
+class AuditLogBusinessFlowTest extends TestCase
 {
     use RefreshDatabase;
 

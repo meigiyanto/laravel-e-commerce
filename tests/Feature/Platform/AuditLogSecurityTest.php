@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Platform;
 
 use App\Models\PlatformAuditLog;
 use App\Models\Tenant;
@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 use LogicException;
 use Tests\TestCase;
 
-class PlatformAuditLogSecurityTest extends TestCase
+class AuditLogSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -210,11 +210,13 @@ class PlatformAuditLogSecurityTest extends TestCase
             WHERE type = 'trigger'
             AND tbl_name = 'platform_audit_logs'
         ");
+        
+        $this->assertSame('testing', app()->environment());
+        $this->assertTrue(app()->runningUnitTests());
+        $this->assertSame('sqlite', DB::connection()->getDriverName());
 
         $names = collect($triggers)->pluck('name')->all();
-        
         $this->assertContains('platform_audit_logs_prevent_update',$names);
-
         $this->assertContains('platform_audit_logs_prevent_delete',$names);
     }
 }

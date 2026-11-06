@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Platform;
 
 use App\Models\PlatformAuditLog;
 use App\Models\Tenant;
@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class PlatformAuditLogViewerTest extends TestCase
+class AuditLogViewerTest extends TestCase
 {
     use RefreshDatabase;
 
