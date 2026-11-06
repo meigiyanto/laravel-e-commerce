@@ -197,28 +197,7 @@ class PlatformAuditLogSecurityTest extends TestCase
             ]);
         }
     }
-    public function test_debug_database_audit_triggers(): void
-    {
-        $driver = DB::connection()->getDriverName();
-
-        if ($driver === 'mysql') {
-            DB::select(
-                "SHOW TRIGGERS WHERE `Table` = 'platform_audit_logs'"
-            );
-        }
-
-        if ($driver === 'sqlite') {
-            DB::select("
-            SELECT name, sql
-            FROM sqlite_master
-            WHERE type = 'trigger'
-            AND tbl_name = 'platform_audit_logs'
-        ");
-        }
-
-        $this->assertTrue(true);
-    }
-
+    
     public function test_database_triggers_are_registered(): void
     {
         $driver = DB::connection()->getDriverName();
