@@ -59,7 +59,7 @@ class PlatformAuditLogger
             ...$contract['optional'],
         ];
 
-        $missing = array_diff(array_keys($metadata)$contract['required']);
+        $missing = array_diff(array_keys($contract['required']), array_keys($metadata));
 
         $unexpected = array_diff(array_keys($metadata), $allowed);
 

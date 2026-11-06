@@ -44,9 +44,7 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UserAddressController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\WishlistController;
-use App\Http\Controllers\PublicHomeController;
 
-Route::get('/', PublicHomeController::class)->name('public.home');
 Route::get('/', [StorefrontController::class, 'home'])->name('storefront.home');
 Route::get('/shop', [StorefrontController::class, 'shop'])->name('storefront.shop');
 Route::get('/shop/{slug}', [StorefrontController::class, 'product'])->name('storefront.product');
