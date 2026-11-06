@@ -59,20 +59,16 @@ class PlatformAuditLogger
             ...$contract['optional'],
         ];
 
-        $missing = array_diff(
-            $contract['required'],
-            array_keys($metadata)
-        );
+        $missing = array_diff(array_keys($metadata)$contract['required']);
 
-        $unexpected = array_diff(
-            array_keys($metadata),
-            $allowed
-        );
+        $unexpected = array_diff(array_keys($metadata), $allowed);
 
         if ($missing || $unexpected) {
             throw new InvalidArgumentException('Invalid metadata contract for '.$action.'. Missing: '.implode(', ', $missing).'. Unexpected: '.implode(', ', $unexpected));
         }
 
+        $this->validateValues($action, $metadata);
+        $metadata = $this->sanitizeMetadata($metadata);
         $this->validateValues($action, $metadata);
 
         try {
@@ -122,46 +118,62 @@ class PlatformAuditLogger
     {
         $sensitiveKeys = [
             'password',
-            'password_confirmation',
+            'passwordconfirmation',
             'secret',
-            'access_token',
-            'plain_token',
+            'accesstoken',
+            'plaintoken',
             'token',
-            'token_hash',
+            'tokenhash',
             'authorization',
             'cookie',
-            'set_cookie',
+            'setcookie',
             'email',
-            'owner_email',
+            'owneremail',
         ];
 
-        foreach ($metadata as $key => $value) {
-            $normalizedKey = strtolower((string) $key);
+        $sanitize = function (array $items) use (&$sanitize, $sensitiveKeys): array {
+            $result = [];
 
-            if (in_array($normalizedKey, $sensitiveKeys, true)) {
-                unset($metadata[$key]);
-                continue;
-            }
-
-            if (is_string($value)) {
-                $value = preg_replace(
-                    '/Bearer\s+[A-Za-z0-9._~+\/=-]+/i',
-                    '[REDACTED]',
-                    $value
+            foreach ($items as $key => $value) {
+                $normalizedKey = strtolower(
+                    preg_replace('/[^a-z0-9]/i', '', (string) $key)
                 );
 
-                $value = preg_replace(
-                    '/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/u',
-                    '[REDACTED_EMAIL]',
-                    $value
-                );
+                if (in_array($normalizedKey, $sensitiveKeys, true)) {
+                    continue;
+                }
 
-                $metadata[$key] = mb_substr($value ?? '', 0, 500);
+                if (is_array($value)) {
+                    $result[$key] = $sanitize($value);
+                    continue;
+                }
+
+                if (is_string($value)) {
+                    $value = preg_replace(
+                        '/Bearer\s+[A-Za-z0-9._~+\/=-]+/i',
+                        '[REDACTED]',
+                        $value
+                    );
+
+                    $value = preg_replace(
+                        '/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/u',
+                        '[REDACTED_EMAIL]',
+                        $value
+                    );
+
+                    $result[$key] = mb_substr($value ?? '', 0, 500);
+                    continue;
+                }
+
+                $result[$key] = $value;
             }
-        }
 
-        return $metadata;
+            return $result;
+        };
+
+        return $sanitize($metadata);
     }
+
 
     private function validateValues(string $action, array $metadata): void
     {
@@ -191,12 +203,12 @@ class PlatformAuditLogger
             mb_strlen($metadata['domain']) <= 253,
 
             default => false,
-            };
+        };
 
-            if (!$valid) {
-                throw new InvalidArgumentException(
-                    "Invalid metadata values for {$action}"
-                );
-            }
+        if (!$valid) {
+            throw new InvalidArgumentException(
+                "Invalid metadata values for {$action}"
+            );
         }
     }
+}

@@ -12,6 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ResolveTenantFromDomain
 {
+    private function isPublicPath(Request $request, string $path): bool
+    {
+        return $path === '' && in_array($request->method(), ['GET', 'HEAD'], true);
+    }
+    
     public function handle(Request $request, Closure $next): Response
     {
         $context = app(TenantContext::class);
@@ -23,19 +28,13 @@ class ResolveTenantFromDomain
             if ($this->isPlatformOrCallbackPath($path)) {
                 return $next($request);
             }
+            
+            if ($this->isPublicPath($request, $path) || $this->isPlatformOrCallbackPath($path)) {
+                return $next($request);
+            }
 
             $host = strtolower(rtrim($request->getHost(), '.'));
-            
             $host = $request->getHost();
-
-            Log::debug('Tenant resolver test', [
-                'host' => $host,
-                'path' => $request->path(),
-                'domain_exists' => StoreDomain::query()
-                    ->whereRaw('LOWER(domain) = ?', [$host])
-                    ->where('verification_status', 'verified')
-                    ->exists(),
-            ]);
 
             $storeDomain = StoreDomain::query()
                 ->with('store.tenant')
@@ -67,10 +66,7 @@ class ResolveTenantFromDomain
 
     private function isPlatformOrCallbackPath(string $path): bool
     {
-        if (in_array($path, [
-            'stripe/webhook',
-            'payment/midtrans/notification',
-        ], true)) {
+        if (in_array($path, ['stripe/webhook','payment/midtrans/notification'], true)) {
             return true;
         }
 
