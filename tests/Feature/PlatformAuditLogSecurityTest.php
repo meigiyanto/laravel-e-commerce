@@ -205,22 +205,20 @@ class PlatformAuditLogSecurityTest extends TestCase
         $this->assertSame('sqlite', $driver);
 
         $triggers = DB::select("
-        SELECT name
-        FROM sqlite_master
-        WHERE type = 'trigger'
-        AND tbl_name = 'platform_audit_logs'
-    ");
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'trigger'
+            AND tbl_name = 'platform_audit_logs'
+        ");
 
         $names = collect($triggers)->pluck('name')->all();
+        
+        $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
 
-        $this->assertContains(
-            'platform_audit_logs_prevent_update',
-            $names
-        );
+        $response->dump();
 
-        $this->assertContains(
-            'platform_audit_logs_prevent_delete',
-            $names
-        );
+        $this->assertContains('platform_audit_logs_prevent_update',$names);
+
+        $this->assertContains('platform_audit_logs_prevent_delete',$names);
     }
 }
