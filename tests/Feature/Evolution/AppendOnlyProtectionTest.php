@@ -80,16 +80,6 @@ class AppendOnlyProtectionTest extends TestCase
 
                 try {
                     $db->table($table)->where('id', $id)->delete();
-
-                    $migration->down();
-                    
-                    foreach (self::TABLES as $table) {
-                        $id = $db->table($table)->value('id');
-                    
-                        $this->assertSame(1, $db->table($table)->where('id', $id)->update([ 'value' => 'after_rollback']), "UPDATE should work after rollback on {$table}");
-                    
-                        $this->assertSame(1, $db->table($table)->where('id', $id)->delete(), "DELETE should work after rollback on {$table}");
-                    }
                 } catch (Throwable) {
                     $deleteRejected = true;
                 }
@@ -100,6 +90,16 @@ class AppendOnlyProtectionTest extends TestCase
                     'id' => $id,
                     'value' => 'original',
                 ], 'evolution_append_only');
+            }
+            
+            $migration->down();
+            
+            foreach (self::TABLES as $table) {
+                $id = $db->table($table)->value('id');
+            
+                $this->assertSame(1, $db->table($table)->where('id', $id)->update([ 'value' => 'after_rollback']), "UPDATE should work after rollback on {$table}");
+            
+                $this->assertSame(1, $db->table($table)->where('id', $id)->delete(), "DELETE should work after rollback on {$table}");
             }
         } finally {
             DB::setDefaultConnection($originalConnection);
