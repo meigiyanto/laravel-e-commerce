@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Stripe;
 
 use App\Models\Order;
 use App\Models\Payment;
@@ -16,7 +16,7 @@ use App\Models\ProductVariant;
 use App\Models\Inventory;
 use Illuminate\Support\Facades\DB;
 
-class StripeWebhookTest extends TestCase
+class WebhookTest extends TestCase
 {
     use RefreshDatabase;
 

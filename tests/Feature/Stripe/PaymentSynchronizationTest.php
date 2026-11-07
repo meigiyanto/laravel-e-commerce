@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Stripe;
 
 use App\Http\Controllers\PaymentController;
 use App\Models\Order;
@@ -13,7 +13,7 @@ use ReflectionMethod;
 use Stripe\PaymentIntent;
 use Tests\TestCase;
 
-class StripePaymentSynchronizationTest extends TestCase
+class PaymentSynchronizationTest extends TestCase
 {
     use RefreshDatabase;
 

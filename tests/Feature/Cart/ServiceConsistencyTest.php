@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Cart;
 
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -14,7 +14,7 @@ use Tests\TestCase;
 use App\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 
-class CartServiceConsistencyTest extends TestCase
+class ServiceConsistencyTest extends TestCase
 {
     use RefreshDatabase;
 

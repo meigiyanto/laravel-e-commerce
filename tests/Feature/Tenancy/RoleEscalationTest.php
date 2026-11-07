@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Tenancy;
 
 use App\Models\Tenant;
 use App\Models\TenantMembership;
@@ -10,7 +10,7 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TenantRoleEscalationTest extends TestCase
+class RoleEscalationTest extends TestCase
 {
     use RefreshDatabase;
 

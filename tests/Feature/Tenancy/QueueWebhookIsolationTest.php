@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Tenancy;
 
 use App\Jobs\Middleware\SetTenantContext;
 use App\Models\Tenant;
@@ -9,7 +9,7 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TenantQueueWebhookIsolationTest extends TestCase
+class QueueWebhookIsolationTest extends TestCase
 {
     use RefreshDatabase;
 

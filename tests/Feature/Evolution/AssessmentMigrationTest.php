@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Evolution;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class EvolutionAssessmentMigrationTest extends TestCase
+class AssessmentMigrationTest extends TestCase
 {
     public function test_evolution_assessment_migration_is_compatible_with_sqlite(): void
     {

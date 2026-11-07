@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Recover;
 
 use App\Jobs\RecoverProcessingRefundJob;
 use App\Models\Order;
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Tests\TestCase;
 
-class RecoverProcessingRefundJobTest extends TestCase
+class ProcessingRefundJobTest extends TestCase
 {
     use RefreshDatabase;
 

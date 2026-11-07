@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Tenancy;
 
 use App\Http\Middleware\ResolveTenantFromDomain;
 use App\Models\Category;
@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 use Illuminate\Database\QueryException;
 
-class TenantCatalogIsolationTest extends TestCase
+class CatalogIsolationTest extends TestCase
 {
     use RefreshDatabase;
 

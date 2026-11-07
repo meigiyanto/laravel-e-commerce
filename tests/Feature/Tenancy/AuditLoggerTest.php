@@ -13,7 +13,7 @@ use InvalidArgumentException;
 use LogicException;
 use Tests\TestCase;
 
-class TenantAuditLoggerTest extends TestCase
+class AuditLoggerTest extends TestCase
 {
     use RefreshDatabase;
 

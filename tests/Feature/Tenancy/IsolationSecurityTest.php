@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Tenancy;
 
 use App\Models\Order;
 use App\Models\Product;
@@ -13,7 +13,7 @@ use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TenantIsolationSecurityTest extends TestCase
+class IsolationSecurityTest extends TestCase
 {
     use RefreshDatabase;
 

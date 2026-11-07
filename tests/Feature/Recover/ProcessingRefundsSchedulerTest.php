@@ -1,11 +1,11 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Recover;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Tests\TestCase;
 
-class RecoverProcessingRefundsSchedulerTest extends TestCase
+class ProcessingRefundsSchedulerTest extends TestCase
 {
     public function test_recover_processing_refunds_command_is_scheduled_every_five_minutes(): void
     {

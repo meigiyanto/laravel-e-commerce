@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Recover;
 
 use App\Jobs\RecoverProcessingRefundJob;
 use App\Models\Refund;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Bus;
 use Mockery;
 use Tests\TestCase;
 
-class RecoverProcessingRefundsCommandTest extends TestCase
+class ProcessingRefundsCommandTest extends TestCase
 {
     use RefreshDatabase;
 

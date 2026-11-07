@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Refund;
 
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 use RuntimeException;
 
-class RefundControllerTest extends TestCase
+class ControllerTest extends TestCase
 {
     use RefreshDatabase;
     

@@ -1,13 +1,13 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Evolution;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class EvolutionCriteriaMigrationTest extends TestCase
+class CriteriaMigrationTest extends TestCase
 {
     public function test_evolution_criteria_migration_is_compatible_with_sqlite(): void
     {

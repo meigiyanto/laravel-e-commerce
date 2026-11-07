@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Cart;
 
 use App\Models\Cart;
 use App\Models\CartItem;
@@ -14,7 +14,7 @@ use App\Models\StoreDomain;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class CartControllerIntegrationTest extends TestCase
+class ControllerIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 

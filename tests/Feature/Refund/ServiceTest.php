@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Refund;
 
 use App\Models\Order;
 use App\Models\Payment;
@@ -19,7 +19,7 @@ use Stripe\ApiRequestor;
 use Stripe\HttpClient\CurlClient;
 use Tests\TestCase;
 
-class RefundServiceTest extends TestCase
+class ServiceTest extends TestCase
 {
     use RefreshDatabase;
 
