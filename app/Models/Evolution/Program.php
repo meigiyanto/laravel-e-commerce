@@ -61,4 +61,9 @@ class Program extends Model
     {
         return $this->hasMany(EvolutionEvent::class, 'program_id');
     }
+    
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class, 'program_id');
+    }
 }

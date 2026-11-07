@@ -4,6 +4,7 @@ namespace App\Models\Evolution;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CriterionVersion extends Model
 {
@@ -32,6 +33,11 @@ class CriterionVersion extends Model
 
     public function criterion(): BelongsTo
     {
-        return $this->belongsTo(Criterion::class,'criterion_id');
+        return $this->belongsTo(Criterion::class, 'criterion_id');
+    }
+
+    public function assessmentCriteria(): HasMany
+    {
+        return $this->hasMany(AssessmentCriterion::class, 'criterion_version_id');
     }
 }

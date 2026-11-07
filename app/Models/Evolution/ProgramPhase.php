@@ -52,4 +52,9 @@ class ProgramPhase extends Model
     {
         return $this->hasMany(PhaseTransition::class, 'to_phase_id');
     }
+
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class, 'phase_id');
+    }
 }

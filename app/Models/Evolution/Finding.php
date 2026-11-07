@@ -64,4 +64,9 @@ class Finding extends Model
             'finding_id'
         )->orderBy('created_at')->orderBy('id');
     }
+
+    public function criterionVersion(): BelongsTo
+    {
+        return $this->belongsTo(CriterionVersion::class, 'criterion_version_id');
+    }
 }
