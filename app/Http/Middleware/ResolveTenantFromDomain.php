@@ -55,7 +55,6 @@ class ResolveTenantFromDomain
             }
 
             abort_unless($tenant && $tenant->status === 'active', 404);
-
             $context->set($tenant);
 
             return $next($request);
