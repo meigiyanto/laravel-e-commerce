@@ -41,36 +41,51 @@ class Assessment extends Model
 
     public function program(): BelongsTo
     {
-        return $this->belongsTo(Program::class,'program_id');
+        return $this->belongsTo(Program::class, 'program_id');
     }
 
     public function phase(): BelongsTo
     {
-        return $this->belongsTo(ProgramPhase::class,'phase_id');
+        return $this->belongsTo(ProgramPhase::class, 'phase_id');
     }
 
     public function assessor(): BelongsTo
     {
-        return $this->belongsTo(User::class,'assessor_id');
+        return $this->belongsTo(User::class, 'assessor_id');
     }
 
     public function canceller(): BelongsTo
     {
-        return $this->belongsTo(User::class,'cancelled_by');
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function supersededAssessment(): BelongsTo
     {
-        return $this->belongsTo(self::class,'supersedes_assessment_id');
+        return $this->belongsTo(self::class, 'supersedes_assessment_id');
     }
 
     public function supersedingAssessments(): HasMany
     {
-        return $this->hasMany(self::class,'supersedes_assessment_id');
+        return $this->hasMany(self::class, 'supersedes_assessment_id');
     }
 
     public function criteria(): HasMany
     {
-        return $this->hasMany(AssessmentCriterion::class,'assessment_id')->orderBy('criterion_key');
+        return $this->hasMany(AssessmentCriterion::class, 'assessment_id')->orderBy('criterion_key');
+    }
+
+    public function findings(): HasMany
+    {
+        return $this->hasMany(Finding::class, 'assessment_id')
+        ->orderBy('created_at')
+        ->orderBy('id');
+    }
+
+    public function evidenceAssets(): HasMany
+    {
+        return $this->hasMany(
+            EvidenceAsset::class,
+            'assessment_id'
+        )->orderBy('created_at')->orderBy('id');
     }
 }

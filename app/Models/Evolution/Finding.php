@@ -56,4 +56,12 @@ class Finding extends Model
             'finding_id'
         )->orderBy('created_at')->orderBy('id');
     }
+
+    public function evidenceAssets(): HasMany
+    {
+        return $this->hasMany(
+            EvidenceAsset::class,
+            'finding_id'
+        )->orderBy('created_at')->orderBy('id');
+    }
 }
