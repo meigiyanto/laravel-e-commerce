@@ -156,6 +156,22 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
     
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->whereNumber('auditLog')->name('audit-logs.show');
+    
+    // Assessment Lifecycle UI.
+    Route::get('/evolution/assessments', [AssessmentLifecycleController::class, 'index'])->name('evolution.assessments.index');
+    Route::post('/evolution/assessments', [AssessmentLifecycleController::class, 'store'])->name('evolution.assessments.store');
+    Route::get('/evolution/assessments/{assessment}', [AssessmentLifecycleController::class, 'show'])->whereNumber('assessment')->name('evolution.assessments.show');
+    
+    // Assessment Lifecycle JSON API (same platform-admin authentication boundary).
+    Route::prefix('api/evolution')->name('api.evolution.')->group(function () {
+        Route::get('/assessments', [AssessmentLifecycleController::class, 'apiIndex'])->name('assessments.index');
+        Route::post('/programs/{program}/assessments', [AssessmentLifecycleController::class, 'apiStore'])->name('programs.assessments.store');
+        Route::get('/assessments/{assessment}', [AssessmentLifecycleController::class, 'apiShow'])->name('assessments.show');
+        Route::post('/assessments/{assessment}/start', [AssessmentLifecycleController::class, 'start'])->name('assessments.start');
+        Route::post('/assessments/{assessment}/complete', [AssessmentLifecycleController::class, 'complete'])->name('assessments.complete');
+        Route::post('/assessments/{assessment}/fail', [AssessmentLifecycleController::class, 'fail'])->name('assessments.fail');
+        Route::post('/assessments/{assessment}/cancel', [AssessmentLifecycleController::class, 'cancel'])->name('assessments.cancel');
+    });
 });
 /*
 |-----------------------------------------------------------
@@ -179,8 +195,8 @@ Route::middleware(['auth', 'tenant.role:owner,admin,product_manager,inventory_ma
     // Gallery management
     Route::get('/product-gallery', [ProductGalleryController::class, 'index'])->name('product-gallery.index');
     Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
-    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]+')->name('product-gallery.replace');
-    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]+')->name('product-gallery.destroy');
+    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]')->name('product-gallery.replace');
+    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]')->name('product-gallery.destroy');
 
     // Refund management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
