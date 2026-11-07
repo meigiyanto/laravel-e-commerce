@@ -6,22 +6,47 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('evolution_review_tables', function (Blueprint $table) {
+        Schema::create('evolution_reviews', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->unsignedBigInteger('assessment_id');
+            $table->foreignId('reviewer_id');
+            $table->string('outcome', 32);
+            $table->text('rationale');
+            $table->timestamp('created_at')->useCurrent();
+
+            $table->unique(
+                'assessment_id',
+                'uq_evp_reviews_assessment'
+            );
+
+            $table->unique(
+                ['assessment_id', 'id'],
+                'uq_evp_reviews_assessment_pair'
+            );
+
+            $table->index('outcome', 'idx_evp_reviews_outcome');
+            $table->index('reviewer_id', 'idx_evp_reviews_reviewer');
+
+            $table->foreign(
+                'assessment_id',
+                'fk_evp_reviews_assessment'
+            )->references('id')
+                ->on('evolution_assessments')
+                ->restrictOnDelete();
+
+            $table->foreign(
+                'reviewer_id',
+                'fk_evp_reviews_reviewer'
+            )->references('id')
+                ->on('users')
+                ->restrictOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('evolution_review_tables');
+        Schema::dropIfExists('evolution_reviews');
     }
 };

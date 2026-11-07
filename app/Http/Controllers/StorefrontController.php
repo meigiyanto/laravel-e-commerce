@@ -38,8 +38,8 @@ class StorefrontController extends Controller
             'variants.inventory',
             'variants.attributeValues.attribute',
         ])
-            ->withAvg('reviews', 'rating')
-            ->withCount('reviews');
+        ->withAvg('reviews', 'rating')
+        ->withCount('reviews');
 
         $this->productFilter->apply(
             $query,
@@ -55,8 +55,8 @@ class StorefrontController extends Controller
                 $query->orderBy('name');
             },
         ])
-            ->orderBy('name')
-            ->get();
+        ->orderBy('name')
+        ->get();
 
         return view('storefront.shop', compact('products','categories'));
     }
