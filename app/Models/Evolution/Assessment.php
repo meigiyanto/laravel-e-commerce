@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Assessment extends Model
 {
@@ -87,5 +88,25 @@ class Assessment extends Model
             EvidenceAsset::class,
             'assessment_id'
         )->orderBy('created_at')->orderBy('id');
+    }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(Review::class, 'assessment_id');
+    }
+
+    public function approval(): HasOne
+    {
+        return $this->hasOne(Approval::class, 'assessment_id');
+    }
+
+    public function phaseTransitions(): HasMany
+    {
+        return $this->hasMany(PhaseTransition::class, 'assessment_id');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(EvolutionEvent::class, 'assessment_id');
     }
 }

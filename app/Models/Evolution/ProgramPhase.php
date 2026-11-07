@@ -4,6 +4,7 @@ namespace App\Models\Evolution;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProgramPhase extends Model
 {
@@ -39,6 +40,16 @@ class ProgramPhase extends Model
 
     public function program(): BelongsTo
     {
-        return $this->belongsTo(Program::class,'program_id');
+        return $this->belongsTo(Program::class, 'program_id');
+    }
+
+    public function outgoingTransitions(): HasMany
+    {
+        return $this->hasMany(PhaseTransition::class, 'from_phase_id');
+    }
+
+    public function incomingTransitions(): HasMany
+    {
+        return $this->hasMany(PhaseTransition::class, 'to_phase_id');
     }
 }

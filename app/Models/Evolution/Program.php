@@ -39,16 +39,26 @@ class Program extends Model
 
     public function phases(): HasMany
     {
-        return $this->hasMany(ProgramPhase::class,'program_id')->orderBy('sequence');
+        return $this->hasMany(ProgramPhase::class, 'program_id')->orderBy('sequence');
     }
 
     public function initialPhase(): HasOne
     {
-        return $this->hasOne(ProgramPhase::class,'program_id')->where('is_initial', true);
+        return $this->hasOne(ProgramPhase::class, 'program_id')->where('is_initial', true);
     }
 
     public function targetPhase(): HasOne
     {
-        return $this->hasOne(ProgramPhase::class,'program_id')->where('is_target', true);
+        return $this->hasOne(ProgramPhase::class, 'program_id')->where('is_target', true);
+    }
+
+    public function phaseTransitions(): HasMany
+    {
+        return $this->hasMany(PhaseTransition::class, 'program_id');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(EvolutionEvent::class, 'program_id');
     }
 }
