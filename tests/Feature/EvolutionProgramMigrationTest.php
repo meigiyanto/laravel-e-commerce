@@ -116,6 +116,8 @@ class EvolutionProgramMigrationTest extends TestCase
                 'phase_key' => 'single_store',
                 'name' => 'Single Store',
                 'sequence' => 1,
+                'entry_requirements' => json_encode([]),
+                'exit_requirements' => json_encode([]),
             ]);
 
             // Parent deletion must be restricted while a phase references it.
