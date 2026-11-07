@@ -10,6 +10,7 @@ use App\Models\Evolution\ProgramPhase;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Evolution\Finding;
 
 class AssessmentLifecycleService
 {
@@ -45,16 +46,16 @@ class AssessmentLifecycleService
             $supersedes,
         ): Assessment {
             $lockedProgram = Program::query()
-                ->lockForUpdate()
-                ->findOrFail($program->getKey());
+            ->lockForUpdate()
+            ->findOrFail($program->getKey());
 
             if ($lockedProgram->status !== 'active') {
                 $this->invalid('program', 'Assessment hanya dapat dibuat pada program aktif.');
             }
 
             $lockedPhase = ProgramPhase::query()
-                ->where('program_id', $lockedProgram->id)
-                ->find($phase->getKey());
+            ->where('program_id', $lockedProgram->id)
+            ->find($phase->getKey());
 
             if (! $lockedPhase) {
                 $this->invalid('phase', 'Fase tidak termasuk dalam program ini.');
@@ -62,9 +63,9 @@ class AssessmentLifecycleService
 
             if ($supersedes) {
                 $previous = Assessment::query()
-                    ->where('program_id', $lockedProgram->id)
-                    ->lockForUpdate()
-                    ->find($supersedes->getKey());
+                ->where('program_id', $lockedProgram->id)
+                ->lockForUpdate()
+                ->find($supersedes->getKey());
 
                 if (! $previous || ! in_array($previous->status, [
                     self::STATUS_COMPLETED,
@@ -82,16 +83,16 @@ class AssessmentLifecycleService
             }
 
             $criteria = Criterion::query()
-                ->where('is_active', true)
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get();
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
 
             $snapshots = [];
             foreach ($criteria as $criterion) {
                 $version = $criterion->versions()
-                    ->orderByDesc('version')
-                    ->first();
+                ->orderByDesc('version')
+                ->first();
 
                 if (! $version) {
                     continue;
@@ -142,7 +143,8 @@ class AssessmentLifecycleService
         });
     }
 
-    public function start(Assessment $assessment, User $actor): Assessment
+    public function start(Assessment $assessment,
+        User $actor): Assessment
     {
         return DB::transaction(function () use ($assessment, $actor): Assessment {
             $locked = $this->lockAssessment($assessment);
@@ -160,10 +162,10 @@ class AssessmentLifecycleService
             }
 
             $hasRunningAssessment = Assessment::query()
-                ->where('program_id', $locked->program_id)
-                ->where('status', self::STATUS_RUNNING)
-                ->where('id', '!=', $locked->id)
-                ->exists();
+            ->where('program_id', $locked->program_id)
+            ->where('status', self::STATUS_RUNNING)
+            ->where('id', '!=', $locked->id)
+            ->exists();
 
             if ($hasRunningAssessment) {
                 $this->invalid('assessment', 'Program sudah memiliki assessment yang sedang berjalan.');
@@ -183,9 +185,12 @@ class AssessmentLifecycleService
         });
     }
 
-    public function complete(Assessment $assessment, User $actor): Assessment
+    public function complete(Assessment $assessment,
+        User $actor): Assessment
     {
-        return $this->finish($assessment, $actor, self::STATUS_COMPLETED);
+        return $this->finish($assessment,
+            $actor,
+            self::STATUS_COMPLETED);
     }
 
     public function fail(
@@ -193,11 +198,15 @@ class AssessmentLifecycleService
         User $actor,
         string $reason,
     ): Assessment {
-        $this->assertNonEmpty($reason, 'reason');
+        $this->assertNonEmpty($reason,
+            'reason');
 
-        return $this->finish($assessment, $actor, self::STATUS_FAILED, [
-            'reason' => trim($reason),
-        ]);
+        return $this->finish($assessment,
+            $actor,
+            self::STATUS_FAILED,
+            [
+                'reason' => trim($reason),
+            ]);
     }
 
     public function cancel(
@@ -205,7 +214,8 @@ class AssessmentLifecycleService
         User $actor,
         string $reason,
     ): Assessment {
-        $this->assertNonEmpty($reason, 'reason');
+        $this->assertNonEmpty($reason,
+            'reason');
 
         return DB::transaction(function () use ($assessment, $actor, $reason): Assessment {
             $locked = $this->lockAssessment($assessment);
@@ -280,11 +290,12 @@ class AssessmentLifecycleService
     private function lockAssessment(Assessment $assessment): Assessment
     {
         return Assessment::query()
-            ->lockForUpdate()
-            ->findOrFail($assessment->getKey());
+        ->lockForUpdate()
+        ->findOrFail($assessment->getKey());
     }
 
-    private function assertAssessorOrPlatformAdmin(Assessment $assessment, User $actor): void
+    private function assertAssessorOrPlatformAdmin(Assessment $assessment,
+        User $actor): void
     {
         if (! $actor->isPlatformAdmin() && (int) $assessment->assessor_id !== (int) $actor->id) {
             $this->invalid('actor', 'Hanya assessor pemilik assessment atau platform admin yang dapat melakukan aksi ini.');
@@ -325,4 +336,74 @@ class AssessmentLifecycleService
             'payload' => $payload,
         ]);
     }
+
+    public function recordFinding(
+        Assessment $assessment,
+        User $actor,
+        int $criterionVersionId,
+        string $result,
+        string $severity,
+        ?string $summary = null,
+        ?array $details = null,
+    ): Finding {
+        return DB::transaction(function () use (
+            $assessment,
+            $actor,
+            $criterionVersionId,
+            $result,
+            $severity,
+            $summary,
+            $details,
+        ): Finding {
+            $locked = $this->lockAssessment($assessment);
+
+            $this->assertAssessorOrPlatformAdmin($locked, $actor);
+            $this->assertStatus($locked, self::STATUS_RUNNING);
+
+            $criterion = $locked->criteria()
+            ->where('criterion_version_id', $criterionVersionId)
+            ->first();
+
+            if (! $criterion) {
+                $this->invalid(
+                    'criterion_version_id',
+                    'Kriteria tidak termasuk snapshot assessment ini.'
+                );
+            }
+
+            if (Finding::query()
+                ->where('assessment_id', $locked->id)
+                ->where('criterion_version_id', $criterionVersionId)
+                ->exists()) {
+                $this->invalid(
+                    'criterion_version_id',
+                    'Finding untuk kriteria ini sudah tercatat.'
+                );
+            }
+
+            $finding = Finding::query()->create([
+                'assessment_id' => $locked->id,
+                'criterion_version_id' => $criterionVersionId,
+                'result' => $result,
+                'severity' => $severity,
+                'summary' => $summary,
+                'details' => $details,
+            ]);
+
+            $this->recordEvent(
+                $locked,
+                $actor,
+                'finding.recorded',
+                [
+                    'finding_id' => $finding->id,
+                    'criterion_version_id' => $criterionVersionId,
+                    'result' => $result,
+                    'severity' => $severity,
+                ],
+            );
+
+            return $finding->fresh(['criterionVersion']);
+        });
+    }
+
 }

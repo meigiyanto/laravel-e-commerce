@@ -44,11 +44,8 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required',
-                'string',
-                'email'],
-            'password' => ['required',
-                'string'],
+            'email' => ['required', 'string', 'email'],
+            'password' => ['required', 'string'],
         ];
     }
 
@@ -88,9 +85,7 @@ class LoginRequest extends FormRequest
         $user = Auth::user();
         $membership = $user?->activeTenantMembership();
 
-        if (
-            ! $user || $user->isPlatformAdmin() || ! $membership || ! in_array($membership->role, TenantMembership::ROLES, true)
-        ) {
+        if (! $user || $user->isPlatformAdmin() || ! $membership || ! in_array($membership->role, TenantMembership::ROLES, true)) {
             $this->rejectAuthenticatedUser();
         }
     }

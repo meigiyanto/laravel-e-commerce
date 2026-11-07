@@ -11,31 +11,28 @@ use App\Services\Evolution\AssessmentLifecycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AssessmentLifecycleController extends Controller
 {
-    public function __construct(private readonly AssessmentLifecycleService $lifecycle)
-    {
-    }
+    public function __construct(private readonly AssessmentLifecycleService $lifecycle) {}
 
     public function index(): View
     {
         $assessments = Assessment::query()
-            ->with(['program:id,code,name', 'phase:id,name', 'assessor:id,name'])
-            ->withCount(['criteria', 'findings'])
-            ->latest('id')
-            ->paginate(20);
+        ->with(['program:id,code,name', 'phase:id,name', 'assessor:id,name'])
+        ->withCount(['criteria', 'findings'])
+        ->latest('id')
+        ->paginate(20);
 
         $programs = Program::query()
-            ->where('status', 'active')
-            ->with('phases:id,program_id,name,phase_key,sequence')
-            ->orderBy('name')
-            ->get(['id', 'code', 'name']);
+        ->where('status', 'active')
+        ->with('phases:id,program_id,name,phase_key,sequence')
+        ->orderBy('name')
+        ->get(['id', 'code', 'name']);
 
-        return view('platform.evolution.assessments.index', compact('assessments', 'programs'));
+        return view('platform.assessments.index', compact('assessments', 'programs'));
     }
 
     public function show(Assessment $assessment): View
@@ -56,7 +53,7 @@ class AssessmentLifecycleController extends Controller
         $evaluatedIds = $assessment->findings->pluck('criterion_version_id')->unique();
         $canComplete = $criteriaIds->diff($evaluatedIds)->isEmpty() && $criteriaIds->isNotEmpty();
 
-        return view('platform.evolution.assessments.show', compact(
+        return view('platform.assessments.show', compact(
             'assessment',
             'canManage',
             'canComplete'
@@ -88,14 +85,12 @@ class AssessmentLifecycleController extends Controller
             $data['baseline_commit'],
             $environment,
             $data['ruleset_version'],
-            isset($data['supersedes_assessment_id'])
-                ? Assessment::query()->findOrFail($data['supersedes_assessment_id'])
-                : null,
+            isset($data['supersedes_assessment_id']) ? Assessment::query()->findOrFail($data['supersedes_assessment_id']) : null,
         );
 
         return redirect()
-            ->route('platform.evolution.assessments.show', $assessment)
-            ->with('success', 'Assessment draft berhasil dibuat.');
+        ->route('platform.assessments.show', $assessment)
+        ->with('success', 'Assessment draft berhasil dibuat.');
     }
 
     public function apiIndex(Request $request): JsonResponse
@@ -106,11 +101,11 @@ class AssessmentLifecycleController extends Controller
         ]);
 
         $assessments = Assessment::query()
-            ->with(['program:id,code,name', 'phase:id,name', 'assessor:id,name'])
-            ->when($data['program_id'] ?? null, fn ($query, $id) => $query->where('program_id', $id))
-            ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
-            ->latest('id')
-            ->paginate(20);
+        ->with(['program:id,code,name', 'phase:id,name', 'assessor:id,name'])
+        ->when($data['program_id'] ?? null, fn ($query, $id) => $query->where('program_id', $id))
+        ->when($data['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+        ->latest('id')
+        ->paginate(20);
 
         return response()->json($assessments);
     }
@@ -132,9 +127,7 @@ class AssessmentLifecycleController extends Controller
             $data['baseline_commit'],
             $data['environment'],
             $data['ruleset_version'],
-            isset($data['supersedes_assessment_id'])
-                ? Assessment::query()->findOrFail($data['supersedes_assessment_id'])
-                : null,
+            isset($data['supersedes_assessment_id']) ? Assessment::query()->findOrFail($data['supersedes_assessment_id']) : null,
         );
 
         return response()->json([
@@ -169,14 +162,12 @@ class AssessmentLifecycleController extends Controller
     public function fail(Request $request, Assessment $assessment): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:5000']]);
-
         return $this->runAction(fn () => $this->lifecycle->fail($assessment, $request->user(), $data['reason']));
     }
 
     public function cancel(Request $request, Assessment $assessment): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:5000']]);
-
         return $this->runAction(fn () => $this->lifecycle->cancel($assessment, $request->user(), $data['reason']));
     }
 
@@ -197,9 +188,14 @@ class AssessmentLifecycleController extends Controller
             'id' => $assessment->id,
             'assessment_number' => $assessment->assessment_number,
             'status' => $assessment->status,
-            'program' => ['id' => $assessment->program?->id, 'code' => $assessment->program?->code, 'name' => $assessment->program?->name],
-            'phase' => ['id' => $assessment->phase?->id, 'key' => $assessment->phase?->phase_key, 'name' => $assessment->phase?->name],
-            'assessor' => ['id' => $assessment->assessor?->id, 'name' => $assessment->assessor?->name],
+            'program' => ['id' => $assessment->program?->id,
+                'code' => $assessment->program?->code,
+                'name' => $assessment->program?->name],
+            'phase' => ['id' => $assessment->phase?->id,
+                'key' => $assessment->phase?->phase_key,
+                'name' => $assessment->phase?->name],
+            'assessor' => ['id' => $assessment->assessor?->id,
+                'name' => $assessment->assessor?->name],
             'baseline_commit' => $assessment->baseline_commit,
             'environment' => $assessment->environment,
             'ruleset_version' => $assessment->ruleset_version,
@@ -218,5 +214,67 @@ class AssessmentLifecycleController extends Controller
                 'created_at' => $event->created_at,
             ]),
         ];
+    }
+
+
+    public function storeFinding(
+        Request $request,
+        Assessment $assessment
+    ): JsonResponse|RedirectResponse {
+        $data = $request->validate([
+            'criterion_version_id' => [
+                'required',
+                'integer',
+            ],
+            'result' => [
+                'required',
+                'string',
+                'in:pass,fail,partial,not_applicable,error',
+            ],
+            'severity' => [
+                'required',
+                'string',
+                'in:critical,high,medium,low,info',
+            ],
+            'summary' => [
+                'nullable',
+                'string',
+                'max:10000',
+            ],
+            'details' => [
+                'nullable',
+                'array',
+            ],
+        ]);
+
+        $finding = $this->lifecycle->recordFinding(
+            $assessment,
+            $request->user(),
+            (int) $data['criterion_version_id'],
+            $data['result'],
+            $data['severity'],
+            $data['summary'] ?? null,
+            $data['details'] ?? null,
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Finding berhasil dicatat.',
+                'data' => [
+                    'id' => $finding->id,
+                    'assessment_id' => $finding->assessment_id,
+                    'criterion_version_id' => $finding->criterion_version_id,
+                    'result' => $finding->result,
+                    'severity' => $finding->severity,
+                    'summary' => $finding->summary,
+                    'details' => $finding->details,
+                    'created_at' => $finding->created_at,
+                ],
+            ], 201);
+        }
+
+        return redirect()
+        ->route('platform.evolution.assessments.show', $assessment)
+        ->with('success', 'Finding berhasil dicatat.');
     }
 }

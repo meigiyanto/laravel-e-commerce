@@ -23,6 +23,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 
 use App\Http\Controllers\Platform\AuditLogController;
+use App\Http\Controllers\Platform\Evolution\AssessmentLifecycleController;
 
 /**
  * Store Front
@@ -161,6 +162,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
     Route::get('/evolution/assessments', [AssessmentLifecycleController::class, 'index'])->name('evolution.assessments.index');
     Route::post('/evolution/assessments', [AssessmentLifecycleController::class, 'store'])->name('evolution.assessments.store');
     Route::get('/evolution/assessments/{assessment}', [AssessmentLifecycleController::class, 'show'])->whereNumber('assessment')->name('evolution.assessments.show');
+    Route::post('/evolution/assessments/{assessment}/findings',[AssessmentLifecycleController::class, 'storeFinding'])->whereNumber('assessment')->name('evolution.assessments.findings.store');
     
     // Assessment Lifecycle JSON API (same platform-admin authentication boundary).
     Route::prefix('api/evolution')->name('api.evolution.')->group(function () {
@@ -171,6 +173,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
         Route::post('/assessments/{assessment}/complete', [AssessmentLifecycleController::class, 'complete'])->name('assessments.complete');
         Route::post('/assessments/{assessment}/fail', [AssessmentLifecycleController::class, 'fail'])->name('assessments.fail');
         Route::post('/assessments/{assessment}/cancel', [AssessmentLifecycleController::class, 'cancel'])->name('assessments.cancel');
+        Route::post('/assessments/{assessment}/findings',[AssessmentLifecycleController::class, 'storeFinding'])->whereNumber('assessment')->name('assessments.findings.store');
     });
 });
 /*
@@ -184,6 +187,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
 */
 
 Route::middleware(['auth', 'tenant.role:owner,admin,product_manager,inventory_manager,order_manager,staff'])->prefix('admin')->name('admin.')->group(function () {
+// Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Attribute Product management

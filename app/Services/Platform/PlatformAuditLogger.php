@@ -15,14 +15,11 @@ class PlatformAuditLogger
 {
     private const CONTRACTS = [
         PlatformAuditAction::TENANT_PROVISIONED => [
-            'required' => ['store_id',
-                'tenant_name',
-                'store_name'],
+            'required' => ['store_id', 'tenant_name', 'store_name'],
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_STATUS_CHANGED => [
-            'required' => ['from',
-                'to'],
+            'required' => ['from', 'to'],
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_ACCESS_REQUESTED => [
@@ -30,8 +27,7 @@ class PlatformAuditLogger
             'optional' => [],
         ],
         PlatformAuditAction::TENANT_ACCESS_GRANTED => [
-            'required' => ['access_token_id',
-                'domain'],
+            'required' => ['access_token_id', 'domain'],
             'optional' => [],
         ],
     ];
@@ -203,12 +199,12 @@ class PlatformAuditLogger
             mb_strlen($metadata['domain']) <= 253,
 
             default => false,
-        };
+            };
 
-        if (!$valid) {
-            throw new InvalidArgumentException(
-                "Invalid metadata values for {$action}"
-            );
+            if (!$valid) {
+                throw new InvalidArgumentException(
+                    "Invalid metadata values for {$action}"
+                );
+            }
         }
     }
-}
