@@ -12,11 +12,14 @@ trait BelongsToTenant
 {
     public static function bootBelongsToTenant(): void
     {
-        if (! static::tenantIsolationEnabled()) {
-            return;
-        }
-
         static::addGlobalScope('tenant', function (Builder $builder): void {
+            $column = $builder->getModel()->qualifyColumn('tenant_id');
+
+            if (! static::tenantIsolationEnabled()) {
+                $builder->whereNull($column);
+                return;
+            }
+
             $tenantId = app(TenantContext::class)->current()?->getKey();
 
             if ($tenantId === null) {
@@ -24,18 +27,23 @@ trait BelongsToTenant
                 return;
             }
 
-            $builder->where(
-                $builder->getModel()->qualifyColumn('tenant_id'),
-                $tenantId
-            );
+            $builder->where($column, $tenantId);
         });
 
         static::creating(function (Model $model): void {
-            $contextTenantId = app(TenantContext::class)->current()?->getKey();
+            if (! static::tenantIsolationEnabled()) {
+                $model->setAttribute('tenant_id', null);
+                return;
+            }
+
+            $contextTenantId = app(TenantContext::class)
+                ->current()?->getKey();
+
             $parentTenantId = $model->resolveParentTenantId();
+
             $tenantId = $model->getAttribute('tenant_id')
-            ?: $parentTenantId
-            ?: $contextTenantId;
+                ?: $parentTenantId
+                ?: $contextTenantId;
 
             if (! $tenantId) {
                 throw new LogicException(sprintf(
@@ -45,7 +53,8 @@ trait BelongsToTenant
             }
 
             if (
-                $contextTenantId !== null && (int) $tenantId !== (int) $contextTenantId
+                $contextTenantId !== null
+                && (int) $tenantId !== (int) $contextTenantId
             ) {
                 throw new LogicException(sprintf(
                     '%s cannot be created outside the active tenant.',
@@ -59,8 +68,8 @@ trait BelongsToTenant
 
     protected static function tenantIsolationEnabled(): bool
     {
-        return config('operational.mode',
-            'single_store') === 'multi_tenant';
+        return config('operational.mode', 'single_store')
+            === 'multi_tenant';
     }
 
     protected function resolveParentTenantId(): ?int
@@ -71,8 +80,7 @@ trait BelongsToTenant
             return null;
         }
 
-        [$table,
-            $foreignKey] = $parent;
+        [$table, $foreignKey] = $parent;
         $parentId = $this->getAttribute($foreignKey);
 
         if (! $parentId) {
@@ -80,8 +88,8 @@ trait BelongsToTenant
         }
 
         $tenantId = DB::table($table)
-        ->where('id', $parentId)
-        ->value('tenant_id');
+            ->where('id', $parentId)
+            ->value('tenant_id');
 
         if (! $tenantId) {
             throw new LogicException(sprintf(

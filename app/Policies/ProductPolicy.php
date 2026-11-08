@@ -16,7 +16,7 @@ class ProductPolicy
     private function belongsToCurrentTenant(Product $product): bool
     {
         if (! $this->isMultiTenant()) {
-            return true;
+            return $product->tenant_id === null;
         }
 
         $tenantId = app(TenantContext::class)->current()?->getKey();

@@ -38,13 +38,16 @@ class ResolveTenantFromDomain
             $store = $storeDomain?->store;
             $tenant = $store?->tenant;
 
-            if (! $tenant && in_array($host, ['localhost', '127.0.0.1', '::1'], true)) {
+            if (
+                ! $tenant
+                && in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+            ) {
                 $tenant = Tenant::query()
                     ->where('slug', 'default')
                     ->where('status', 'active')
                     ->first();
-            } elseif (! $store || $store->status !== 'active') {
-                abort(404);
+            } else {
+                abort_unless($store && $store->status === 'active', 404);
             }
 
             abort_unless($tenant && $tenant->status === 'active', 404);
@@ -67,7 +70,10 @@ class ResolveTenantFromDomain
         }
 
         if ($path === 'platform' || str_starts_with($path, 'platform/')) {
-            return preg_match('#^platform/tenant-access/[^/]+$#', $path) !== 1;
+            return preg_match(
+                '#^platform/tenant-access/[^/]+$#',
+                $path
+            ) !== 1;
         }
 
         return false;

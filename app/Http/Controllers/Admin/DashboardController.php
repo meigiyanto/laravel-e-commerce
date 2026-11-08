@@ -14,30 +14,24 @@ class DashboardController extends Controller
     public function index()
     {
         $isMultiTenant = config('operational.mode', 'single_store') === 'multi_tenant';
+
         $tenantId = $isMultiTenant
             ? app(TenantContext::class)->require()->getKey()
             : null;
 
-        $products = Product::query();
-        $orders = Order::query();
-        $categories = Category::query();
+        $scope = function ($query) use ($isMultiTenant, $tenantId) {
+            return $isMultiTenant
+                ? $query->where('tenant_id', $tenantId)
+                : $query->whereNull('tenant_id');
+        };
 
-        if ($isMultiTenant) {
-            $products->where('tenant_id', $tenantId);
-            $orders->where('tenant_id', $tenantId);
-            $categories->where('tenant_id', $tenantId);
-        } else {
-            $products->whereNull('tenant_id');
-            $orders->whereNull('tenant_id');
-            $categories->whereNull('tenant_id');
-        }
-
-        $productsCount = $products->count();
-        $ordersCount = $orders->count();
-        $categoriesCount = $categories->count();
+        $productsCount = $scope(Product::query())->count();
+        $ordersQuery = $scope(Order::query());
+        $ordersCount = (clone $ordersQuery)->count();
+        $categoriesCount = $scope(Category::query())->count();
 
         $usersCount = User::query()
-            ->whereIn('id', (clone $orders)
+            ->whereIn('id', (clone $ordersQuery)
                 ->whereNotNull('user_id')
                 ->select('user_id')
                 ->distinct())

@@ -21,10 +21,19 @@ class RoleMiddleware
         }
 
         if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            if ($roles === []) {
+                return $next($request);
+            }
+
+            $singleStoreRoles = array_values(array_intersect(
+                $roles,
+                ['admin', 'staff']
+            ));
+
             abort_unless(
-                $roles === [] || $user->hasAnyRole(...$roles),
-                403,
-                'Insufficient user role.'
+                $singleStoreRoles !== []
+                && $user->hasAnyRole(...$singleStoreRoles),
+                403
             );
 
             return $next($request);
@@ -40,9 +49,16 @@ class RoleMiddleware
 
         $membership = $user->activeTenantMembership((int) $tenant->id);
 
-        abort_unless($membership, 403, 'Tenant membership required.');
+        abort_unless(
+            $membership,
+            403,
+            'Tenant membership required.'
+        );
 
-        if ($roles !== [] && ! in_array($membership->role, $roles, true)) {
+        if (
+            $roles !== []
+            && ! in_array($membership->role, $roles, true)
+        ) {
             abort(403, 'Insufficient tenant role.');
         }
 

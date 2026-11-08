@@ -16,7 +16,7 @@ class InventoryPolicy
     private function belongsToCurrentTenant(Product $product): bool
     {
         if (! $this->isMultiTenant()) {
-            return true;
+            return $product->tenant_id === null;
         }
 
         $tenantId = app(TenantContext::class)->current()?->getKey();
@@ -24,19 +24,37 @@ class InventoryPolicy
         return $tenantId !== null && (int) $product->tenant_id === (int) $tenantId;
     }
 
-    public function viewAny(User $user): bool
+    private function canView(User $user): bool
     {
         return $this->isMultiTenant()
             ? $user->hasTenantPermission('inventory.view')
             : $user->hasAnyRole('admin', 'staff');
     }
 
-    public function update(User $user, Product $product): bool
+    private function canManage(User $user): bool
     {
-        $canManage = $this->isMultiTenant()
+        return $this->isMultiTenant()
             ? $user->hasTenantPermission('inventory.manage')
             : $user->hasAnyRole('admin');
+    }
 
-        return $this->belongsToCurrentTenant($product) && $canManage;
+    public function viewAny(User $user): bool
+    {
+        return $this->canView($user);
+    }
+
+    public function update(User $user, Product $product): bool
+    {
+        return $this->belongsToCurrentTenant($product) && $this->canManage($user);
+    }
+
+    public function updateStock(User $user, Product $product): bool
+    {
+        return $this->belongsToCurrentTenant($product) && $this->canManage($user);
+    }
+
+    public function adjustStock(User $user, Product $product): bool
+    {
+        return $this->belongsToCurrentTenant($product) && $this->canManage($user);
     }
 }

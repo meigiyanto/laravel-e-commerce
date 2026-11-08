@@ -14,25 +14,39 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Gate; 
+use Illuminate\Support\Facades\Gate;
 use App\Support\Tenancy\TenantContext;
 
 class ProductController extends Controller
 {
-    public function index()
+    private function isMultiTenant(): bool
     {
+        return config('operational.mode', 'single_store') === 'multi_tenant';
+    }
+
+    private function applyOperationalScope($query) {
+        if ($this->isMultiTenant()) {
+            return $query->where(
+                'tenant_id',
+                app(TenantContext::class)->require()->getKey()
+            );
+        }
+
+        return $query->whereNull('tenant_id');
+    }
+    public function index() {
         Gate::authorize('viewAny', Product::class);
         $products = Product::with(['category', 'subCategory'])
-            ->latest()
-            ->get();
+        ->latest()
+        ->get();
 
         return view('admin.products.index', compact('products'));
     }
 
-    public function create()
-    {
+    public function create() {
         Gate::authorize('create', Product::class);
-        [$categories, $attributes] = $this->formOptions();
+        [$categories,
+            $attributes] = $this->formOptions();
 
         return view('admin.products.create', compact(
             'categories',
@@ -40,19 +54,20 @@ class ProductController extends Controller
         ));
     }
 
-    public function store(Request $request)
-    {
+    public function store(Request $request) {
         Gate::authorize('create', Product::class);
-        $tenantId = app(TenantContext::class)->require()->getKey();
+        
         $data = $request->validate([
-            'category_id' => ['required', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
-            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('tenant_id', $tenantId)->where('category_id', $request->input('category_id'))],
+            'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
+            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))->where('category_id', $request->input('category_id'))],
+            'slug' => ['nullable','string','max:255',Rule::unique('products', 'slug')->where(fn ($query) => $this->applyOperationalScope($query))],
+            'sku' => ['required','string','max:100',Rule::unique('product_variants', 'sku')->where(fn ($query) => $this->applyOperationalScope($query))],
+            'barcode' => ['nullable','string','max:100',Rule::unique('product_variants', 'barcode')->where(fn ($query) => $this->applyOperationalScope($query))],
+            'attribute_value_ids' => ['nullable', 'array'],
+            'attribute_value_ids.*' => ['integer','distinct',Rule::exists('attribute_values', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', Rule::unique('products', 'slug')->where('tenant_id', $tenantId)],
             'description' => ['nullable', 'string'],
-            'sku' => ['required', 'string', 'max:100', Rule::unique('product_variants', 'sku')->where('tenant_id', $tenantId)],
-            'barcode' => ['nullable', 'string', 'max:100', Rule::unique('product_variants', 'barcode')->where('tenant_id', $tenantId)],
-            'variant_name' => ['nullable', 'string', 'max:255'],'variant_name' => ['nullable', 'string', 'max:255'],
+            'variant_name' => ['nullable', 'string', 'max:255'], 'variant_name' => ['nullable', 'string', 'max:255'],
             'price' => ['required', 'numeric', 'min:0'],
             'compare_at_price' => ['nullable', 'numeric', 'min:0'],
             'cost_price' => ['nullable', 'numeric', 'min:0'],
@@ -169,14 +184,12 @@ class ProductController extends Controller
             throw $exception;
         }
 
-        return redirect()
-            ->route('admin.products.index')
-            ->with('success', 'Produk berhasil dibuat.');
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dibuat.');
     }
 
-    public function edit(Product $product)
-    {
-        Gate::authorize('update', $product);
+    public function edit(Product $product) {
+        Gate::authorize('update',
+            $product);
         $product->load([
             'specifications',
             'variants.inventory',
@@ -186,131 +199,184 @@ class ProductController extends Controller
 
         [$categories, $attributes] = $this->formOptions();
 
-        return view('admin.products.edit', compact(
-            'product',
-            'categories',
-            'attributes'
-        ));
+        return view('admin.products.edit',
+            compact(
+                'product',
+                'categories',
+                'attributes'
+            ));
     }
 
-    public function update(Request $request, Product $product)
-    {
+    public function update(Request $request,
+        Product $product) {
         Gate::authorize('update', $product);
-        $tenantId = app(TenantContext::class)->require()->getKey();
-        $submittedIds = collect(
-            is_array($request->input('variants', []))
-                ? $request->input('variants', [])
-                : []
-        )
-            ->pluck('id')
-            ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
-            ->map(fn ($id) => (int) $id)
-            ->all();
         
+        $submittedIds = collect( is_array($request->input('variants', [])) ? $request->input('variants', []) : [])
+        ->pluck('id')
+        ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
+        ->map(fn ($id) => (int) $id)
+        ->all();
+
         $submittedVariantIds = $product->variants()
-            ->whereIn('id', $submittedIds)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-            
-        $variantsInput = $request->input('variants', []);
+        ->whereIn('id',
+            $submittedIds)
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->all();
+
+        $variantsInput = $request->input('variants',
+            []);
 
         $seenSkus = [];
         $seenBarcodes = [];
-        
+
         foreach ($variantsInput as $key => $variant) {
             $sku = trim((string) ($variant['sku'] ?? ''));
-        
+
             if ($sku !== '') {
                 if (in_array($sku, $seenSkus, true)) {
                     throw ValidationException::withMessages([
                         "variants.$key.sku" => 'SKU tidak boleh sama antarvarian.',
                     ]);
                 }
-        
+
                 $seenSkus[] = $sku;
             }
-        
+
             $barcode = trim((string) ($variant['barcode'] ?? ''));
-        
+
             if ($barcode !== '') {
                 if (in_array($barcode, $seenBarcodes, true)) {
                     throw ValidationException::withMessages([
                         "variants.$key.barcode" => 'Barcode tidak boleh sama antarvarian.',
                     ]);
                 }
-        
+
                 $seenBarcodes[] = $barcode;
             }
         }
 
         $validationRules = [
-            'category_id' => ['required', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
-            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where('tenant_id', $tenantId)->where('category_id', $request->input('category_id'))],
-            'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
+            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))->where('category_id', $request->input('category_id'))],
+            'variants.*.attribute_value_ids.*' => ['integer','distinct',Rule::exists('attribute_values', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
+            
+            
+            'name' => ['required',
+                'string',
+                'max:255'],
+            'slug' => ['nullable',
+                'string',
+                'max:255'],
+            'description' => ['nullable',
+                'string'],
 
-            'specifications' => ['nullable', 'array'],
-            'specifications.*.id' => ['nullable', 'integer', Rule::exists('product_specifications', 'id')->where('product_id', $product->id)],
-            'specifications.*.specification_group' => ['required', 'string', 'max:255'],
-            'specifications.*.specification_name' => ['required', 'string', 'max:255'],
-            'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
-            'specifications.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'specifications' => ['nullable',
+                'array'],
+            'specifications.*.id' => ['nullable',
+                'integer',
+                Rule::exists('product_specifications', 'id')->where('product_id', $product->id)],
+            'specifications.*.specification_group' => ['required',
+                'string',
+                'max:255'],
+            'specifications.*.specification_name' => ['required',
+                'string',
+                'max:255'],
+            'specifications.*.specification_value' => ['required',
+                'string',
+                'max:2000'],
+            'specifications.*.sort_order' => ['nullable',
+                'integer',
+                'min:0'],
 
             // Boleh tidak dikirim apabila produk lama belum memiliki varian.
-            'variants' => ['nullable', 'array'],
-            'variants.*.id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
-            'variants.*.sku' => [ 'required', 'string', 'max:100', 'distinct'],
-            'variants.*.barcode' => ['nullable', 'string', 'max:100'],
-            'variants.*.name' => ['nullable', 'string', 'max:255'],
-            'variants.*.price' => ['required', 'numeric', 'min:0'],
-            'variants.*.compare_at_price' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.weight' => ['nullable', 'numeric', 'min:0'],
-            'variants.*.status' => ['required', Rule::in(['active', 'inactive'])],
-            'variants.*.quantity' => ['required', 'integer', 'min:0'],
-            'variants.*.reorder_level' => ['required', 'integer', 'min:0'],
-            'variants.*.attribute_value_ids' => ['nullable', 'array'],
-            'variants.*.attribute_value_ids.*' => ['integer', 'distinct', Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
+            'variants' => ['nullable',
+                'array'],
+            'variants.*.id' => ['nullable',
+                'integer',
+                Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
+            'variants.*.sku' => ['required',
+                'string',
+                'max:100',
+                'distinct'],
+            'variants.*.barcode' => ['nullable',
+                'string',
+                'max:100'],
+            'variants.*.name' => ['nullable',
+                'string',
+                'max:255'],
+            'variants.*.price' => ['required',
+                'numeric',
+                'min:0'],
+            'variants.*.compare_at_price' => ['nullable',
+                'numeric',
+                'min:0'],
+            'variants.*.cost_price' => ['nullable',
+                'numeric',
+                'min:0'],
+            'variants.*.weight' => ['nullable',
+                'numeric',
+                'min:0'],
+            'variants.*.status' => ['required',
+                Rule::in(['active', 'inactive'])],
+            'variants.*.quantity' => ['required',
+                'integer',
+                'min:0'],
+            'variants.*.reorder_level' => ['required',
+                'integer',
+                'min:0'],
+            'variants.*.attribute_value_ids.*' => ['integer',
+                'distinct',
+                Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
 
-            'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'image_alt_text' => ['nullable', 'string', 'max:255'],
-            'delete_images' => ['nullable', 'array'],
-            'delete_images.*' => ['integer', 'distinct', Rule::exists('product_images', 'id')->where('product_id', $product->id)],
-            'primary_image_id' => ['nullable', 'integer', Rule::exists('product_images', 'id')->where('product_id', $product->id)],
+            'images' => ['nullable',
+                'array',
+                'max:10'],
+            'images.*' => ['image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120'],
+            'image_alt_text' => ['nullable',
+                'string',
+                'max:255'],
+            'delete_images' => ['nullable',
+                'array'],
+            'delete_images.*' => ['integer',
+                'distinct',
+                Rule::exists('product_images', 'id')->where('product_id', $product->id)],
+            'primary_image_id' => ['nullable',
+                'integer',
+                Rule::exists('product_images', 'id')->where('product_id', $product->id)],
         ];
-        
+
         foreach ($request->input('variants', []) as $key => $input) {
             $validationRules["variants.$key.sku"][] =
+            function ($attribute, $value, $fail) use ($submittedVariantIds) {
+                $query = ProductVariant::query()->where('sku', $value);
+
+                if ($submittedVariantIds !== []) {
+                    $query->whereNotIn('id', $submittedVariantIds);
+                }
+
+                if ($query->exists()) {
+                    $fail('SKU sudah digunakan oleh varian lain.');
+                }
+            };
+
+            if (filled($input['barcode'] ?? null)) {
+                $validationRules["variants.$key.barcode"][] = 'distinct';
+
+                $validationRules["variants.$key.barcode"][] =
                 function ($attribute, $value, $fail) use ($submittedVariantIds) {
-                    $query = ProductVariant::query()->where('sku', $value);
-        
+                    $query = ProductVariant::query()->where('barcode', $value);
+
                     if ($submittedVariantIds !== []) {
                         $query->whereNotIn('id', $submittedVariantIds);
                     }
-        
+
                     if ($query->exists()) {
-                        $fail('SKU sudah digunakan oleh varian lain.');
+                        $fail('Barcode sudah digunakan oleh varian lain.');
                     }
                 };
-        
-            if (filled($input['barcode'] ?? null)) {
-                $validationRules["variants.$key.barcode"][] = 'distinct';
-        
-                $validationRules["variants.$key.barcode"][] =
-                    function ($attribute, $value, $fail) use ($submittedVariantIds) {
-                        $query = ProductVariant::query()->where('barcode', $value);
-        
-                        if ($submittedVariantIds !== []) {
-                            $query->whereNotIn('id', $submittedVariantIds);
-                        }
-        
-                        if ($query->exists()) {
-                            $fail('Barcode sudah digunakan oleh varian lain.');
-                        }
-                    };
             }
         }
 
@@ -319,17 +385,16 @@ class ProductController extends Controller
         $this->validateVariantPrices($data['variants'] ?? []);
         $this->validateAttributeValues(
             collect($data['variants'] ?? [])
-                ->flatMap(fn ($variant) => $variant['attribute_value_ids'] ?? [])
-                ->unique()
-                ->values()
-                ->all()
+            ->flatMap(fn ($variant) => $variant['attribute_value_ids'] ?? [])
+            ->unique()
+            ->values()
+            ->all()
         );
 
         $deleteIds = array_map('intval', $data['delete_images'] ?? []);
 
         if (
-            filled($data['primary_image_id'] ?? null)
-            && in_array((int) $data['primary_image_id'], $deleteIds, true)
+            filled($data['primary_image_id'] ?? null) && in_array((int) $data['primary_image_id'], $deleteIds, true)
         ) {
             throw ValidationException::withMessages([
                 'primary_image_id' => 'Gambar utama tidak boleh sekaligus dihapus.',
@@ -355,8 +420,8 @@ class ProductController extends Controller
                 &$deletedPaths
             ) {
                 $product = Product::whereKey($product->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                ->lockForUpdate()
+                ->firstOrFail();
 
                 $product->update([
                     'category_id' => $data['category_id'],
@@ -379,8 +444,8 @@ class ProductController extends Controller
 
                     if (! empty($spec['id'])) {
                         $record = $product->specifications()
-                            ->whereKey($spec['id'])
-                            ->firstOrFail();
+                        ->whereKey($spec['id'])
+                        ->firstOrFail();
                         $record->update($attributes);
                     } else {
                         $record = $product->specifications()->create($attributes);
@@ -390,8 +455,8 @@ class ProductController extends Controller
                 }
 
                 $product->specifications()
-                    ->whereNotIn('id', $savedSpecificationIds ?: [0])
-                    ->delete();
+                ->whereNotIn('id', $savedSpecificationIds ?: [0])
+                ->delete();
 
                 $variants = $data['variants'] ?? [];
 
@@ -423,51 +488,51 @@ class ProductController extends Controller
                         ]);
                     }
                 }
-                
+
                 // Kosongkan SKU lama melalui SKU sementara agar pertukaran SKU aman.
                 $variantIdsForUpdate = collect($variants)
-                    ->pluck('id')
-                    ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
-                    ->map(fn ($id) => (int) $id)
-                    ->unique()
-                    ->values()
-                    ->all();
-                
+                ->pluck('id')
+                ->filter(fn ($id) => filter_var($id, FILTER_VALIDATE_INT) !== false)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
                 $variantsToUpdate = $product->variants()
-                    ->whereIn('id', $variantIdsForUpdate)
-                    ->lockForUpdate()
-                    ->get();
-                
+                ->whereIn('id', $variantIdsForUpdate)
+                ->lockForUpdate()
+                ->get();
+
                 foreach ($variantsToUpdate as $variantToUpdate) {
                     $temporarySku = '__TMP__'
-                        . $product->id
-                        . '_'
-                        . $variantToUpdate->id;
-                
+                    . $product->id
+                    . '_'
+                    . $variantToUpdate->id;
+
                     while (
                         ProductVariant::query()
-                            ->where('sku', $temporarySku)
-                            ->where('id', '!=', $variantToUpdate->id)
-                            ->exists()
+                        ->where('sku', $temporarySku)
+                        ->where('id', '!=', $variantToUpdate->id)
+                        ->exists()
                     ) {
                         $temporarySku .= '_';
                     }
-                
+
                     $variantToUpdate->update([
                         'sku' => $temporarySku,
                     ]);
                 }
-                
+
                 foreach ($variants as $key => $item) {
                     $isNewVariant = blank($item['id'] ?? null);
-                
+
                     if ($isNewVariant) {
                         $variant = $product->variants()->create([
                             'sku' => $item['sku'],
                             'barcode' => $item['barcode'] ?? null,
                             'name' => filled($item['name'] ?? null)
-                                ? $item['name']
-                                : $product->name,
+                            ? $item['name']
+                            : $product->name,
                             'price' => $item['price'],
                             'compare_at_price' => $item['compare_at_price'] ?? null,
                             'cost_price' => $item['cost_price'] ?? null,
@@ -477,16 +542,16 @@ class ProductController extends Controller
                         ]);
                     } else {
                         $variant = $product->variants()
-                            ->whereKey($item['id'])
-                            ->lockForUpdate()
-                            ->firstOrFail();
-                
+                        ->whereKey($item['id'])
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
                         $variant->update([
                             'sku' => $item['sku'],
                             'barcode' => $item['barcode'] ?? null,
                             'name' => filled($item['name'] ?? null)
-                                ? $item['name']
-                                : $product->name,
+                            ? $item['name']
+                            : $product->name,
                             'price' => $item['price'],
                             'compare_at_price' => $item['compare_at_price'] ?? null,
                             'cost_price' => $item['cost_price'] ?? null,
@@ -496,12 +561,11 @@ class ProductController extends Controller
                     }
 
                     if (
-                        filled($item['compare_at_price'] ?? null)
-                        && (float) $item['compare_at_price'] < (float) $item['price']
+                        filled($item['compare_at_price'] ?? null) && (float) $item['compare_at_price'] < (float) $item['price']
                     ) {
                         throw ValidationException::withMessages([
                             "variants.$key.compare_at_price" =>
-                                'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
+                            'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
                         ]);
                     }
 
@@ -521,19 +585,19 @@ class ProductController extends Controller
 
                     if (
                         $values->groupBy('attribute_id')
-                            ->contains(fn ($group) => $group->count() > 1)
+                        ->contains(fn ($group) => $group->count() > 1)
                     ) {
                         throw ValidationException::withMessages([
                             "variants.$key.attribute_value_ids" =>
-                                'Pilih maksimal satu nilai untuk setiap atribut.',
+                            'Pilih maksimal satu nilai untuk setiap atribut.',
                         ]);
                     }
 
                     $variant->attributeValues()->sync($valueIds);
 
                     $inventory = $variant->inventory()
-                        ->lockForUpdate()
-                        ->first();
+                    ->lockForUpdate()
+                    ->first();
 
                     $quantity = (int) $item['quantity'];
                     $reserved = (int) ($inventory?->reserved_quantity ?? 0);
@@ -541,7 +605,7 @@ class ProductController extends Controller
                     if ($quantity < $reserved) {
                         throw ValidationException::withMessages([
                             "variants.$key.quantity" =>
-                                "Stok tidak boleh kurang dari stok yang direservasi ({$reserved}).",
+                            "Stok tidak boleh kurang dari stok yang direservasi ({$reserved}).",
                         ]);
                     }
 
@@ -581,8 +645,8 @@ class ProductController extends Controller
 
                 // Hapus record gambar dalam transaksi; file dihapus setelah commit.
                 $imagesToDelete = $product->images()
-                    ->whereIn('id', $deleteIds)
-                    ->get();
+                ->whereIn('id', $deleteIds)
+                ->get();
 
                 foreach ($imagesToDelete as $image) {
                     $deletedPaths[] = $image->path;
@@ -607,13 +671,13 @@ class ProductController extends Controller
 
                 if (! empty($data['primary_image_id'])) {
                     $primary = $product->images()
-                        ->whereKey($data['primary_image_id'])
-                        ->firstOrFail();
+                    ->whereKey($data['primary_image_id'])
+                    ->firstOrFail();
                 } else {
                     $primary = $product->images()
-                        ->where('is_primary', true)
-                        ->first()
-                        ?? $product->images()->orderBy('sort_order')->first();
+                    ->where('is_primary', true)
+                    ->first()
+                    ?? $product->images()->orderBy('sort_order')->first();
                 }
 
                 $product->images()->update(['is_primary' => false]);
@@ -627,10 +691,10 @@ class ProductController extends Controller
 
                 // Kolom legacy tetap dibutuhkan oleh katalog/cart/checkout lama.
                 $defaultVariant = $product->variants()
-                    ->where('is_default', true)
-                    ->with('inventory')
-                    ->first()
-                    ?? $product->variants()->with('inventory')->orderBy('id')->first();
+                ->where('is_default', true)
+                ->with('inventory')
+                ->first()
+                ?? $product->variants()->with('inventory')->orderBy('id')->first();
 
                 if ($defaultVariant) {
                     $product->update([
@@ -655,17 +719,16 @@ class ProductController extends Controller
         }
 
         return redirect()
-            ->route('admin.products.edit', $product)
-            ->with('success', 'Produk berhasil diperbarui.');
+        ->route('admin.products.edit', $product)
+        ->with('success', 'Produk berhasil diperbarui.');
     }
 
-    public function destroy(Product $product)
-    {
+    public function destroy(Product $product) {
         Gate::authorize('delete', $product);
         if ($product->orderItems()->exists()) {
             return redirect()
-                ->route('admin.products.index')
-                ->with('error', 'Produk tidak dapat dihapus karena sudah digunakan dalam pesanan.');
+            ->route('admin.products.index')
+            ->with('error', 'Produk tidak dapat dihapus karena sudah digunakan dalam pesanan.');
         }
 
         $paths = $product->images()->pluck('path')->all();
@@ -681,21 +744,22 @@ class ProductController extends Controller
         }
 
         return redirect()
-            ->route('admin.products.index')
-            ->with('success', 'Produk berhasil dihapus.');
+        ->route('admin.products.index')
+        ->with('success', 'Produk berhasil dihapus.');
     }
 
     private function formOptions(): array
     {
         $categories = Category::with('subCategories')
-            ->orderBy('name')
-            ->get();
+        ->orderBy('name')
+        ->get();
 
         $attributes = Attribute::with([
             'values' => fn ($query) => $query->orderBy('sort_order'),
         ])->orderBy('sort_order')->get();
 
-        return [$categories, $attributes];
+        return [$categories,
+            $attributes];
     }
 
     private function uniqueSlug(string $value, ?int $ignoreId = null): string
@@ -706,8 +770,8 @@ class ProductController extends Controller
 
         while (
             Product::where('slug', $slug)
-                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
-                ->exists()
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->exists()
         ) {
             $slug = $base . '-' . $suffix++;
         }
@@ -747,12 +811,11 @@ class ProductController extends Controller
     {
         foreach ($variants as $key => $variant) {
             if (
-                filled($variant['compare_at_price'] ?? null)
-                && (float) $variant['compare_at_price'] < (float) ($variant['price'] ?? 0)
+                filled($variant['compare_at_price'] ?? null) && (float) $variant['compare_at_price'] < (float) ($variant['price'] ?? 0)
             ) {
                 throw ValidationException::withMessages([
                     "variants.$key.compare_at_price" =>
-                        'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
+                    'Harga sebelum diskon harus sama atau lebih tinggi daripada harga jual.',
                 ]);
             }
         }

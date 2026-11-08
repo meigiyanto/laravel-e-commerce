@@ -16,7 +16,7 @@ class OrderPolicy
     private function belongsToCurrentTenant(Order $order): bool
     {
         if (! $this->isMultiTenant()) {
-            return true;
+            return $order->tenant_id === null;
         }
 
         $tenantId = app(TenantContext::class)->current()?->getKey();

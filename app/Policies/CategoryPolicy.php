@@ -16,7 +16,7 @@ class CategoryPolicy
     private function belongsToCurrentTenant(Category $category): bool
     {
         if (! $this->isMultiTenant()) {
-            return true;
+            return $category->tenant_id === null;
         }
 
         $tenantId = app(TenantContext::class)->current()?->getKey();

@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Gate;
 class OrderController extends Controller
 {
     /**
-     * Status order yang tersedia.
-     */
+    * Status order yang tersedia.
+    */
     private const STATUSES = [
         'pending',
         'processing',
@@ -29,44 +29,58 @@ class OrderController extends Controller
         'canceled',
     ];
 
-    /**
-     * Menampilkan semua order.
-     */
-    public function index(Request $request)
+    private function isMultiTenant(): bool
     {
+        return config('operational.mode', 'single_store') === 'multi_tenant';
+    }
+
+    private function applyOperationalScope($query) {
+        if ($this->isMultiTenant()) {
+            return $query->where(
+                'tenant_id',
+                app(TenantContext::class)->require()->getKey()
+            );
+        }
+
+        return $query->whereNull('tenant_id');
+    }
+
+    /**
+    * Menampilkan semua order.
+    */
+    public function index(Request $request) {
         Gate::authorize('viewAny', Order::class);
-        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        
         $search = trim((string) $request->input('search', ''));
         $status = $request->input('status');
-
-        $orders = Order::query()
-            ->where('tenant_id', $tenantId)
-            ->with('user')
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('order_number', 'like', "%{$search}%")
-                        ->orWhere('customer_name', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%")
-                        ->orWhereHas('user', function ($query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%")
-                                ->orWhere('email', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when(
-                in_array($status, self::STATUSES, true),
-                fn ($query) => $query->where('status', $status)
-            )
-            ->latest()
-            ->get();
+        
+        $orders = $this->applyOperationalScope(Order::query())
+                ->with('user')
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query->where('order_number', 'like', "%{$search}%")
+                            ->orWhere('customer_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhereHas('user', function ($query) use ($search) {
+                                $query->where('name', 'like', "%{$search}%")
+                                    ->orWhere('email', 'like', "%{$search}%");
+                            });
+                    });
+                })
+                ->when(
+                    in_array($status, self::STATUSES, true),
+                    fn ($query) => $query->where('status', $status)
+                )
+                ->latest()
+                ->get();
         /*
          * Jumlah order berdasarkan status.
          */
         $statusCounts = Order::query()
-            ->where('tenant_id', $tenantId)
-            ->selectRaw('status, COUNT(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
+        ->where('tenant_id', $tenantId)
+        ->selectRaw('status, COUNT(*) as aggregate')
+        ->groupBy('status')
+        ->pluck('aggregate', 'status');
 
         return view('admin.orders.index', [
             'orders' => $orders,
@@ -78,13 +92,10 @@ class OrderController extends Controller
     }
 
     /**
-     * Menampilkan detail order.
-     */
-    public function show(Order $order)
-    {
+    * Menampilkan detail order.
+    */
+    public function show(Order $order) {
         Gate::authorize('view', $order);
-        $tenantId = (int) app(TenantContext::class)->require()->getKey();
-        // abort_unless((int) $order->tenant_id === $tenantId, 404);
         
         $order->load([
             'user',
@@ -95,29 +106,27 @@ class OrderController extends Controller
     }
 
     /**
-     * Mengubah status order.
-     */
+    * Mengubah status order.
+    */
     public function updateStatus(
         Request $request,
         Order $order
     ) {
         Gate::authorize('updateStatus', $order);
-        $tenantId = (int) app(TenantContext::class)->require()->getKey();
-        abort_unless((int) $order->tenant_id === $tenantId, 404);
         
         $validated = $request->validate([
-            'status' => [ 'required', Rule::in(self::STATUSES)],
+            'status' => ['required', Rule::in(self::STATUSES)],
         ]);
-    
+
         $newStatus = $validated['status'];
-    
+
         if ($order->status === $newStatus) {
             return back()->with(
                 'success',
                 'Status pesanan tidak berubah.'
             );
         }
-        
+
         /*
          * Konfirmasi pembatalan Stripe dilakukan sebelum transaksi
          * database agar tidak menahan lock saat menunggu jaringan.
@@ -125,17 +134,13 @@ class OrderController extends Controller
         $stripeCancellationConfirmed = false;
         $midtransCancellationConfirmed = false;
         $providerPaymentSucceeded = false;
-        
+
         if ($newStatus === 'canceled') {
             $payment = $order->payment()->first();
-        
+
             if ($payment) {
-                $safeStatuses = [
-                    'failed',
-                    'expired',
-                    'canceled',
-                ];
-        
+                $safeStatuses = ['failed','expired','canceled'];
+
                 /*
                  * Status succeeded tidak boleh dibatalkan melalui API
                  * pembatalan. Lanjutkan ke alur refund setelah pesanan
@@ -149,11 +154,11 @@ class OrderController extends Controller
                     if (! $payment->stripe_payment_intent_id) {
                         return back()->with('error', 'Pembatalan ditolak: PaymentIntent Stripe tidak ditemukan.');
                     }
-        
+
                     try {
                         $paymentIntent = app(StripePaymentService::class)
-                            ->cancel($payment->stripe_payment_intent_id);
-        
+                        ->cancel($payment->stripe_payment_intent_id);
+
                         if ($paymentIntent->status === 'succeeded') {
                             /*
                              * Stripe mengonfirmasi pembayaran berhasil.
@@ -177,7 +182,7 @@ class OrderController extends Controller
                                 'message' => $e->getMessage(),
                             ]
                         );
-        
+
                         return back()->with(
                             'error',
                             'Pembatalan Stripe gagal atau hasilnya tidak pasti. Pesanan dan stok tidak diubah.'
@@ -186,44 +191,40 @@ class OrderController extends Controller
                 } elseif ($payment->provider === 'midtrans') {
                     try {
                         $midtrans = app(MidtransService::class);
-        
+
                         /*
                          * Periksa status terkini sebelum meminta pembatalan.
                          */
                         $providerStatus = $midtrans->getStatus(
                             $order->order_number
                         );
-        
+
                         $transactionStatus = strtolower(
                             (string) ($providerStatus->transaction_status ?? '')
                         );
-        
+
                         $statusCode = (string) (
                             $providerStatus->status_code ?? ''
                         );
-        
+
                         $fraudStatus = strtolower(
                             (string) ($providerStatus->fraud_status ?? '')
                         );
-        
-                        $isSuccessfulPayment =
-                            $transactionStatus === 'settlement'
-                            || (
-                                $transactionStatus === 'capture'
-                                && ($statusCode === '' || $statusCode === '200')
-                                && ($fraudStatus === '' || $fraudStatus === 'accept')
-                            );
-        
+
+                        $isSuccessfulPayment = $transactionStatus === 'settlement' || (
+                            $transactionStatus === 'capture' && ($statusCode === '' || $statusCode === '200') && ($fraudStatus === '' || $fraudStatus === 'accept')
+                        );
+
                         if ($isSuccessfulPayment) {
                             /*
                              * Transaksi sudah dibayar. Jangan panggil cancel.
                              */
                             $providerPaymentSucceeded = true;
                         } elseif (in_array(
-                            $transactionStatus,
-                            ['cancel', 'expire', 'deny', 'failure'],
-                            true
-                        )) {
+                                $transactionStatus,
+                                ['cancel', 'expire', 'deny', 'failure'],
+                                true
+                            )) {
                             // Provider sudah menyatakan transaksi tidak aktif.
                         } elseif ($transactionStatus === 'pending') {
                             /*
@@ -233,7 +234,7 @@ class OrderController extends Controller
                             $midtrans->cancelTransaction(
                                 $order->order_number
                             );
-        
+
                             /*
                              * Verifikasi ulang dari Midtrans, bukan hanya
                              * mengandalkan respons cancel().
@@ -241,17 +242,16 @@ class OrderController extends Controller
                             $verifiedStatus = $midtrans->verifyCancellation(
                                 $order->order_number
                             );
-        
+
                             $verifiedTransactionStatus = strtolower(
                                 (string) ($verifiedStatus->transaction_status ?? '')
                             );
-        
-                            if (in_array( $verifiedTransactionStatus, ['cancel', 'expire', 'deny', 'failure'], true)) {
+
+                            if (in_array($verifiedTransactionStatus, ['cancel', 'expire', 'deny', 'failure'], true)) {
                                 $midtransCancellationConfirmed = true;
                             } elseif (
-                                $verifiedTransactionStatus === 'settlement'
-                                || ( $verifiedTransactionStatus === 'capture' && ((string) ($verifiedStatus->status_code ?? '') === ''|| (string) $verifiedStatus->status_code === '200') && in_array(
-                                        strtolower((string) ($verifiedStatus->fraud_status ?? '' )), ['', 'accept'], true))
+                                $verifiedTransactionStatus === 'settlement' || ($verifiedTransactionStatus === 'capture' && ((string) ($verifiedStatus->status_code ?? '') === '' || (string) $verifiedStatus->status_code === '200') && in_array(
+                                    strtolower((string) ($verifiedStatus->fraud_status ?? '')), ['', 'accept'], true))
                             ) {
                                 /*
                                  * Status berubah menjadi berhasil saat proses
@@ -283,7 +283,7 @@ class OrderController extends Controller
                                 'message' => $e->getMessage(),
                             ]
                         );
-        
+
                         return back()->with(
                             'error',
                             'Pembatalan Midtrans gagal atau hasilnya tidak pasti. Pesanan dan stok tidak diubah.'
@@ -297,8 +297,8 @@ class OrderController extends Controller
                     return back()->with('error', 'Pembatalan ditolak: provider pembayaran tidak didukung.');
                 }
             }
-        }    
-        
+        }
+
         $result = DB::transaction(function () use (
             $order,
             $newStatus,
@@ -307,11 +307,10 @@ class OrderController extends Controller
             $midtransCancellationConfirmed,
             $providerPaymentSucceeded
         ) {
-            $lockedOrder = Order::query()
-                ->where('tenant_id', $tenantId)
-                ->lockForUpdate()
-                ->findOrFail($order->id);
-    
+            $lockedOrder = $this->applyOperationalScope(Order::query())
+                        ->lockForUpdate()
+                        ->findOrFail($order->id);
+
             $allowedTransitions = [
                 'pending' => ['processing', 'canceled'],
                 'processing' => ['shipped', 'canceled'],
@@ -319,26 +318,16 @@ class OrderController extends Controller
                 'completed' => [],
                 'canceled' => [],
             ];
-    
-            if (! in_array(
-                $newStatus,
-                $allowedTransitions[$lockedOrder->status] ?? [],
-                true
-            )) {
+
+            if (! in_array($newStatus, $allowedTransitions[$lockedOrder->status] ?? [], true)) {
                 return 'transition_blocked';
             }
-            
-            if ($newStatus === 'canceled'
-                && in_array(
-                    $lockedOrder->status,
-                    ['pending', 'processing'],
-                    true
-                )
-            ) {
+
+            if ($newStatus === 'canceled' && in_array($lockedOrder->status,['pending', 'processing'],true)) {
                 $payment = $lockedOrder->payment()
-                    ->lockForUpdate()
-                    ->first();
-            
+                ->lockForUpdate()
+                ->first();
+
                 if ($payment) {
                     /*
                      * Provider mengonfirmasi pembayaran berhasil.
@@ -353,24 +342,20 @@ class OrderController extends Controller
                          * Jangan menurunkan status pembayaran yang sudah berhasil.
                          * Refund ditangani setelah order berhasil dibatalkan.
                          */
-                    } elseif (in_array(
-                        $payment->status,
-                        ['failed', 'expired', 'canceled'],
-                        true
-                    )) {
+                    } elseif (in_array($payment->status,['failed', 'expired', 'canceled'],true)) {
                         // Status pembayaran sudah terminal; tidak perlu dibatalkan lagi.
                     } elseif ($payment->provider === 'stripe') {
                         if (! $stripeCancellationConfirmed) {
                             return 'payment_not_safe';
                         }
-            
+
                         $payment->status = 'canceled';
                         $payment->save();
                     } elseif ($payment->provider === 'midtrans') {
                         if (! $midtransCancellationConfirmed) {
                             return 'payment_not_safe';
                         }
-            
+
                         $payment->status = 'canceled';
                         $payment->save();
                     } elseif ($payment->provider !== 'cod') {
@@ -378,62 +363,52 @@ class OrderController extends Controller
                     }
                 }
             }
-            
+
             /**
-             * Stok dipulihkan hanya saat pesanan benar-benar
-             * beralih dari pending/processing ke canceled.
-             */
-            if (
-                $newStatus === 'canceled'
-                && in_array(
-                    $lockedOrder->status,
-                    ['pending', 'processing'],
-                    true
-                )
-            ) {
+            * Stok dipulihkan hanya saat pesanan benar-benar
+            * beralih dari pending/processing ke canceled.
+            */
+            if ($newStatus === 'canceled' && in_array( $lockedOrder->status, ['pending', 'processing'], true)) {
                 app(VariantInventoryService::class)->cancelStockForOrder($lockedOrder);
             }
-            
+
             $lockedOrder->update([
                 'status' => $newStatus,
             ]);
 
             return 'updated';
         });
-    
+
         if ($result === 'payment_not_safe') {
             return back()->with(
                 'error',
                 'Pembatalan ditolak: pembayaran online belum dipastikan terminal.'
             );
         }
-    
+
         if ($result === 'transition_blocked') {
             return back()->with(
                 'error',
                 'Perubahan status pesanan tidak diizinkan.'
             );
         }
-        
+
         if ($newStatus === 'canceled' && $result === 'updated') {
             $order->refresh();
 
             $payment = $order->payment()->first();
 
-            if (
-                $order->status === 'canceled'
-                && $payment?->status === 'succeeded'
-            ) {
+            if ($order->status === 'canceled' && $payment?->status === 'succeeded') {
                 app(RefundService::class)
-                    ->requestLateCanceledOrderRefund(
-                        $order,
-                        $payment
-                    );
+                ->requestLateCanceledOrderRefund(
+                    $order,
+                    $payment
+                );
             }
         }
-    
+
         return redirect()
-            ->route('admin.orders.show', $order)
-            ->with( 'success', 'Status pesanan berhasil diperbarui.');
+        ->route('admin.orders.show', $order)
+        ->with('success', 'Status pesanan berhasil diperbarui.');
     }
 }
