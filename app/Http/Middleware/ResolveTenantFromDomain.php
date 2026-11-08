@@ -16,6 +16,11 @@ class ResolveTenantFromDomain
         $context = app(TenantContext::class);
         $context->clear();
 
+        // Single Store tidak membutuhkan tenant maupun domain.
+        if (config('operational.mode', 'single_store') === 'single_store') {
+            return $next($request);
+        }
+
         try {
             $path = trim($request->path(), '/');
 

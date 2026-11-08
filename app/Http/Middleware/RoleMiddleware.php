@@ -20,23 +20,23 @@ class RoleMiddleware
             return redirect()->guest(route('login'));
         }
 
+        // Single Store menggunakan role langsung dari tabel users.
+        if (config('operational.mode', 'single_store') === 'single_store') {
+            abort_unless(
+                $roles === [] || $user->hasAnyRole(...$roles),
+                403,
+                'Insufficient role.'
+            );
+
+            return $next($request);
+        }
+
+        // Multi-tenant tetap menggunakan tenant membership.
         $tenant = app(TenantContext::class)->current();
 
         abort_unless($tenant, 404);
 
-        // Platform admin hanya boleh memasuki operasional tenant
-        // melalui mekanisme akses tenant yang sudah disediakan.
         if ($user->hasPlatformTenantAccess((int) $tenant->id)) {
-            return $next($request);
-        }
-
-        // Admin lama yang belum pernah menjadi anggota tenant.
-        // Aksesnya dibatasi pada route yang memang menerima role admin.
-        $isLegacyAdmin = $user->isAdmin()
-            && ! $user->tenantMemberships()->exists()
-            && in_array('admin', $roles, true);
-
-        if ($isLegacyAdmin) {
             return $next($request);
         }
 
@@ -48,12 +48,11 @@ class RoleMiddleware
             'Tenant membership required.'
         );
 
-        if (
-            $roles !== []
-            && ! in_array($membership->role, $roles, true)
-        ) {
-            abort(403, 'Insufficient tenant role.');
-        }
+        abort_unless(
+            $roles === [] || in_array($membership->role, $roles, true),
+            403,
+            'Insufficient role.'
+        );
 
         return $next($request);
     }
