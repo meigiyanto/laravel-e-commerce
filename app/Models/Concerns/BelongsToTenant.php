@@ -13,6 +13,10 @@ trait BelongsToTenant
     public static function bootBelongsToTenant(): void
     {
         static::addGlobalScope('tenant', function (Builder $builder): void {
+            if (! static::tenantIsolationEnabled()) {
+                return;
+            }
+
             $tenantId = app(TenantContext::class)->current()?->getKey();
 
             if ($tenantId === null) {
@@ -27,6 +31,10 @@ trait BelongsToTenant
         });
 
         static::creating(function (Model $model): void {
+            if (! static::tenantIsolationEnabled()) {
+                return;
+            }
+
             $contextTenantId = app(TenantContext::class)->current()?->getKey();
             $parentTenantId = $model->resolveParentTenantId();
             $tenantId = $model->getAttribute('tenant_id')
@@ -47,15 +55,13 @@ trait BelongsToTenant
                 ));
             }
 
-            /* if ($parentTenantId !== null && (int) $tenantId !== $parentTenantId) {
-                throw new LogicException(sprintf(
-                    '%s tenant_id does not match its parent record.',
-                    $model::class
-                ));
-            } */
-
             $model->setAttribute('tenant_id', $tenantId);
         });
+    }
+
+    protected static function tenantIsolationEnabled(): bool
+    {
+        return config('operational.mode', 'single_store') === 'multi_tenant';
     }
 
     protected function resolveParentTenantId(): ?int
