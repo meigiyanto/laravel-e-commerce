@@ -20,18 +20,16 @@ class RoleMiddleware
             return redirect()->guest(route('login'));
         }
 
-        // Single Store menggunakan role langsung dari tabel users.
-        if (config('operational.mode', 'single_store') === 'single_store') {
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
             abort_unless(
                 $roles === [] || $user->hasAnyRole(...$roles),
                 403,
-                'Insufficient role.'
+                'Insufficient user role.'
             );
 
             return $next($request);
         }
 
-        // Multi-tenant tetap menggunakan tenant membership.
         $tenant = app(TenantContext::class)->current();
 
         abort_unless($tenant, 404);
@@ -42,17 +40,11 @@ class RoleMiddleware
 
         $membership = $user->activeTenantMembership((int) $tenant->id);
 
-        abort_unless(
-            $membership,
-            403,
-            'Tenant membership required.'
-        );
+        abort_unless($membership, 403, 'Tenant membership required.');
 
-        abort_unless(
-            $roles === [] || in_array($membership->role, $roles, true),
-            403,
-            'Insufficient role.'
-        );
+        if ($roles !== [] && ! in_array($membership->role, $roles, true)) {
+            abort(403, 'Insufficient tenant role.');
+        }
 
         return $next($request);
     }

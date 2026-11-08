@@ -16,8 +16,7 @@ class ResolveTenantFromDomain
         $context = app(TenantContext::class);
         $context->clear();
 
-        // Single Store tidak membutuhkan tenant maupun domain.
-        if (config('operational.mode', 'single_store') === 'single_store') {
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
             return $next($request);
         }
 
@@ -44,8 +43,8 @@ class ResolveTenantFromDomain
                     ->where('slug', 'default')
                     ->where('status', 'active')
                     ->first();
-            } else {
-                abort_unless($store && $store->status === 'active', 404);
+            } elseif (! $store || $store->status !== 'active') {
+                abort(404);
             }
 
             abort_unless($tenant && $tenant->status === 'active', 404);
