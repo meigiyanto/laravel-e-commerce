@@ -50,7 +50,8 @@
                                     Platform Panel
                                 </a>
                             </li>
-                        @elseif (auth()->user()->activeTenantMembership())
+                        {{-- @elseif (auth()->user()->activeTenantMembership()) --}}
+                        @else
                             <li>
                                 <a class="dropdown-item" href="{{ route('admin.dashboard') }}">
                                     <i class="bi bi-shield-check"></i>
@@ -64,10 +65,14 @@
                         </li>
 
                         <li>
+                        
+                        {{--
                         @if (auth()->user()->isPlatformAdmin())
                             <form method="POST" action="{{ route('platform.logout') }}">
                                 @csrf
-                        @elseif (auth()->user()->isAdmin())
+                        --}}
+                        
+                        @if (auth()->user()->isAdmin())
                             <form method="POST" action="{{ route('admin.logout') }}">
                                 @csrf
                         @else

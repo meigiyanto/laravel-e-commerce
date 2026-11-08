@@ -3,36 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use App\Models\Order;
-use App\Models\User;
 use App\Models\Category;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $tenantId = (int) app(TenantContext::class)->require()->getKey();
+        $isMultiTenant = config('operational.mode', 'single_store') === 'multi_tenant';
+        $tenantId = $isMultiTenant
+            ? app(TenantContext::class)->require()->getKey()
+            : null;
 
-        $productsCount = Product::query()
-            ->where('tenant_id', $tenantId)
-            ->count();
+        $products = Product::query();
+        $orders = Order::query();
+        $categories = Category::query();
 
-        $ordersCount = Order::query()
-            ->where('tenant_id', $tenantId)
-            ->count();
+        if ($isMultiTenant) {
+            $products->where('tenant_id', $tenantId);
+            $orders->where('tenant_id', $tenantId);
+            $categories->where('tenant_id', $tenantId);
+        } else {
+            $products->whereNull('tenant_id');
+            $orders->whereNull('tenant_id');
+            $categories->whereNull('tenant_id');
+        }
+
+        $productsCount = $products->count();
+        $ordersCount = $orders->count();
+        $categoriesCount = $categories->count();
 
         $usersCount = User::query()
-            ->whereIn('id', Order::query()
-                ->where('tenant_id', $tenantId)
+            ->whereIn('id', (clone $orders)
                 ->whereNotNull('user_id')
                 ->select('user_id')
                 ->distinct())
-            ->count();
-
-        $categoriesCount = Category::query()
-            ->where('tenant_id', $tenantId)
             ->count();
 
         return view('admin.dashboard', compact(

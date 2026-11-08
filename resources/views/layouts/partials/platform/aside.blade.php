@@ -41,12 +41,6 @@
                             <span class="nk-menu-text">Tenants Management</span>
                         </a>
                     </li>
-                    <li class="nk-menu-item {{ request()->routeIs('platform.evolution.assessments.*') ? 'active' : '' }}">
-                        <a href="{{ route('platform.evolution.assessments.index') }}" class="nk-menu-link">
-                            <span class="nk-menu-icon"><em class="icon ni ni-growth"></em></span>
-                            <span class="nk-menu-text">Assessment Lifecycle</span>
-                        </a>
-                    </li>
                     <li class="nk-menu-heading">
                         <h6 class="overline-title text-primary-alt">Security</h6>
                     </li>

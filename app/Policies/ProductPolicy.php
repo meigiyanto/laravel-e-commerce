@@ -8,45 +8,75 @@ use App\Support\Tenancy\TenantContext;
 
 class ProductPolicy
 {
+    private function isMultiTenant(): bool
+    {
+        return config('operational.mode', 'single_store') === 'multi_tenant';
+    }
+
     private function belongsToCurrentTenant(Product $product): bool
     {
+        if (! $this->isMultiTenant()) {
+            return true;
+        }
+
         $tenantId = app(TenantContext::class)->current()?->getKey();
 
         return $tenantId !== null && (int) $product->tenant_id === (int) $tenantId;
     }
 
+    private function canView(User $user): bool
+    {
+        return $this->isMultiTenant()
+            ? $user->hasTenantPermission('products.view')
+            : $user->hasAnyRole('admin', 'staff');
+    }
+
+    private function canManage(User $user): bool
+    {
+        return $this->isMultiTenant()
+            ? $user->hasTenantPermission('products.manage')
+            : $user->hasAnyRole('admin');
+    }
+
+    private function canManageInventory(User $user): bool
+    {
+        return $this->isMultiTenant()
+            ? $user->hasTenantPermission('inventory.manage')
+            : $user->hasAnyRole('admin');
+    }
+
     public function viewAny(User $user): bool
     {
-        return $user->hasTenantPermission('products.view');
+        return $this->canView($user);
     }
 
     public function view(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.view');
+        return $this->belongsToCurrentTenant($product) && $this->canView($user);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasTenantPermission('products.manage');
+        return $this->canManage($user);
     }
 
     public function update(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.manage');
+        return $this->belongsToCurrentTenant($product) && $this->canManage($user);
     }
 
     public function delete(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('products.manage');
+        return $this->belongsToCurrentTenant($product) && $this->canManage($user);
     }
 
     public function updateStock(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('inventory.manage');
+        return $this->belongsToCurrentTenant($product) && $this->canManageInventory($user);
     }
 
     public function adjustStock(User $user, Product $product): bool
     {
-        return $this->belongsToCurrentTenant($product) && $user->hasTenantPermission('inventory.manage');
+        return $this->belongsToCurrentTenant($product) && $this->canManageInventory($user);
     }
 }

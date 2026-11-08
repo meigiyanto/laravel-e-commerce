@@ -100,6 +100,17 @@
                         </a>
                     </li>
                     
+                    <li class="nk-menu-heading">
+                        <h6 class="overline-title text-primary-alt">Plugin</h6>
+                    </li>
+                    <li class="nk-menu-item {{ request()->routeIs('platform.evolution.assessments.*') ? 'active' : '' }}">
+                        <a href="{{ route('platform.evolution.assessments.index') }}" class="nk-menu-link">
+                            <span class="nk-menu-icon"><em class="icon ni ni-growth"></em></span>
+                            <span class="nk-menu-text">Assessment Lifecycle</span>
+                        </a>
+                    </li>
+
+                    
                     @if (auth()->user()?->isAdmin())
                         <li class="nk-menu-heading">
                             <h6 class="overline-title text-primary-alt">Administration</h6>

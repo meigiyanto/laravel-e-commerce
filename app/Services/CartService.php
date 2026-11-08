@@ -12,17 +12,58 @@ use Illuminate\Support\Facades\DB;
 use App\Services\VariantInventoryService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\Builder;
 
 class CartService
 {
-    private function tenantId(): int
+    private function isMultiTenant(): bool
     {
-        return (int) app(TenantContext::class)->require()->getKey();
+        return config('operational.mode', 'single_store') === 'multi_tenant';
+    }
+
+    private function tenantId(): ?int
+    {
+        return $this->isMultiTenant()
+        ? (int) app(TenantContext::class)->require()->getKey()
+        : null;
+    }
+
+    private function scopeCartQuery(Builder $query): Builder
+    {
+        return $this->isMultiTenant()
+        ? $query->where('tenant_id', $this->tenantId())
+        : $query->whereNull('tenant_id');
+    }
+
+    private function assertProductTenant(Product $product): void
+    {
+        if ($this->isMultiTenant() && (int) $product->tenant_id !== $this->tenantId()) {
+            throw new \RuntimeException('Produk tidak tersedia pada toko ini.');
+        }
+    }
+
+    private function assertVariantTenant(ProductVariant $variant, Product $product): void
+    {
+        if (
+            (int) $variant->product_id !== (int) $product->id ||
+            ($this->isMultiTenant() && (int) $variant->tenant_id !== $this->tenantId())
+        ) {
+            throw new \RuntimeException('Varian tidak sesuai dengan produk atau toko.');
+        }
     }
 
     public function getUserCart(int $userId): Cart
     {
-        return Cart::firstOrCreate([
+        $query = $this->scopeCartQuery(Cart::query())
+        ->where('user_id', $userId);
+
+        $cart = $query->first();
+
+        if ($cart) {
+            return $cart;
+        }
+
+        return Cart::create([
             'tenant_id' => $this->tenantId(),
             'user_id' => $userId,
         ]);
@@ -111,7 +152,8 @@ class CartService
     */
     public function getGuestCart(): array
     {
-        return session()->get('cart', []);
+        return session()->get('cart',
+            []);
     }
 
     public function normalizeGuestCart(): array
@@ -191,14 +233,14 @@ class CartService
                     continue;
                 }
 
-                $available = max(0,(int) $inventory->quantity - (int) $inventory->reserved_quantity);
+                $available = max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity);
 
                 if ($available < 1) {
                     unset($normalized[$key]);
                     continue;
                 }
 
-                $normalized[$key]['quantity'] = min((int) $item['quantity'],$available);
+                $normalized[$key]['quantity'] = min((int) $item['quantity'], $available);
             }
 
             return $normalized;
@@ -331,7 +373,9 @@ class CartService
             }
 
             if ((int) $variant->tenant_id !== $this->tenantId() || (int) $variant->product_id !== (int) $product->id) {
-                throw new \RuntimeException('Varian tidak sesuai dengan produk atau toko.');
+                // throw new \RuntimeException('Varian tidak sesuai dengan produk atau toko.');
+                $this->assertProductTenant($product);
+                $this->assertVariantTenant($variant, $product);
             }
 
             $rawCart = $this->getGuestCart();
@@ -481,8 +525,8 @@ class CartService
         }
 
         return DB::transaction(function () use ($cartItemId, $userId, $quantity) {
-            $cart = Cart::query()
-            ->where('tenant_id', $this->tenantId())
+
+            $cart = $this->scopeCartQuery(Cart::query())
             ->where('user_id', $userId)
             ->lockForUpdate()
             ->firstOrFail();
@@ -709,8 +753,7 @@ class CartService
         if (auth()->check()) {
             return (int) CartItem::query()
             ->whereHas('cart', function ($query) {
-                $query->where('tenant_id', $this->tenantId())
-                ->where('user_id', auth()->id());
+                $this->scopeCartQuery($query)->where('user_id', auth()->id());
             })
             ->sum('quantity');
         }
@@ -731,8 +774,7 @@ class CartService
     {
 
         if (auth()->check()) {
-            $cart = Cart::query()
-            ->where('tenant_id', $this->tenantId())
+            $cart = $this->scopeCartQuery(Cart::query())
             ->where('user_id', auth()->id())
             ->with([
                 'items.product',
@@ -940,6 +982,22 @@ class CartService
                 $variant = $variants->get($variantId);
                 $inventory = $inventories->get($variantId);
 
+                if (! $product || ! $variant || ! $inventory) {
+                    continue;
+                }
+
+                try {
+                    $this->assertProductTenant($product);
+                    $this->assertVariantTenant($variant, $product);
+                } catch (\RuntimeException) {
+                    continue;
+                }
+
+                if ($variant->status !== 'active') {
+                    continue;
+                }
+
+                /*
                 if (!$product || !$variant || (int) $variant->product_id !== $product->id || $variant->status !== 'active' || ! $inventory
                 ) {
                     continue;
@@ -948,6 +1006,7 @@ class CartService
                 if (!$product || !$variant || (int) $product->tenant_id !== $this->tenantId() || (int) $variant->tenant_id !== $this->tenantId() || (int) $variant->product_id !== $productId) {
                     continue;
                 }
+                */
 
                 $available = max(0, (int) $inventory->quantity - (int) $inventory->reserved_quantity);
 
@@ -1025,14 +1084,12 @@ class CartService
     */
     public function isUserCartEmpty(int $userId): bool
     {
-        $cart = Cart::where('user_id',
-            $userId)->first();
+        $cart = $this->scopeCartQuery(Cart::query())
+        ->where('user_id',
+            $userId)
+        ->first();
 
-        if (!$cart) {
-            return true;
-        }
-
-        return !$cart->items()->exists();
+        return ! $cart || ! $cart->items()->exists();
     }
 
     private function buildUpdatedItemResponse(

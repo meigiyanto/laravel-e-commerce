@@ -147,7 +147,8 @@
                                     Platform Panel
                                 </a>
                             </li>
-                        @elseif (auth()->user()->activeTenantMembership())
+                        {{-- @elseif (auth()->user()->activeTenantMembership()) --}}
+                        @else
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -162,12 +163,15 @@
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-
+                        
                         <li>
+                        {{--
                         @if (auth()->user()->isPlatformAdmin())
                             <form method="POST" action="{{ route('platform.logout') }}">
                                 @csrf
-                        @elseif (auth()->user()->isAdmin())
+                        --}}
+                        
+                        @if (auth()->user()->isAdmin())
                             <form method="POST" action="{{ route('admin.logout') }}">
                                 @csrf
                         @else
