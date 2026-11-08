@@ -44,19 +44,22 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required',
+                'string',
+                'email'],
+            'password' => ['required',
+                'string'],
         ];
     }
 
     public function authenticateStorefront(): void
-     {
-         $this->attemptAuthentication();
+    {
+        $this->attemptAuthentication();
 
         if (Auth::user()?->isPlatformAdmin()) {
             $this->rejectAuthenticatedUser();
         }
-     }
+    }
 
 
     public function authenticatePlatform(): void
@@ -83,12 +86,20 @@ class LoginRequest extends FormRequest
         $this->attemptAuthentication();
 
         $user = Auth::user();
+
+        $isLegacyAdmin = $user && $user->isAdmin() && ! $user->tenantMemberships()->exists();
+
         $membership = $user?->activeTenantMembership();
 
-        if (! $user || $user->isPlatformAdmin() || ! $membership || ! in_array($membership->role, TenantMembership::ROLES, true)) {
+        $hasValidTenantMembership = $membership && in_array($membership->role, TenantMembership::ROLES, true);
+
+        if (
+            ! $user || $user->isPlatformAdmin() || (! $isLegacyAdmin && ! $hasValidTenantMembership)
+        ) {
             $this->rejectAuthenticatedUser();
         }
     }
+    
     /**
     * Ensure the login request is not rate limited.
     *

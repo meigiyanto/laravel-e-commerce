@@ -7,16 +7,10 @@ use App\Models\Tenant;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ResolveTenantFromDomain
 {
-    private function isPublicPath(Request $request, string $path): bool
-    {
-        return $path === '' && in_array($request->method(), ['GET', 'HEAD'], true);
-    }
-    
     public function handle(Request $request, Closure $next): Response
     {
         $context = app(TenantContext::class);
@@ -28,13 +22,8 @@ class ResolveTenantFromDomain
             if ($this->isPlatformOrCallbackPath($path)) {
                 return $next($request);
             }
-            
-            if ($this->isPublicPath($request, $path) || $this->isPlatformOrCallbackPath($path)) {
-                return $next($request);
-            }
 
             $host = strtolower(rtrim($request->getHost(), '.'));
-            $host = $request->getHost();
 
             $storeDomain = StoreDomain::query()
                 ->with('store.tenant')
@@ -55,6 +44,7 @@ class ResolveTenantFromDomain
             }
 
             abort_unless($tenant && $tenant->status === 'active', 404);
+
             $context->set($tenant);
 
             return $next($request);
@@ -65,7 +55,10 @@ class ResolveTenantFromDomain
 
     private function isPlatformOrCallbackPath(string $path): bool
     {
-        if (in_array($path, ['stripe/webhook','payment/midtrans/notification'], true)) {
+        if (in_array($path, [
+            'stripe/webhook',
+            'payment/midtrans/notification',
+        ], true)) {
             return true;
         }
 

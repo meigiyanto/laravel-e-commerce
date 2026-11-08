@@ -55,10 +55,10 @@ class PlatformAuditLogger
             ...$contract['optional'],
         ];
 
-        $missing = array_diff(array_keys($contract['required']), array_keys($metadata));
+        $missing = array_diff($contract['required'],array_keys($metadata));
 
         $unexpected = array_diff(array_keys($metadata), $allowed);
-
+        
         if ($missing || $unexpected) {
             throw new InvalidArgumentException('Invalid metadata contract for '.$action.'. Missing: '.implode(', ', $missing).'. Unexpected: '.implode(', ', $unexpected));
         }

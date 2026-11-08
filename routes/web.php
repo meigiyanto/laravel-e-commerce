@@ -113,9 +113,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Address
     Route::prefix('account/addresses')->name('account.addresses.')->controller(UserAddressController::class)->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::get('/create', 'create')->name('create');
-
         Route::post('/', 'store')->name('store');
+
+        Route::get('/create', 'create')->name('create');
         Route::get('/{address}/edit', 'edit')->name('edit');
         Route::put('/{address}', 'update')->name('update');
         Route::delete('/{address}', 'destroy')->name('destroy');
@@ -187,7 +187,6 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
 */
 
 Route::middleware(['auth', 'tenant.role:owner,admin,product_manager,inventory_manager,order_manager,staff'])->prefix('admin')->name('admin.')->group(function () {
-// Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Attribute Product management
@@ -199,8 +198,8 @@ Route::middleware(['auth', 'tenant.role:owner,admin,product_manager,inventory_ma
     // Gallery management
     Route::get('/product-gallery', [ProductGalleryController::class, 'index'])->name('product-gallery.index');
     Route::post('/product-gallery/upload', [ProductGalleryController::class, 'upload'])->name('product-gallery.upload');
-    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]')->name('product-gallery.replace');
-    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]')->name('product-gallery.destroy');
+    Route::put('/product-gallery/{filename}', [ProductGalleryController::class, 'replace'])->where('filename', '[^/]+')->name('product-gallery.replace');
+    Route::delete('/product-gallery/{filename}', [ProductGalleryController::class, 'destroy'])->where('filename', '[^/]+')->name('product-gallery.destroy');
 
     // Refund management
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
