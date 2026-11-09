@@ -2,44 +2,43 @@
 
 namespace Tests\Feature\Refund;
 
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Category;
-use App\Models\SubCategory;
-use App\Models\Product;
 use App\Models\Payment;
+use App\Models\Product;
 use App\Models\Refund;
-use App\Models\User;
-use App\Models\Tenant;
 use App\Models\Store;
 use App\Models\StoreDomain;
-use App\Support\Tenancy\TenantContext;
+use App\Models\SubCategory;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Services\RefundService;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
-use RuntimeException;
 
 class ControllerTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     private function createTenantDomain(Order $order): string
     {
         $tenantId = DB::table('order_items')
             ->join('products', 'products.id', '=', 'order_items.product_id')
             ->where('order_items.order_id', $order->id)
             ->value('products.tenant_id');
-    
+
         if (! $tenantId) {
             throw new \LogicException(
                 "Tenant pemilik order {$order->id} tidak dapat ditemukan melalui order items."
             );
         }
-    
+
         $tenant = Tenant::query()->findOrFail($tenantId);
-    
+
         $store = Store::firstOrCreate(
             ['tenant_id' => $tenant->id],
             [
@@ -48,9 +47,9 @@ class ControllerTest extends TestCase
                 'status' => 'active',
             ]
         );
-    
+
         $domain = 'refund-test-'.$tenant->id.'.example.test';
-    
+
         StoreDomain::updateOrCreate(
             ['domain' => $domain],
             [
@@ -59,37 +58,37 @@ class ControllerTest extends TestCase
                 'is_primary' => true,
             ]
         );
-    
+
         return $domain;
     }
-    
+
     private function tenantUrl(
         Order $order,
         string $routeName,
         mixed $parameters = []
     ): string {
         $domain = $this->createTenantDomain($order);
-    
+
         return 'http://'.$domain.route($routeName, $parameters, false);
     }
-    
+
     private function createOrderFixture(User $user, array $attributes = []): Order
     {
         $tenant = Tenant::factory()->create();
         app(TenantContext::class)->set($tenant);
-    
+
         $category = Category::create([
             'tenant_id' => $tenant->id,
             'name' => 'Category '.Str::uuid(),
             'slug' => 'category-'.Str::uuid(),
         ]);
-    
+
         $subCategory = SubCategory::create([
             'category_id' => $category->id,
             'name' => 'Subcategory '.Str::uuid(),
             'slug' => 'subcategory-'.Str::uuid(),
         ]);
-    
+
         $product = Product::create([
             'tenant_id' => $tenant->id,
             'category_id' => $category->id,
@@ -100,12 +99,12 @@ class ControllerTest extends TestCase
             'price' => 150000,
             'stock' => 10,
         ]);
-    
+
         $order = Order::factory()->create(array_merge([
             'tenant_id' => $tenant->id,
             'user_id' => $user->id,
         ], $attributes));
-    
+
         OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -114,14 +113,29 @@ class ControllerTest extends TestCase
             'quantity' => 1,
             'subtotal' => 150000,
         ]);
-    
+
         return $order;
+    }
+
+    public function test_admin_can_process_requested_cod_refund_in_multi_tenant_mod(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        $this->tenant = Tenant::factory()->create([
+            'name' => 'Default Tenant',
+            'slug' => 'default',
+            'status' => 'active',
+        ]);
+
+        app(TenantContext::class)->set($this->tenant);
     }
 
     public function test_guest_cannot_request_refund(): void
     {
         $user = User::factory()->create();
-        
+
         $order = $this->createOrderFixture($user, [
             'user_id' => $user->id,
             'status' => 'completed',
@@ -319,7 +333,7 @@ class ControllerTest extends TestCase
     public function test_customer_cannot_request_zero_refund(): void
     {
         $user = User::factory()->create();
-        
+
         $order = $this->createOrderFixture($user, [
             'user_id' => $user->id,
             'status' => 'completed',
@@ -352,7 +366,7 @@ class ControllerTest extends TestCase
     public function test_customer_cannot_request_negative_refund(): void
     {
         $user = User::factory()->create();
-        
+
         $order = $this->createOrderFixture($user, [
             'user_id' => $user->id,
             'status' => 'completed',
@@ -385,7 +399,7 @@ class ControllerTest extends TestCase
     public function test_customer_can_request_partial_refund(): void
     {
         $user = User::factory()->create();
-        
+
         $order = $this->createOrderFixture($user, [
             'user_id' => $user->id,
             'status' => 'completed',
@@ -424,7 +438,7 @@ class ControllerTest extends TestCase
     public function test_customer_refund_controller_delegates_to_refund_service(): void
     {
         $user = User::factory()->create();
-        
+
         $order = $this->createOrderFixture($user, [
             'user_id' => $user->id,
             'status' => 'completed',
@@ -449,9 +463,7 @@ class ControllerTest extends TestCase
                         int|float|string $amount,
                         ?string $reason
                     ) use ($order) {
-                        return $receivedOrder->is($order)
-                            && (float) $amount === 50000.0
-                            && $reason === 'Produk rusak';
+                        return $receivedOrder->is($order) && (float) $amount === 50000.0 && $reason === 'Produk rusak';
                     })
                     ->andReturn($refund);
             }
