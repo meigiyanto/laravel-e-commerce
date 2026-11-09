@@ -11,12 +11,22 @@ use App\Models\User;
 use App\Models\Tenant;
 use App\Models\Store;
 use App\Models\StoreDomain;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ControllerIntegrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
 
     private function createVariant(
         Product $product,
@@ -271,7 +281,7 @@ class ControllerIntegrationTest extends TestCase
 
         $this->assertArrayNotHasKey('variant_'.$first->id, session('cart'));
 
-        $this->assertArrayHasKey('variant_'.$second->id,session('cart'));
+        $this->assertArrayHasKey('variant_'.$second->id, session('cart'));
     }
 
     public function test_authenticated_user_can_update_and_remove_owned_cart_item(): void
@@ -346,9 +356,9 @@ class ControllerIntegrationTest extends TestCase
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
-        
+
         $response = $this->actingAs($otherUser)->patchJson($this->tenantUrl($product, 'cart.product.update', $item->id), ['quantity' => 2]);
-        
+
         $response->assertNotFound();
 
         $this->assertDatabaseHas('cart_items', [
@@ -357,18 +367,18 @@ class ControllerIntegrationTest extends TestCase
             'quantity' => 2,
         ]);
     }
-    
+
     public function test_guest_cart_page_and_drawer_render_stable_variant_keys(): void
     {
         $product = Product::factory()->create([
             'name' => 'Stable Key Shirt',
             'stock' => 10,
         ]);
-    
+
         $small = $this->createVariant($product, 'Stable Small', '12000.00', 10, true);
-    
+
         $large = $this->createVariant($product, 'Stable Large', '18000.00', 10);
-    
+
         $this->withSession(['cart' => [
             'variant_'.$small->id => [
                 'product_id' => $product->id,
@@ -381,24 +391,24 @@ class ControllerIntegrationTest extends TestCase
                 'quantity' => 2,
             ],
         ]]);
-    
+
         $response = $this->get($this->tenantUrl($product, 'cart.index'));
-    
+
         $response->assertOk()
-                ->assertSee('data-cart-item-key="'.$small->id.'"', false)
-                ->assertSee('data-cart-item-key="'.$large->id.'"', false);
-    
+        ->assertSee('data-cart-item-key="'.$small->id.'"', false)
+        ->assertSee('data-cart-item-key="'.$large->id.'"', false);
+
         $drawer = $this->getJson(route('cart.drawer'));
         $drawer->assertOk();
         $html = $drawer->json('html');
         $this->assertStringContainsString('data-cart-item-key="'.$small->id.'"', $html);
         $this->assertStringContainsString('data-cart-item-key="'.$large->id.'"', $html);
     }
-    
+
     private function createTenantDomain(Product $product): string
     {
         $tenant = Tenant::findOrFail($product->tenant_id);
-    
+
         $store = Store::firstOrCreate(
             ['tenant_id' => $tenant->id],
             [
@@ -407,9 +417,9 @@ class ControllerIntegrationTest extends TestCase
                 'status' => 'active',
             ]
         );
-    
+
         $domain = 'cart-test-'.$tenant->id.'.example.test';
-    
+
         StoreDomain::updateOrCreate(
             ['domain' => $domain],
             [
@@ -418,17 +428,17 @@ class ControllerIntegrationTest extends TestCase
                 'is_primary' => true,
             ]
         );
-    
+
         return $domain;
     }
-    
+
     private function tenantUrl(
         Product $product,
         string $routeName,
         mixed $parameters = []
     ): string {
         $domain = $this->createTenantDomain($product);
-    
-        return 'http://'.$domain.route($routeName,$parameters,false);
+
+        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }

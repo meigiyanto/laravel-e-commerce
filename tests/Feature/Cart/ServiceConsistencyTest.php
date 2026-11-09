@@ -18,6 +18,15 @@ class ServiceConsistencyTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
+
     private function createVariant(
         Product $product,
         string $name,
@@ -50,7 +59,7 @@ class ServiceConsistencyTest extends TestCase
             'price' => 10000,
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $variant = $this->createVariant(
@@ -81,7 +90,7 @@ class ServiceConsistencyTest extends TestCase
             'price' => 10000,
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $small = $this->createVariant(
@@ -119,7 +128,7 @@ class ServiceConsistencyTest extends TestCase
         $product = Product::factory()->create([
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $variant = $this->createVariant(
@@ -151,7 +160,7 @@ class ServiceConsistencyTest extends TestCase
         $product = Product::factory()->create([
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $first = $this->createVariant(
@@ -200,7 +209,7 @@ class ServiceConsistencyTest extends TestCase
         $product = Product::factory()->create([
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $variant = $this->createVariant(
@@ -222,12 +231,12 @@ class ServiceConsistencyTest extends TestCase
             $product->id,
             $cart['variant_'.$variant->id]['product_id'],
         );
-        
+
         $this->assertSame(
             $variant->id,
             $cart['variant_'.$variant->id]['product_variant_id'],
         );
-        
+
         $this->assertSame(
             3,
             $cart['variant_'.$variant->id]['quantity'],
@@ -271,7 +280,7 @@ class ServiceConsistencyTest extends TestCase
             'stock' => 10,
         ]);
         $this->activateTenant($firstProduct);
-        
+
         $variant = $this->createVariant($secondProduct, 'Wrong product', '25000.00');
 
         session()->put('cart', [
@@ -297,7 +306,7 @@ class ServiceConsistencyTest extends TestCase
             'price' => 10000,
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
 
         $variant = $this->createVariant(
@@ -327,7 +336,7 @@ class ServiceConsistencyTest extends TestCase
             app(CartService::class)->total(),
         );
     }
-    
+
     public function test_guest_cart_quantity_is_capped_to_available_stock(): void
     {
         $product = Product::factory()->create(['stock' => 10]);
@@ -447,7 +456,7 @@ class ServiceConsistencyTest extends TestCase
         $this->assertSame(['variant_'.$variant->id], array_keys($cart));
         $this->assertSame(4, $cart['variant_'.$variant->id]['quantity']);
     }
-    
+
     public function test_authenticated_cart_item_can_be_removed_by_cart_item_id(): void
     {
         $user = User::factory()->create();
@@ -455,63 +464,63 @@ class ServiceConsistencyTest extends TestCase
         $this->activateTenant($product);
         $first = $this->createVariant($product, 'Red', '12000.00', 10, true);
         $second = $this->createVariant($product, 'Green', '13000.00', 10);
-    
+
         $cart = Cart::create([
             'tenant_id' => $product->tenant_id,
             'user_id' => $user->id
         ]);
-    
+
         $firstItem = CartItem::create([
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $first->id,
             'quantity' => 1,
         ]);
-    
+
         $secondItem = CartItem::create([
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $second->id,
             'quantity' => 2,
         ]);
-    
+
         $this->actingAs($user);
-    
+
         app(CartService::class)->remove($firstItem->id);
-    
+
         $this->assertDatabaseMissing('cart_items', [
             'id' => $firstItem->id,
         ]);
-    
+
         $this->assertDatabaseHas('cart_items', [
             'id' => $secondItem->id,
             'product_variant_id' => $second->id,
         ]);
     }
-    
+
     public function test_authenticated_user_cannot_remove_another_users_cart_item(): void
     {
         $owner = User::factory()->create();
         $anotherUser = User::factory()->create();
-    
+
         $product = Product::factory()->create(['stock' => 10]);
         $this->activateTenant($product);
         $variant = $this->createVariant($product, 'Default', '12000.00', 10, true);
-    
+
         $cart = Cart::create([
             'tenant_id' => $product->tenant_id,
             'user_id' => $owner->id
         ]);
-    
+
         $item = CartItem::create([
             'cart_id' => $cart->id,
             'product_id' => $product->id,
             'product_variant_id' => $variant->id,
             'quantity' => 2,
         ]);
-    
+
         $this->actingAs($anotherUser);
-    
+
         try {
             app(CartService::class)->remove($item->id);
             $this->fail('Seharusnya item milik pengguna lain tidak dapat dihapus.');
@@ -521,40 +530,40 @@ class ServiceConsistencyTest extends TestCase
             ]);
         }
     }
-    
+
     public function test_reading_legacy_guest_cart_does_not_create_variant_inventory_or_movement(): void
     {
         $product = Product::factory()->create([
             'stock' => 10,
         ]);
-        
+
         $this->activateTenant($product);
-    
+
         session()->put('cart', [
             (string) $product->id => 3,
         ]);
-    
+
         $originalSession = session('cart');
-    
+
         $service = app(CartService::class);
-    
+
         $this->assertSame($originalSession, $service->getGuestCart());
         $this->assertSame(3, $service->count());
         $this->assertSame(
             (float) $product->price * 3,
             $service->total()
         );
-    
+
         $this->assertSame($originalSession, session('cart'));
-    
+
         $this->assertDatabaseMissing('product_variants', [
             'product_id' => $product->id,
         ]);
-    
+
         $this->assertDatabaseCount('inventories', 0);
         $this->assertDatabaseCount('inventory_movements', 0);
     }
-    
+
     public function test_explicit_normalization_migrates_legacy_guest_cart(): void
     {
         $product = Product::factory()->create([
@@ -562,28 +571,28 @@ class ServiceConsistencyTest extends TestCase
         ]);
 
         $this->activateTenant($product);
-    
+
         session()->put('cart', [
             (string) $product->id => 3,
         ]);
-    
+
         $cart = app(CartService::class)->normalizeGuestCart();
-    
+
         $this->assertCount(1, $cart);
-    
+
         $item = array_values($cart)[0];
-    
+
         $this->assertSame($product->id, $item['product_id']);
         $this->assertSame(3, $item['quantity']);
-    
+
         $this->assertDatabaseHas('product_variants', [
             'id' => $item['product_variant_id'],
             'product_id' => $product->id,
         ]);
-    
+
         $this->assertSame($cart, session('cart'));
     }
-    
+
     private function activateTenant(Product $product): void
     {
         $tenant = Tenant::query()->findOrFail($product->tenant_id);

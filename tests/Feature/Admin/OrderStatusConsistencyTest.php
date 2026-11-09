@@ -12,12 +12,22 @@ use App\Models\Tenant;
 use App\Models\Store;
 use App\Models\StoreDomain;
 use App\Models\InventoryReservation;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class OrderStatusConsistencyTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
 
     public function test_admin_cannot_cancel_shipped_order(): void
     {
@@ -117,7 +127,8 @@ class OrderStatusConsistencyTest extends TestCase
             'subtotal' => 200000,
         ]);
 
-        return [$order, $product];
+        return [$order,
+            $product];
     }
 
     public function test_admin_cannot_move_pending_order_directly_to_completed(): void
@@ -159,7 +170,10 @@ class OrderStatusConsistencyTest extends TestCase
 
     public function test_fulfillment_status_transitions_do_not_deduct_variant_stock_again(): void
     {
-        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
+        [$order,
+            $product,
+            $variant,
+            $inventory] = $this->createOrderWithVariantStock('pending');
 
         [$admin,
             $domain] = $this->createTenantAdminContext($product);
@@ -195,9 +209,13 @@ class OrderStatusConsistencyTest extends TestCase
 
     public function test_canceling_processing_order_restores_variant_stock_only_once(): void
     {
-        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('processing');
+        [$order,
+            $product,
+            $variant,
+            $inventory] = $this->createOrderWithVariantStock('processing');
 
-        [$admin, $domain] = $this->createTenantAdminContext($product);
+        [$admin,
+            $domain] = $this->createTenantAdminContext($product);
 
         $this->patchAsTenantAdmin($order, $admin, $domain, 'canceled')->assertRedirect();
 
@@ -223,7 +241,7 @@ class OrderStatusConsistencyTest extends TestCase
     {
         $user = User::factory()->create();
         $product = Product::factory()->create(['stock' => 8]);
-        
+
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'TEST-STATUS-'.uniqid(),
@@ -362,13 +380,9 @@ class OrderStatusConsistencyTest extends TestCase
 
     public function test_canceling_order_with_released_reservation_does_not_restore_stock(): void
     {
-        [$order,
-            $product,
-            $variant,
-            $inventory] = $this->createOrderWithVariantStock('pending');
+        [$order, $product, $variant, $inventory] = $this->createOrderWithVariantStock('pending');
 
-        [$admin,
-            $domain] = $this->createTenantAdminContext($product);
+        [$admin, $domain] = $this->createTenantAdminContext($product);
 
         $reservation = InventoryReservation::create([
             'product_variant_id' => $variant->id,

@@ -3,6 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Product;
+use App\Models\Category;
+use App\Models\SubCategory;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\ProductVariant;
@@ -20,6 +22,78 @@ class InventoryControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+        
+        app(TenantContext::class)->clear();
+    }
+
+    private function createTenantDomain(Product $product): string
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+
+        return $domain;
+    }
+
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        app(TenantContext::class)->set($tenant);
+    }
+
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+
+        return 'http://'.$domain.route($routeName, $parameters, false);
+    }
+
+    private function createTenantAdmin(Product $product): User
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        TenantMembership::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $admin->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+
+        return $admin;
+    }
+
     public function test_guest_cannot_access_inventory(): void
     {
         $product = Product::factory()->create(['stock' => 10]);
@@ -32,8 +106,8 @@ class InventoryControllerTest extends TestCase
         $user = User::factory()->create(['role' => 'user']);
         $product = Product::factory()->create(['stock' => 10]);
         $response = $this
-            ->actingAs($user)
-            ->get($this->tenantUrl($product, 'admin.inventory.index'));
+        ->actingAs($user)
+        ->get($this->tenantUrl($product, 'admin.inventory.index'));
         $this->activateTenant($product);
 
         $response->assertForbidden();
@@ -52,17 +126,16 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
+
         $response = $this
-            ->actingAs($admin)
-            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
-                'stock' => 25,
-            ]);
+        ->actingAs($admin)
+        ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
+            'stock' => 25,
+        ]);
         $this->activateTenant($product);
 
-        $response
-            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
-            ->assertSessionHas('success');
+        $response->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
+        ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -74,12 +147,11 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
-        $response = $this
-            ->actingAs($admin)
-            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
-                'stock' => -1,
-            ]);
+
+        $response = $this->actingAs($admin)
+        ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
+            'stock' => -1,
+        ]);
         $this->activateTenant($product);
 
         $response->assertSessionHasErrors('stock');
@@ -94,18 +166,16 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
-        $response = $this
-            ->actingAs($admin)
-            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
-                'quantity' => 5,
-                'type' => 'add',
-            ]);
+
+        $response = $this->actingAs($admin)
+        ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
+            'quantity' => 5,
+            'type' => 'add',
+        ]);
         $this->activateTenant($product);
 
-        $response
-            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
-            ->assertSessionHas('success');
+        $response->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
+        ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -117,18 +187,18 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
+
         $response = $this
-            ->actingAs($admin)
-            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
-                'quantity' => 4,
-                'type' => 'subtract',
-            ]);
+        ->actingAs($admin)
+        ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
+            'quantity' => 4,
+            'type' => 'subtract',
+        ]);
         $this->activateTenant($product);
 
         $response
-            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
-            ->assertSessionHas('success');
+        ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
+        ->assertSessionHas('success');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -140,18 +210,18 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
+
         $response = $this
-            ->actingAs($admin)
-            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
-                'quantity' => 11,
-                'type' => 'subtract',
-            ]);
+        ->actingAs($admin)
+        ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
+            'quantity' => 11,
+            'type' => 'subtract',
+        ]);
         $this->activateTenant($product);
 
         $response
-            ->assertRedirect()
-            ->assertSessionHasErrors('quantity');
+        ->assertRedirect()
+        ->assertSessionHasErrors('quantity');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -163,17 +233,17 @@ class InventoryControllerTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $admin = $this->createTenantAdmin($product);
-        
+
         $response = $this
-            ->actingAs($admin)
-            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
-                'quantity' => 0,
-                'type' => 'add',
-            ]);
+        ->actingAs($admin)
+        ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
+            'quantity' => 0,
+            'type' => 'add',
+        ]);
         $this->activateTenant($product);
 
         $response
-            ->assertSessionHasErrors('quantity');
+        ->assertSessionHasErrors('quantity');
 
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
@@ -187,11 +257,11 @@ class InventoryControllerTest extends TestCase
         $product = Product::factory()->create(['stock' => 10]);
 
         $response = $this
-            ->actingAs($user)
-            ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
-                'quantity' => 5,
-                'type' => 'add',
-            ]);
+        ->actingAs($user)
+        ->post($this->tenantUrl($product, 'admin.inventory.adjust-stock', $product), [
+            'quantity' => 5,
+            'type' => 'add',
+        ]);
         $this->activateTenant($product);
 
         $response->assertForbidden();
@@ -201,12 +271,12 @@ class InventoryControllerTest extends TestCase
             'stock' => 10,
         ]);
     }
-    
+
     public function test_updating_one_variant_keeps_product_stock_equal_to_all_variant_stock(): void
     {
         $product = Product::factory()->create(['stock' => 20]);
         $admin = $this->createTenantAdmin($product);
-    
+
         $variantA = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'INV-A-' . uniqid(),
@@ -215,7 +285,7 @@ class InventoryControllerTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-    
+
         $variantB = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'INV-B-' . uniqid(),
@@ -224,94 +294,33 @@ class InventoryControllerTest extends TestCase
             'is_default' => false,
             'status' => 'active',
         ]);
-    
+
         $inventoryA = Inventory::create([
             'product_variant_id' => $variantA->id,
             'quantity' => 8,
             'reserved_quantity' => 0,
             'reorder_level' => 0,
         ]);
-    
+
         $inventoryB = Inventory::create([
             'product_variant_id' => $variantB->id,
             'quantity' => 12,
             'reserved_quantity' => 0,
             'reorder_level' => 0,
         ]);
-    
+
         $response = $this
-            ->actingAs($admin)
-            ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
-                'stock' => 5,
-            ]);
+        ->actingAs($admin)
+        ->patch($this->tenantUrl($product, 'admin.inventory.update-stock', $product), [
+            'stock' => 5,
+        ]);
         $this->activateTenant($product);
         $response
-            ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
-            ->assertSessionHas('success');
-    
+        ->assertRedirect($this->tenantUrl($product, 'admin.inventory.index'))
+        ->assertSessionHas('success');
+
         $this->assertSame(5, (int) $inventoryA->fresh()->quantity);
         $this->assertSame(12, (int) $inventoryB->fresh()->quantity);
         $this->assertSame(17, (int) $product->fresh()->stock);
-    }
-    
-    private function createTenantDomain(Product $product): string
-    {
-        $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
-        $store = Store::firstOrCreate(
-            ['tenant_id' => $tenant->id],
-            [
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-                'status' => 'active',
-            ]
-        );
-    
-        $domain = 'checkout-test-'.$tenant->id.'.example.test';
-    
-        StoreDomain::updateOrCreate(
-            ['domain' => $domain],
-            [
-                'store_id' => $store->id,
-                'verification_status' => 'verified',
-                'is_primary' => true,
-            ]
-        );
-    
-        return $domain;
-    }
-    
-    private function activateTenant(Product $product): void
-    {
-        $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
-        app(TenantContext::class)->set($tenant);
-    }
-    
-    private function tenantUrl(
-        Product $product,
-        string $routeName,
-        mixed $parameters = []
-    ): string {
-        $domain = $this->createTenantDomain($product);
-    
-        return 'http://'.$domain.route($routeName, $parameters, false);
-    }
-    
-    private function createTenantAdmin(Product $product): User
-    {
-        $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
-        $admin = User::factory()->create(['role' => 'admin']);
-    
-        TenantMembership::create([
-            'tenant_id' => $tenant->id,
-            'user_id' => $admin->id,
-            'role' => TenantMembership::ROLE_ADMIN,
-            'status' => 'active',
-            'accepted_at' => now(),
-        ]);
-    
-        return $admin;
     }
 }

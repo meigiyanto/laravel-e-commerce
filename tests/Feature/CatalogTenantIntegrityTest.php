@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\SubCategory;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,15 @@ use Tests\TestCase;
 class CatalogTenantIntegrityTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+{
+    parent::setUp();
+
+    config(['operational.mode' => 'multi_tenant']);
+
+    app(TenantContext::class)->clear();
+}
 
     private function createTenant(string $name): Tenant
     {

@@ -76,11 +76,10 @@ class OrderController extends Controller
         /*
          * Jumlah order berdasarkan status.
          */
-        $statusCounts = Order::query()
-        ->where('tenant_id', $tenantId)
-        ->selectRaw('status, COUNT(*) as aggregate')
-        ->groupBy('status')
-        ->pluck('aggregate', 'status');
+         $statusCounts = $this->applyOperationalScope(Order::query())
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
 
         return view('admin.orders.index', [
             'orders' => $orders,
@@ -302,7 +301,6 @@ class OrderController extends Controller
         $result = DB::transaction(function () use (
             $order,
             $newStatus,
-            $tenantId,
             $stripeCancellationConfirmed,
             $midtransCancellationConfirmed,
             $providerPaymentSucceeded
