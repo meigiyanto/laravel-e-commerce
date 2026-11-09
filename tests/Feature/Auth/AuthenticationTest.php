@@ -13,11 +13,13 @@ class AuthenticationTest extends TestCase
     use RefreshDatabase;
 
     protected Tenant $tenant;
-
+    
     protected function setUp(): void
     {
         parent::setUp();
-
+    
+        config(['operational.mode' => 'multi_tenant']);
+    
         $this->tenant = Tenant::factory()->create([
             'name' => 'Default Tenant',
             'slug' => 'default',

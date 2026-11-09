@@ -87,15 +87,31 @@ class LoginRequest extends FormRequest
 
         $user = Auth::user();
 
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            if (! $user|| $user->isPlatformAdmin()|| ! $user->hasAnyRole('admin', 'staff')) {
+                $this->rejectAuthenticatedUser();
+            }
+        
+            return;
+        }
+        
+        $isLegacyAdmin = $user && $user->isAdmin() && ! $user->tenantMemberships()->exists();
+        
+        $membership = $user?->activeTenantMembership();
+        
+        $hasValidTenantMembership = $membership && in_array($membership->role, TenantMembership::ROLES, true);
+        
+        if (! $user|| $user->isPlatformAdmin()|| (! $isLegacyAdmin && ! $hasValidTenantMembership)) {
+            $this->rejectAuthenticatedUser();
+        }
+
         $isLegacyAdmin = $user && $user->isAdmin() && ! $user->tenantMemberships()->exists();
 
         $membership = $user?->activeTenantMembership();
 
         $hasValidTenantMembership = $membership && in_array($membership->role, TenantMembership::ROLES, true);
 
-        if (
-            ! $user || $user->isPlatformAdmin() || (! $isLegacyAdmin && ! $hasValidTenantMembership)
-        ) {
+        if (! $user || $user->isPlatformAdmin() || (! $isLegacyAdmin && ! $hasValidTenantMembership)) {
             $this->rejectAuthenticatedUser();
         }
     }
