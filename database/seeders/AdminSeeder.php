@@ -11,7 +11,7 @@ class AdminSeeder extends Seeder
     {
         $email = env('ADMIN_EMAIL', 'admin@example.com');
         $password = env('ADMIN_PASSWORD');
-        $2y$12$uRaNPR3I.9x8ky30kJIDaenAj6sLXjgvV2PASNlzp5R6cPlvyOxu.
+        // $2y$12$uRaNPR3I.9x8ky30kJIDaenAj6sLXjgvV2PASNlzp5R6cPlvyOxu.
         
         if (blank($password)) {
             $this->command?->warn('AdminSeeder skipped: set ADMIN_PASSWORD (and optionally ADMIN_EMAIL) in .env to create the administrator account.');

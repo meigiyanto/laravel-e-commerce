@@ -36,9 +36,7 @@ class ProductController extends Controller
     }
     public function index() {
         Gate::authorize('viewAny', Product::class);
-        $products = Product::with(['category', 'subCategory'])
-        ->latest()
-        ->get();
+        $products = Product::with(['category', 'subCategory'])->latest()->get();
 
         return view('admin.products.index', compact('products'));
     }
@@ -218,8 +216,7 @@ class ProductController extends Controller
         ->all();
 
         $submittedVariantIds = $product->variants()
-        ->whereIn('id',
-            $submittedIds)
+        ->whereIn('id', $submittedIds)
         ->pluck('id')
         ->map(fn ($id) => (int) $id)
         ->all();
