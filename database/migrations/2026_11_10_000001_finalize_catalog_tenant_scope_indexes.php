@@ -146,17 +146,15 @@ return new class extends Migration
     private function ensureScopeColumns(): void
     {
         foreach (array_keys($this->definitions) as $table) {
-            $this->assertScopeColumnDefinition($table);
-            
-            $extra = strtolower((string) $column->extra);
-            $expression = strtolower((string) $column->generation_expression);
-            $normalized = preg_replace('/[`\\s()]/', '', $expression);
-
-            if (! str_contains($extra, 'generated') || ! str_starts_with(strtolower($column->column_type), 'bigint') || ! str_contains(strtolower($column->column_type), 'unsigned') || $normalized !== 'coalesce(tenant_id,0)') {
-                throw new RuntimeException(
-                    "Unexpected tenant_scope_id definition in {$table}."
+            if (! Schema::hasColumn($table, 'tenant_scope_id')) {
+                DB::statement(
+                    "ALTER TABLE `{$table}` ADD COLUMN "
+                    . "`tenant_scope_id` BIGINT UNSIGNED "
+                    . "GENERATED ALWAYS AS (COALESCE(`tenant_id`, 0)) STORED"
                 );
             }
+
+            $this->assertScopeColumnDefinition($table);
         }
     }
 
@@ -293,11 +291,11 @@ return new class extends Migration
     private function dropUnusedScopeColumns(): void
     {
         foreach ($this->unusedScopeTables as $table) {
-            $this->assertScopeColumnDefinition($table);
-            
             if (! Schema::hasColumn($table, 'tenant_scope_id')) {
                 continue;
             }
+
+            $this->assertScopeColumnDefinition($table);
 
             foreach ($this->indexes($table) as $name => $index) {
                 if (in_array('tenant_scope_id', $index['columns'], true)) {
