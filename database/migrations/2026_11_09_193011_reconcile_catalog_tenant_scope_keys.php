@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Semua tabel katalog dan turunannya yang memiliki tenant_id.
-     */
+    * Semua tabel katalog dan turunannya yang memiliki tenant_id.
+    */
     private array $tables = [
         'categories',
         'sub_categories',
@@ -23,30 +23,44 @@ return new class extends Migration
     ];
 
     /**
-     * Indeks unik lama dan indeks unik penggantinya.
-     */
+    * Indeks unik lama dan indeks unik penggantinya.
+    */
     private array $uniqueIndexes = [
         'categories' => [
-            'old' => ['categories_slug_unique', ['slug']],
-            'new' => ['categories_scope_slug_unique', ['slug']],
+            'old' => ['categories_slug_unique',
+                ['slug']],
+            'new' => ['categories_scope_slug_unique',
+                ['slug']],
         ],
         'sub_categories' => [
-            'old' => ['sub_categories_category_id_slug_unique', ['category_id', 'slug']],
-            'new' => ['sub_categories_scope_category_slug_unique', ['category_id', 'slug']],
+            'old' => ['sub_categories_category_id_slug_unique',
+                ['category_id',
+                    'slug']],
+            'new' => ['sub_categories_scope_category_slug_unique',
+                ['category_id',
+                    'slug']],
         ],
         'products' => [
-            'old' => ['products_slug_unique', ['slug']],
-            'new' => ['products_scope_slug_unique', ['slug']],
+            'old' => ['products_slug_unique',
+                ['slug']],
+            'new' => ['products_scope_slug_unique',
+                ['slug']],
         ],
         'attributes' => [
-            'old' => ['attributes_slug_unique', ['slug']],
-            'new' => ['attributes_scope_slug_unique', ['slug']],
+            'old' => ['attributes_slug_unique',
+                ['slug']],
+            'new' => ['attributes_scope_slug_unique',
+                ['slug']],
         ],
         'product_variants' => [
-            'old_sku' => ['product_variants_sku_unique', ['sku']],
-            'new_sku' => ['product_variants_scope_sku_unique', ['sku']],
-            'old_barcode' => ['product_variants_barcode_unique', ['barcode']],
-            'new_barcode' => ['product_variants_scope_barcode_unique', ['barcode']],
+            'old_sku' => ['product_variants_sku_unique',
+                ['sku']],
+            'new_sku' => ['product_variants_scope_sku_unique',
+                ['sku']],
+            'old_barcode' => ['product_variants_barcode_unique',
+                ['barcode']],
+            'new_barcode' => ['product_variants_scope_barcode_unique',
+                ['barcode']],
         ],
     ];
 
@@ -89,9 +103,9 @@ return new class extends Migration
     }
 
     /**
-     * Nilai 0 dicadangkan untuk data Single Store.
-     * Tenant sungguhan menggunakan ID positif.
-     */
+    * Nilai 0 dicadangkan untuk data Single Store.
+    * Tenant sungguhan menggunakan ID positif.
+    */
     private function assertReservedTenantIdIsUnused(): void
     {
         foreach ($this->tables as $table) {
@@ -104,11 +118,11 @@ return new class extends Migration
     }
 
     /**
-     * Tambahkan generated column ke seluruh tabel terkait.
-     *
-     * NULL tenant_id -> tenant_scope_id 0.
-     * tenant_id positif -> tenant_scope_id sesuai tenant.
-     */
+    * Tambahkan generated column ke seluruh tabel terkait.
+    *
+    * NULL tenant_id -> tenant_scope_id 0.
+    * tenant_id positif -> tenant_scope_id sesuai tenant.
+    */
     private function addTenantScopeColumns(): void
     {
         foreach ($this->tables as $table) {
@@ -125,71 +139,60 @@ return new class extends Migration
     }
 
     /**
-     * Periksa duplikasi sebelum membuat indeks unik baru.
-     */
+    * Periksa duplikasi sebelum membuat indeks unik baru.
+    */
     private function assertScopedValuesAreUnique(): void
     {
         $checks = [
-            'categories' => ['slug'],
-            'sub_categories' => ['category_id', 'slug'],
-            'products' => ['slug'],
-            'attributes' => ['slug'],
-            'product_variants' => ['sku', 'barcode'],
+            'categories' => [['slug']],
+            'sub_categories' => [['category_id',
+                'slug']],
+            'products' => [['slug']],
+            'attributes' => [['slug']],
+            'product_variants' => [['sku'],
+                ['barcode']],
         ];
 
-        foreach ($checks as $table => $columns) {
-            foreach ($columns as $column) {
+        foreach ($checks as $table => $groups) {
+            foreach ($groups as $columns) {
                 $this->assertNoDuplicates(
                     $table,
-                    [$column],
-                    $column === 'barcode'
+                    $columns,
+                    $table === 'product_variants' && $columns === ['barcode']
                 );
             }
         }
-
-        $this->assertNoDuplicates(
-            'sub_categories',
-            ['category_id', 'slug'],
-            false,
-            ['category_id']
-        );
     }
 
     private function assertNoDuplicates(
         string $table,
         array $columns,
-        bool $nullableValues = false,
-        array $additionalNotNull = []
+        bool $nullableValues = false
     ): void {
         $query = DB::table($table);
 
-        foreach (array_unique(array_merge(
-            $columns,
-            $additionalNotNull
-        )) as $column) {
+        foreach ($columns as $column) {
             $query->whereNotNull($column);
         }
 
         $groupColumns = array_merge(['tenant_scope_id'], $columns);
 
         $duplicateExists = $query
-            ->select($groupColumns)
-            ->selectRaw('COUNT(*) AS aggregate')
-            ->groupBy(...$groupColumns)
-            ->havingRaw('COUNT(*) > 1')
-            ->exists();
+        ->select($groupColumns)
+        ->groupBy($groupColumns)
+        ->havingRaw('COUNT(*) > 1')
+        ->exists();
 
         if ($duplicateExists) {
             throw new RuntimeException(
                 "Duplicate scoped values detected in {$table}: "
-                . implode(', ', $columns)
+                .implode(', ', $columns)
             );
         }
     }
-
     /**
-     * Buat indeks unik berdasarkan tenant_scope_id.
-     */
+    * Buat indeks unik berdasarkan tenant_scope_id.
+    */
     private function addScopedUniqueIndexes(): void
     {
         foreach ($this->uniqueIndexes as $table => $indexes) {
@@ -227,8 +230,8 @@ return new class extends Migration
     }
 
     /**
-     * Hapus indeks global setelah indeks pengganti tersedia.
-     */
+    * Hapus indeks global setelah indeks pengganti tersedia.
+    */
     private function dropGlobalUniqueIndexes(): void
     {
         foreach ($this->uniqueIndexes as $table => $indexes) {
@@ -262,9 +265,9 @@ return new class extends Migration
     }
 
     /**
-     * Rollback hanya boleh dilakukan jika keunikan global
-     * dapat dipulihkan tanpa konflik antar-tenant.
-     */
+    * Rollback hanya boleh dilakukan jika keunikan global
+    * dapat dipulihkan tanpa konflik antar-tenant.
+    */
     public function down(): void
     {
         $this->assertSupportedDatabase();
@@ -279,10 +282,12 @@ return new class extends Migration
     {
         $checks = [
             'categories' => [['slug']],
-            'sub_categories' => [['category_id', 'slug']],
+            'sub_categories' => [['category_id',
+                'slug']],
             'products' => [['slug']],
             'attributes' => [['slug']],
-            'product_variants' => [['sku'], ['barcode']],
+            'product_variants' => [['sku'],
+                ['barcode']],
         ];
 
         foreach ($checks as $table => $groups) {
@@ -294,11 +299,11 @@ return new class extends Migration
                 }
 
                 $duplicateExists = $query
-                    ->select($columns)
-                    ->selectRaw('COUNT(*) AS aggregate')
-                    ->groupBy(...$columns)
-                    ->havingRaw('COUNT(*) > 1')
-                    ->exists();
+                ->select($columns)
+                ->selectRaw('COUNT(*) AS aggregate')
+                ->groupBy(...$columns)
+                ->havingRaw('COUNT(*) > 1')
+                ->exists();
 
                 if ($duplicateExists) {
                     throw new RuntimeException(
