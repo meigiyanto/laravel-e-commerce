@@ -337,7 +337,7 @@ return new class extends Migration
 
         $extra = strtolower((string) $column->extra);
         $expression = strtolower((string) $column->generation_expression);
-        $normalized = preg_replace('/[`\\s()]/', '', $expression);
+        $normalized = preg_replace('/[`\\s]/', '', $expression);
 
         if (! str_contains($extra, 'generated') || ! str_starts_with(strtolower($column->column_type), 'bigint') || ! str_contains(strtolower($column->column_type), 'unsigned') || $normalized !== 'coalesce(tenant_id,0)') {
             throw new RuntimeException(
