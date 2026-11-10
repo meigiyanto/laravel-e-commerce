@@ -24,12 +24,21 @@ class ControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
+    
     private function createTenantDomain(Order $order): string
     {
         $tenantId = DB::table('order_items')
-            ->join('products', 'products.id', '=', 'order_items.product_id')
-            ->where('order_items.order_id', $order->id)
-            ->value('products.tenant_id');
+        ->join('products', 'products.id', '=', 'order_items.product_id')
+        ->where('order_items.order_id', $order->id)
+        ->value('products.tenant_id');
 
         if (! $tenantId) {
             throw new \LogicException(
@@ -71,7 +80,6 @@ class ControllerTest extends TestCase
 
         return 'http://'.$domain.route($routeName, $parameters, false);
     }
-
     private function createOrderFixture(User $user, array $attributes = []): Order
     {
         $tenant = Tenant::factory()->create();
@@ -117,21 +125,6 @@ class ControllerTest extends TestCase
         return $order;
     }
 
-    public function test_admin_can_process_requested_cod_refund_in_multi_tenant_mod(): void
-    {
-        parent::setUp();
-
-        config(['operational.mode' => 'multi_tenant']);
-
-        $this->tenant = Tenant::factory()->create([
-            'name' => 'Default Tenant',
-            'slug' => 'default',
-            'status' => 'active',
-        ]);
-
-        app(TenantContext::class)->set($this->tenant);
-    }
-
     public function test_guest_cannot_request_refund(): void
     {
         $user = User::factory()->create();
@@ -173,23 +166,23 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 50000,
-                    'reason' => 'Produk rusak',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 50000,
+                'reason' => 'Produk rusak',
+            ]
+        );
 
         $response
-            ->assertRedirect(
-                $this->tenantUrl($order, 'orders.show', $order)
-            )
-            ->assertSessionHas(
-                'success',
-                'Permintaan refund berhasil diajukan dan menunggu proses admin.'
-            );
+        ->assertRedirect(
+            $this->tenantUrl($order, 'orders.show', $order)
+        )
+        ->assertSessionHas(
+            'success',
+            'Permintaan refund berhasil diajukan dan menunggu proses admin.'
+        );
 
         $this->assertDatabaseHas('refunds', [
             'order_id' => $order->id,
@@ -221,14 +214,14 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($otherUser)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 50000,
-                    'reason' => 'Refund',
-                ]
-            );
+        ->actingAs($otherUser)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 50000,
+                'reason' => 'Refund',
+            ]
+        );
 
         $response->assertForbidden();
 
@@ -246,14 +239,14 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 50000,
-                    'reason' => 'Tidak sesuai',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 50000,
+                'reason' => 'Tidak sesuai',
+            ]
+        );
 
         $response->assertSessionHasErrors([
             'payment',
@@ -280,14 +273,14 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 50000,
-                    'reason' => 'Payment belum selesai',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 50000,
+                'reason' => 'Payment belum selesai',
+            ]
+        );
 
         $response->assertSessionHasErrors([
             'payment',
@@ -314,14 +307,14 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 200000,
-                    'reason' => 'Terlalu besar',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 200000,
+                'reason' => 'Terlalu besar',
+            ]
+        );
 
         $response->assertSessionHasErrors([
             'amount',
@@ -348,13 +341,13 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 0,
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 0,
+            ]
+        );
 
         $response->assertSessionHasErrors([
             'amount',
@@ -381,13 +374,13 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => -10000,
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => -10000,
+            ]
+        );
 
         $response->assertSessionHasErrors([
             'amount',
@@ -414,14 +407,14 @@ class ControllerTest extends TestCase
         ]);
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 25000,
-                    'reason' => 'Satu produk rusak',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 25000,
+                'reason' => 'Satu produk rusak',
+            ]
+        );
 
         $response->assertRedirect(
             $this->tenantUrl($order, 'orders.show', $order)
@@ -456,34 +449,34 @@ class ControllerTest extends TestCase
             RefundService::class,
             function ($mock) use ($order, $refund) {
                 $mock
-                    ->shouldReceive('request')
-                    ->once()
-                    ->withArgs(function (
-                        Order $receivedOrder,
-                        int|float|string $amount,
-                        ?string $reason
-                    ) use ($order) {
-                        return $receivedOrder->is($order) && (float) $amount === 50000.0 && $reason === 'Produk rusak';
-                    })
-                    ->andReturn($refund);
+                ->shouldReceive('request')
+                ->once()
+                ->withArgs(function (
+                    Order $receivedOrder,
+                    int|float|string $amount,
+                    ?string $reason
+                ) use ($order) {
+                    return $receivedOrder->is($order) && (float) $amount === 50000.0 && $reason === 'Produk rusak';
+                })
+                ->andReturn($refund);
             }
         );
 
         $response = $this
-            ->actingAs($user)
-            ->post(
-                $this->tenantUrl($order, 'orders.refund.store', $order),
-                [
-                    'amount' => 50000,
-                    'reason' => 'Produk rusak',
-                ]
-            );
+        ->actingAs($user)
+        ->post(
+            $this->tenantUrl($order, 'orders.refund.store', $order),
+            [
+                'amount' => 50000,
+                'reason' => 'Produk rusak',
+            ]
+        );
 
         $response
-            ->assertRedirect($this->tenantUrl($order, 'orders.show', $order))
-            ->assertSessionHas(
-                'success',
-                'Permintaan refund berhasil diajukan dan menunggu proses admin.'
-            );
+        ->assertRedirect($this->tenantUrl($order, 'orders.show', $order))
+        ->assertSessionHas(
+            'success',
+            'Permintaan refund berhasil diajukan dan menunggu proses admin.'
+        );
     }
 }

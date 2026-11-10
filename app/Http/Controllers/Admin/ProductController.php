@@ -34,6 +34,7 @@ class ProductController extends Controller
 
         return $query->whereNull('tenant_id');
     }
+    
     public function index() {
         Gate::authorize('viewAny', Product::class);
         $products = Product::with(['category', 'subCategory'])->latest()->get();
@@ -252,7 +253,7 @@ class ProductController extends Controller
                 $seenBarcodes[] = $barcode;
             }
         }
-
+        
         $validationRules = [
             'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
             'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))->where('category_id', $request->input('category_id'))],
@@ -271,8 +272,7 @@ class ProductController extends Controller
             'specifications' => ['nullable',
                 'array'],
             'specifications.*.id' => ['nullable',
-                'integer',
-                Rule::exists('product_specifications', 'id')->where('product_id', $product->id)],
+                'integer'],
             'specifications.*.specification_group' => ['required',
                 'string',
                 'max:255'],
@@ -290,8 +290,7 @@ class ProductController extends Controller
             'variants' => ['nullable',
                 'array'],
             'variants.*.id' => ['nullable',
-                'integer',
-                Rule::exists('product_variants', 'id')->where('product_id', $product->id)],
+                'integer'],
             'variants.*.sku' => ['required',
                 'string',
                 'max:100',
@@ -323,8 +322,7 @@ class ProductController extends Controller
                 'integer',
                 'min:0'],
             'variants.*.attribute_value_ids.*' => ['integer',
-                'distinct',
-                Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
+                'distinct'],
 
             'images' => ['nullable',
                 'array',

@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\StoreDomain;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use App\Services\Platform\PlatformAuditLogger;
 use App\Services\Tenancy\TenantLifecycleService;
 use App\Services\Tenancy\TenantProvisioningService;
@@ -21,6 +22,15 @@ use Tests\TestCase;
 class AuditLogBusinessFlowTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
 
     private function platformAdmin(): User
     {

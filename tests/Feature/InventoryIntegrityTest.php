@@ -28,7 +28,7 @@ class InventoryIntegrityTest extends TestCase
     }
 
     private function insertInventory(
-        int $tenantId,
+        ?int $tenantId,
         int $variantId,
         int $quantity,
         int $reservedQuantity,

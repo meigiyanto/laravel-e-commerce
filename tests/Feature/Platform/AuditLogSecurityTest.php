@@ -197,26 +197,38 @@ class AuditLogSecurityTest extends TestCase
             ]);
         }
     }
-    
+
+
     public function test_database_triggers_are_registered(): void
     {
         $driver = DB::connection()->getDriverName();
 
-        $this->assertSame('sqlite', $driver);
+        $this->assertSame('testing', app()->environment());
+        $this->assertTrue(app()->runningUnitTests());
 
-        $triggers = DB::select("
+        $triggers = match ($driver) {
+            'sqlite' => DB::select("
             SELECT name
             FROM sqlite_master
             WHERE type = 'trigger'
             AND tbl_name = 'platform_audit_logs'
-        ");
-        
-        $this->assertSame('testing', app()->environment());
-        $this->assertTrue(app()->runningUnitTests());
-        $this->assertSame('sqlite', DB::connection()->getDriverName());
+        "),
+            'mysql',
+            'mariadb' => DB::select("
+            SELECT TRIGGER_NAME AS name
+            FROM information_schema.TRIGGERS
+            WHERE TRIGGER_SCHEMA = DATABASE()
+            AND EVENT_OBJECT_TABLE = ?
+        ", ['platform_audit_logs']),
+            default => $this->markTestSkipped(
+                "Trigger inspection is not implemented for {$driver}."
+            ),
+        };
 
         $names = collect($triggers)->pluck('name')->all();
-        $this->assertContains('platform_audit_logs_prevent_update',$names);
-        $this->assertContains('platform_audit_logs_prevent_delete',$names);
+
+        $this->assertContains('platform_audit_logs_prevent_update', $names);
+        $this->assertContains('platform_audit_logs_prevent_delete', $names);
     }
+
 }

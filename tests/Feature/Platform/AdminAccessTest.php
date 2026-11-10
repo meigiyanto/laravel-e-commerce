@@ -17,6 +17,15 @@ class AdminAccessTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
+
     private function createTenant(string $slug): Tenant
     {
         $owner = User::factory()->create();
@@ -72,7 +81,7 @@ class AdminAccessTest extends TestCase
         $this->get('/platform/dashboard')
         ->assertRedirect(route('platform.login'));
     }
-    
+
     public function test_platform_admin_can_request_tenant_access(): void
     {
         $user = User::factory()->create([

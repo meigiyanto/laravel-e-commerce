@@ -29,37 +29,10 @@ class StockRestorationIdempotencyTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createInventoryFixture(int $quantity = 10): array
-    {
-        $product = Product::factory()->create([
-            'stock' => $quantity,
-        ]);
-    
-        $this->activateTenant($product);
-    
-        $variant = ProductVariant::create([
-            'product_id' => $product->id,
-            'sku' => 'TEST-'.uniqid(),
-            'name' => 'Test Variant',
-            'price' => 100000,
-            'is_default' => true,
-            'status' => 'active',
-        ]);
-    
-        $inventory = Inventory::create([
-            'product_variant_id' => $variant->id,
-            'quantity' => $quantity,
-            'reserved_quantity' => 0,
-            'reorder_level' => 0,
-        ]);
-    
-        return compact('product', 'variant', 'inventory');
-    }
-    
-    private function createTenantAdminContext(Product $product): array
+    private function createTenantDomain(Product $product): string
     {
         $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
+
         $store = Store::firstOrCreate(
             ['tenant_id' => $tenant->id],
             [
@@ -68,9 +41,9 @@ class StockRestorationIdempotencyTest extends TestCase
                 'status' => 'active',
             ]
         );
-    
-        $domain = 'stock-restoration-'.$tenant->id.'.example.test';
-    
+
+        $domain = 'checkout-test-'.$tenant->id.'.example.test';
+
         StoreDomain::updateOrCreate(
             ['domain' => $domain],
             [
@@ -79,19 +52,91 @@ class StockRestorationIdempotencyTest extends TestCase
                 'is_primary' => true,
             ]
         );
-    
+
+        return $domain;
+    }
+
+    private function activateTenant(Product $product): void
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        app(TenantContext::class)->set($tenant);
+    }
+
+    private function tenantUrl(
+        Product $product,
+        string $routeName,
+        mixed $parameters = []
+    ): string {
+        $domain = $this->createTenantDomain($product);
+
+        return 'http://'.$domain.route($routeName, $parameters, false);
+    }
+
+    private function createInventoryFixture(int $quantity = 10): array
+    {
+        $product = Product::factory()->create([
+            'stock' => $quantity,
+        ]);
+
+        $this->activateTenant($product);
+
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'TEST-'.uniqid(),
+            'name' => 'Test Variant',
+            'price' => 100000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+
+        $inventory = Inventory::create([
+            'product_variant_id' => $variant->id,
+            'quantity' => $quantity,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+
+        return compact('product', 'variant', 'inventory');
+    }
+
+    private function createTenantAdminContext(Product $product): array
+    {
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        $store = Store::firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'status' => 'active',
+            ]
+        );
+
+        $domain = 'stock-restoration-'.$tenant->id.'.example.test';
+
+        StoreDomain::updateOrCreate(
+            ['domain' => $domain],
+            [
+                'store_id' => $store->id,
+                'verification_status' => 'verified',
+                'is_primary' => true,
+            ]
+        );
+
         $admin = User::factory()->create([
             'role' => User::ROLE_ADMIN,
         ]);
-    
+
         $admin->tenantMemberships()->create([
             'tenant_id' => $tenant->id,
             'role' => 'admin',
             'status' => 'active',
             'accepted_at' => now(),
         ]);
-    
-        return [$admin, $domain];
+
+        return [$admin,
+            $domain];
     }
 
     private function createOrder(int $tenantId): Order
@@ -101,7 +146,7 @@ class StockRestorationIdempotencyTest extends TestCase
             'status' => 'pending',
         ]);
     }
-    
+
     private function createOrderItem(
         Order $order,
         Product $product,
@@ -179,13 +224,13 @@ class StockRestorationIdempotencyTest extends TestCase
             );
         });
 
-        $this->assertSame(10,$fixture['inventory']->fresh()->quantity);
+        $this->assertSame(10, $fixture['inventory']->fresh()->quantity);
 
         $this->assertSame(
             1,
             InventoryMovement::query()
-                ->where('idempotency_key', "order:{$order->id}:item:{$item->id}:return")
-                ->count()
+            ->where('idempotency_key', "order:{$order->id}:item:{$item->id}:return")
+            ->count()
         );
     }
 
@@ -227,10 +272,10 @@ class StockRestorationIdempotencyTest extends TestCase
         $this->assertSame(
             2,
             InventoryMovement::query()
-                ->where('reference_type', Order::class)
-                ->where('reference_id', $order->id)
-                ->where('type', 'return')
-                ->count()
+            ->where('reference_type', Order::class)
+            ->where('reference_id', $order->id)
+            ->where('type', 'return')
+            ->count()
         );
 
         $this->assertDatabaseHas('inventory_movements', [
@@ -298,8 +343,8 @@ class StockRestorationIdempotencyTest extends TestCase
         $this->assertSame(
             1,
             InventoryMovement::query()
-                ->where('idempotency_key', "order:{$order->id}:variant:{$fixture['variant']->id}:sale")
-                ->count()
+            ->where('idempotency_key', "order:{$order->id}:variant:{$fixture['variant']->id}:sale")
+            ->count()
         );
     }
 
@@ -351,28 +396,29 @@ class StockRestorationIdempotencyTest extends TestCase
         $stripeService = Mockery::mock(StripePaymentService::class);
 
         $stripeService
-            ->shouldReceive('cancel')
-            ->once()
-            ->with('pi_stock_cancel_test')
-            ->andReturn($paymentIntent);
+        ->shouldReceive('cancel')
+        ->once()
+        ->with('pi_stock_cancel_test')
+        ->andReturn($paymentIntent);
 
         $this->app->instance(
             StripePaymentService::class,
             $stripeService
         );
-        
-        [$admin, $domain] = $this->createTenantAdminContext($product);
+
+        [$admin,
+            $domain] = $this->createTenantAdminContext($product);
 
         $uri = 'http://'.$domain.route(
             'admin.orders.status',
             $order,
             false
         );
-        
+
         $response = $this->actingAs($admin)->patch($uri, [
             'status' => 'canceled',
         ]);
-        
+
         $response->assertSessionHas('success');
 
         $this->assertSame('canceled', $order->fresh()->status);
@@ -405,49 +451,5 @@ class StockRestorationIdempotencyTest extends TestCase
         $this->assertSame(10, $product->fresh()->stock);
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame('canceled', $payment->fresh()->status);
-    }
-    
-    private function createTenantDomain(Product $product): string
-    {
-        $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
-        $store = Store::firstOrCreate(
-            ['tenant_id' => $tenant->id],
-            [
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-                'status' => 'active',
-            ]
-        );
-    
-        $domain = 'checkout-test-'.$tenant->id.'.example.test';
-    
-        StoreDomain::updateOrCreate(
-            ['domain' => $domain],
-            [
-                'store_id' => $store->id,
-                'verification_status' => 'verified',
-                'is_primary' => true,
-            ]
-        );
-    
-        return $domain;
-    }
-    
-    private function activateTenant(Product $product): void
-    {
-        $tenant = Tenant::query()->findOrFail($product->tenant_id);
-    
-        app(TenantContext::class)->set($tenant);
-    }
-    
-    private function tenantUrl(
-        Product $product,
-        string $routeName,
-        mixed $parameters = []
-    ): string {
-        $domain = $this->createTenantDomain($product);
-    
-        return 'http://'.$domain.route($routeName, $parameters, false);
     }
 }

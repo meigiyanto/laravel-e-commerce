@@ -24,6 +24,10 @@ class ProductVariantValidationTest extends TestCase
     {
         parent::setUp();
 
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+
         $this->tenant = Tenant::factory()->create([
             'name' => 'Default Tenant',
             'slug' => 'default',
@@ -186,13 +190,14 @@ class ProductVariantValidationTest extends TestCase
                 60000
             ),
         ]);
+        
+        // $this->withoutExceptionHandling();
 
         $response = $this->actingAs($admin)
         ->from(route('admin.products.edit', $product))
         ->put(route('admin.products.update', $product), $payload);
 
         $response->assertSessionHasNoErrors();
-
         $this->assertDatabaseHas('product_variants', [
             'id' => $first->id,
             'sku' => 'SKU-B',
@@ -232,9 +237,9 @@ class ProductVariantValidationTest extends TestCase
         ->put(route('admin.products.update', $product), $payload);
 
         $response->assertSessionHasNoErrors();
-        
+
         app(TenantContext::class)->set($this->tenant);
-        
+
         // Produk lama harus tetap menyimpan stok legacy.
         $this->assertDatabaseHas('products', [
             'id' => $product->id,
