@@ -149,8 +149,8 @@ return new class extends Migration
             if (! Schema::hasColumn($table, 'tenant_scope_id')) {
                 DB::statement(
                     "ALTER TABLE `{$table}` ADD COLUMN "
-                    . "`tenant_scope_id` BIGINT UNSIGNED "
-                    . "GENERATED ALWAYS AS (COALESCE(`tenant_id`, 0)) STORED"
+                    .'`tenant_scope_id` BIGINT UNSIGNED '
+                    .'GENERATED ALWAYS AS (COALESCE(`tenant_id`, 0)) STORED'
                 );
             }
 
@@ -177,13 +177,13 @@ return new class extends Migration
 
                 if (
                     $query->select($groupColumns)
-                    ->groupBy($groupColumns)
-                    ->havingRaw('COUNT(*) > 1')
-                    ->exists()
+                        ->groupBy($groupColumns)
+                        ->havingRaw('COUNT(*) > 1')
+                        ->exists()
                 ) {
                     throw new RuntimeException(
                         "Duplicate scoped values detected in {$table}: "
-                        . implode(', ', $values)
+                        .implode(', ', $values)
                     );
                 }
             }
@@ -193,17 +193,12 @@ return new class extends Migration
     private function indexes(string $table): array
     {
         $rows = DB::table('information_schema.statistics')
-        ->select([
-            'index_name',
-            'non_unique',
-            'column_name',
-            'seq_in_index',
-        ])
-        ->where('table_schema', DB::connection()->getDatabaseName())
-        ->where('table_name', $table)
-        ->orderBy('index_name')
-        ->orderBy('seq_in_index')
-        ->get();
+            ->selectRaw('INDEX_NAME AS index_name, NON_UNIQUE AS non_unique, COLUMN_NAME AS column_name, SEQ_IN_INDEX AS seq_in_index')
+            ->where('table_schema', DB::connection()->getDatabaseName())
+            ->where('table_name', $table)
+            ->orderBy('index_name')
+            ->orderBy('seq_in_index')
+            ->get();
 
         return $rows->groupBy('index_name')->map(
             fn ($items) => [
@@ -232,19 +227,17 @@ return new class extends Migration
                 }
 
                 $matching = collect($indexes)->first(
-                    fn ($index) =>
-                    $index['unique'] && $index['columns'] === $columns
+                    fn ($index) => $index['unique'] && $index['columns'] === $columns
                 );
 
                 if ($matching) {
                     $oldName = collect($indexes)->search(
-                        fn ($index) =>
-                        $index['unique'] && $index['columns'] === $columns
+                        fn ($index) => $index['unique'] && $index['columns'] === $columns
                     );
 
                     DB::statement(
                         "ALTER TABLE `{$table}` RENAME INDEX "
-                        . "`{$oldName}` TO `{$name}`"
+                        ."`{$oldName}` TO `{$name}`"
                     );
 
                     continue;
@@ -257,7 +250,7 @@ return new class extends Migration
 
                 DB::statement(
                     "ALTER TABLE `{$table}` ADD UNIQUE INDEX "
-                    . "`{$name}` ({$quoted})"
+                    ."`{$name}` ({$quoted})"
                 );
             }
         }
@@ -301,7 +294,7 @@ return new class extends Migration
                 if (in_array('tenant_scope_id', $index['columns'], true)) {
                     throw new RuntimeException(
                         "Cannot remove tenant_scope_id from {$table}: "
-                        . "index {$name} still depends on it."
+                        ."index {$name} still depends on it."
                     );
                 }
             }
@@ -316,18 +309,19 @@ return new class extends Migration
     {
         throw new RuntimeException(
             'This reconciliation is forward-only. '
-            . 'Restoring global unique indexes requires a separate '
-            . 'data-integrity review.'
+            .'Restoring global unique indexes requires a separate '
+            .'data-integrity review.'
         );
     }
 
     private function assertScopeColumnDefinition(string $table): void
     {
         $column = DB::table('information_schema.columns')
-        ->where('table_schema', DB::connection()->getDatabaseName())
-        ->where('table_name', $table)
-        ->where('column_name', 'tenant_scope_id')
-        ->first();
+            ->selectRaw('COLUMN_TYPE AS column_type, EXTRA AS extra, GENERATION_EXPRESSION AS generation_expression')
+            ->where('table_schema', DB::connection()->getDatabaseName())
+            ->where('table_name', $table)
+            ->where('column_name', 'tenant_scope_id')
+            ->first();
 
         if (! $column) {
             throw new RuntimeException(
@@ -338,7 +332,7 @@ return new class extends Migration
         $extra = strtolower((string) $column->extra);
         $expression = strtolower((string) $column->generation_expression);
         $normalized = preg_replace('/[`\\s]/', '', $expression);
-        
+
         if (! str_contains($extra, 'generated') || ! str_starts_with(strtolower($column->column_type), 'bigint') || ! str_contains(strtolower($column->column_type), 'unsigned') || $normalized !== 'coalesce(tenant_id,0)') {
             throw new RuntimeException(
                 "Unexpected tenant_scope_id definition in {$table}."
