@@ -52,6 +52,7 @@ class FoundationTest extends TestCase
 
     public function test_same_category_slug_can_exist_in_different_tenants(): void
     {
+        config(['operational.mode' => 'multi_tenant']);
         $tenantA = $this->createTenant(User::factory()->create(), 'Tenant A', 'tenant-a');
         $tenantB = $this->createTenant(User::factory()->create(), 'Tenant B', 'tenant-b');
         Category::create(['tenant_id' => $tenantA->id, 'name' => 'Shoes', 'slug' => 'shoes']);

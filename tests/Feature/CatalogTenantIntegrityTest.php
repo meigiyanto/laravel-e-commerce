@@ -18,15 +18,15 @@ use Tests\TestCase;
 class CatalogTenantIntegrityTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected function setUp(): void
-{
-    parent::setUp();
+    {
+        parent::setUp();
 
-    config(['operational.mode' => 'multi_tenant']);
+        config(['operational.mode' => 'multi_tenant']);
 
-    app(TenantContext::class)->clear();
-}
+        app(TenantContext::class)->clear();
+    }
 
     private function createTenant(string $name): Tenant
     {
@@ -217,5 +217,76 @@ class CatalogTenantIntegrityTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('product_variants', 2);
+    }
+
+    public function test_catalog_slugs_can_be_reused_across_tenants(): void
+    {
+        $tenantA = $this->createTenant('Tenant A');
+        $tenantB = $this->createTenant('Tenant B');
+
+        Category::create(['tenant_id' => $tenantA->id, 'name' => 'Shoes', 'slug' => 'shoes']);
+        Category::create(['tenant_id' => $tenantB->id, 'name' => 'Shoes', 'slug' => 'shoes']);
+
+        $categoryA = $this->createCategory($tenantA, 'Fashion');
+        $categoryB = $this->createCategory($tenantB, 'Fashion');
+
+        SubCategory::create(['tenant_id' => $tenantA->id, 'category_id' => $categoryA->id, 'name' => 'Sneakers', 'slug' => 'sneakers']);
+        SubCategory::create(['tenant_id' => $tenantB->id, 'category_id' => $categoryB->id, 'name' => 'Sneakers', 'slug' => 'sneakers']);
+
+        $subA = $this->createSubCategory($tenantA, $categoryA);
+        $subB = $this->createSubCategory($tenantB, $categoryB);
+
+        Product::create(['tenant_id' => $tenantA->id, 'category_id' => $categoryA->id, 'sub_category_id' => $subA->id, 'name' => 'Sneaker', 'slug' => 'sneaker', 'price' => 100000, 'stock' => 1]);
+        Product::create(['tenant_id' => $tenantB->id, 'category_id' => $categoryB->id, 'sub_category_id' => $subB->id, 'name' => 'Sneaker', 'slug' => 'sneaker', 'price' => 100000, 'stock' => 1]);
+
+        Attribute::create(['tenant_id' => $tenantA->id, 'name' => 'Color', 'slug' => 'color', 'type' => 'select', 'is_variant' => true, 'sort_order' => 0]);
+        Attribute::create(['tenant_id' => $tenantB->id, 'name' => 'Color', 'slug' => 'color', 'type' => 'select', 'is_variant' => true, 'sort_order' => 0]);
+
+        $this->assertSame(2, DB::table('categories')->where('slug', 'shoes')->count());
+        $this->assertSame(2, DB::table('sub_categories')->where('slug', 'sneakers')->count());
+        $this->assertSame(2, DB::table('products')->where('slug', 'sneaker')->count());
+        $this->assertSame(2, DB::table('attributes')->where('slug', 'color')->count());
+    }
+
+    public function test_same_barcode_can_exist_in_different_tenants(): void
+    {
+        $tenantA = $this->createTenant('Tenant A');
+        $tenantB = $this->createTenant('Tenant B');
+
+        $categoryA = $this->createCategory($tenantA, 'Category A');
+        $categoryB = $this->createCategory($tenantB, 'Category B');
+        $productA = $this->createProduct($tenantA, $categoryA);
+        $productB = $this->createProduct($tenantB, $categoryB);
+
+        ProductVariant::create(['tenant_id' => $tenantA->id, 'product_id' => $productA->id, 'sku' => 'SKU-A', 'barcode' => 'SHARED-BARCODE', 'price' => 100000]);
+        ProductVariant::create(['tenant_id' => $tenantB->id, 'product_id' => $productB->id, 'sku' => 'SKU-B', 'barcode' => 'SHARED-BARCODE', 'price' => 100000]);
+
+        $this->assertSame(2, DB::table('product_variants')->where('barcode', 'SHARED-BARCODE')->count());
+    }
+
+    public function test_duplicate_sku_is_rejected_within_same_tenant(): void
+    {
+        $tenant = $this->createTenant('Tenant A');
+        $category = $this->createCategory($tenant, 'Category A');
+        $product = $this->createProduct($tenant, $category);
+
+        ProductVariant::create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'sku' => 'DUPLICATE-SKU', 'price' => 100000]);
+
+        $this->expectException(QueryException::class);
+
+        ProductVariant::create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'sku' => 'DUPLICATE-SKU', 'price' => 100000]);
+    }
+
+    public function test_duplicate_barcode_is_rejected_within_same_tenant(): void
+    {
+        $tenant = $this->createTenant('Tenant A');
+        $category = $this->createCategory($tenant, 'Category A');
+        $product = $this->createProduct($tenant, $category);
+
+        ProductVariant::create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'sku' => 'SKU-A', 'barcode' => 'DUPLICATE-BARCODE', 'price' => 100000]);
+
+        $this->expectException(QueryException::class);
+
+        ProductVariant::create(['tenant_id' => $tenant->id, 'product_id' => $product->id, 'sku' => 'SKU-B', 'barcode' => 'DUPLICATE-BARCODE', 'price' => 100000]);
     }
 }
