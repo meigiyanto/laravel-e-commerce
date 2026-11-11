@@ -347,14 +347,6 @@ class MidtransPaymentController extends Controller
                 $tenantContext->clear();
             }
 
-            if (! $tenant) {
-                return response()->json([
-                    'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
-                ], 404);
-            }
-            
-            $tenantContext->set($tenant);
-
             // 3. Pastikan pesanan memiliki pembayaran Midtrans.
             $payment = $order->payment;
 
