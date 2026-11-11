@@ -303,9 +303,8 @@ class CartService
             $variant = $resolved['variant'];
             $inventory = $resolved['inventory'];
 
-            if ((int) $product->tenant_id !== $this->tenantId()) {
-                throw new \RuntimeException('Produk tidak tersedia pada toko ini.');
-            }
+            $this->assertProductTenant($product);
+            $this->assertVariantTenant($variant, $product);
 
             if ($variant->status !== 'active') {
                 throw new \RuntimeException(

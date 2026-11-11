@@ -57,34 +57,80 @@ class ProductController extends Controller
         Gate::authorize('create', Product::class);
         
         $data = $request->validate([
-            'category_id' => ['required', Rule::exists('categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
-            'sub_category_id' => ['required', Rule::exists('sub_categories', 'id')->where(fn ($query) => $this->applyOperationalScope($query))->where('category_id', $request->input('category_id'))],
-            'slug' => ['nullable','string','max:255',Rule::unique('products', 'slug')->where(fn ($query) => $this->applyOperationalScope($query))],
-            'sku' => ['required','string','max:100',Rule::unique('product_variants', 'sku')->where(fn ($query) => $this->applyOperationalScope($query))],
-            'barcode' => ['nullable','string','max:100',Rule::unique('product_variants', 'barcode')->where(fn ($query) => $this->applyOperationalScope($query))],
-            'attribute_value_ids' => ['nullable', 'array'],
-            'attribute_value_ids.*' => ['integer','distinct',Rule::exists('attribute_values', 'id')->where(fn ($query) => $this->applyOperationalScope($query))],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'variant_name' => ['nullable', 'string', 'max:255'], 'variant_name' => ['nullable', 'string', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0'],
-            'compare_at_price' => ['nullable', 'numeric', 'min:0'],
-            'cost_price' => ['nullable', 'numeric', 'min:0'],
-            'weight' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['active', 'inactive'])],
-            'quantity' => ['required', 'integer', 'min:0'],
-            'reserved_quantity' => ['required', 'integer', 'min:0', 'lte:quantity'],
-            'reorder_level' => ['required', 'integer', 'min:0'],
-            'attribute_value_ids.*' => ['integer', 'distinct', Rule::exists('attribute_values', 'id')->where('tenant_id', $tenantId)],
-            'specifications' => ['nullable', 'array'],
-            'specifications.*.specification_group' => ['required', 'string', 'max:255'],
-            'specifications.*.specification_name' => ['required', 'string', 'max:255'],
-            'specifications.*.specification_value' => ['required', 'string', 'max:2000'],
-            'specifications.*.sort_order' => ['nullable', 'integer', 'min:0'],
-            'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'image_alt_text' => ['nullable', 'string', 'max:255'],
-        ]);
+    'category_id' => [
+        'required',
+        Rule::exists('categories', 'id')
+            ->where(fn ($query) => $this->applyOperationalScope($query)),
+    ],
+    'sub_category_id' => [
+        'required',
+        Rule::exists('sub_categories', 'id')
+            ->where(fn ($query) => $this->applyOperationalScope($query))
+            ->where('category_id', $request->input('category_id')),
+    ],
+    'slug' => [
+        'nullable',
+        'string',
+        'max:255',
+        Rule::unique('products', 'slug')
+            ->where(fn ($query) => $this->applyOperationalScope($query)),
+    ],
+    'sku' => [
+        'required',
+        'string',
+        'max:100',
+        Rule::unique('product_variants', 'sku')
+            ->where(fn ($query) => $this->applyOperationalScope($query)),
+    ],
+    'barcode' => [
+        'nullable',
+        'string',
+        'max:100',
+        Rule::unique('product_variants', 'barcode')
+            ->where(fn ($query) => $this->applyOperationalScope($query)),
+    ],
+    'attribute_value_ids' => ['nullable', 'array'],
+    'attribute_value_ids.*' => [
+        'integer',
+        'distinct',
+        Rule::exists('attribute_values', 'id')
+            ->where(fn ($query) => $this->applyOperationalScope($query)),
+    ],
+    'name' => ['required', 'string', 'max:255'],
+    'description' => ['nullable', 'string'],
+    'variant_name' => ['nullable', 'string', 'max:255'],
+    'price' => ['required', 'numeric', 'min:0'],
+    'compare_at_price' => ['nullable', 'numeric', 'min:0'],
+    'cost_price' => ['nullable', 'numeric', 'min:0'],
+    'weight' => ['nullable', 'numeric', 'min:0'],
+    'status' => ['required', Rule::in(['active', 'inactive'])],
+    'quantity' => ['required', 'integer', 'min:0'],
+    'reserved_quantity' => [
+        'required',
+        'integer',
+        'min:0',
+        'lte:quantity',
+    ],
+    'reorder_level' => ['required', 'integer', 'min:0'],
+    'specifications' => ['nullable', 'array'],
+    'specifications.*.specification_group' => [
+        'required', 'string', 'max:255',
+    ],
+    'specifications.*.specification_name' => [
+        'required', 'string', 'max:255',
+    ],
+    'specifications.*.specification_value' => [
+        'required', 'string', 'max:2000',
+    ],
+    'specifications.*.sort_order' => [
+        'nullable', 'integer', 'min:0',
+    ],
+    'images' => ['nullable', 'array', 'max:10'],
+    'images.*' => [
+        'image', 'mimes:jpg,jpeg,png,webp', 'max:5120',
+    ],
+    'image_alt_text' => ['nullable', 'string', 'max:255'],
+]);
 
         if (filled($data['compare_at_price'] ?? null) && (float) $data['compare_at_price'] < (float) $data['price']) {
             throw ValidationException::withMessages([

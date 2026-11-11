@@ -15,10 +15,59 @@ use Illuminate\Support\Facades\Gate;
 
 class UserController extends Controller
 {
+    private function isMultiTenant(): bool
+    {
+        return config('operational.mode', 'single_store') === 'multi_tenant';
+    }
+    
     /** Display users and their assigned roles. */
     public function index(Request $request): View
     {
         Gate::authorize('viewAny', TenantMembership::class);
+
+        if (! $this->isMultiTenant()) {
+            $search = trim((string) $request->query('search', ''));
+            $role = (string) $request->query('role', '');
+        
+            $users = User::query()
+                ->whereIn('role', [
+                    User::ROLE_ADMIN,
+                    User::ROLE_STAFF,
+                    User::ROLE_CUSTOMER,
+                ])
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+                })
+                ->when(
+                    in_array($role, [
+                        User::ROLE_ADMIN,
+                        User::ROLE_STAFF,
+                        User::ROLE_CUSTOMER,
+                    ], true),
+                    fn ($query) => $query->where('role', $role)
+                )
+                ->orderBy('name')
+                ->paginate(15)
+                ->withQueryString();
+        
+            $roleCounts = [
+                User::ROLE_ADMIN => User::where('role', User::ROLE_ADMIN)->count(),
+                User::ROLE_STAFF => User::where('role', User::ROLE_STAFF)->count(),
+                User::ROLE_CUSTOMER => User::where('role', User::ROLE_CUSTOMER)->count(),
+            ];
+        
+            return view('admin.users.index', compact(
+                'users',
+                'search',
+                'role',
+                'roleCounts'
+            ));
+        }
+        
+        $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $tenantId = (int) app(TenantContext::class)->require()->getKey();
         $search = trim((string) $request->query('search', ''));
         $role = (string) $request->query('role', '');
@@ -85,29 +134,49 @@ class UserController extends Controller
     /** Change a user's role. This endpoint is only registered inside the admin-only route group. */
     public function updateRole(Request $request, User $user): RedirectResponse
     {
+        $allowedRoles = $this->isMultiTenant()
+            ? [
+                TenantMembership::ROLE_ADMIN,
+                TenantMembership::ROLE_PRODUCT_MANAGER,
+                TenantMembership::ROLE_INVENTORY_MANAGER,
+                TenantMembership::ROLE_ORDER_MANAGER,
+                TenantMembership::ROLE_STAFF,
+                User::ROLE_CUSTOMER,
+            ]
+            : [
+                User::ROLE_ADMIN,
+                User::ROLE_STAFF,
+                User::ROLE_CUSTOMER,
+            ];
+        
         $validated = $request->validate([
-            'role' => [
-                'required',
-                Rule::in([
-                    TenantMembership::ROLE_ADMIN,
-                    TenantMembership::ROLE_PRODUCT_MANAGER,
-                    TenantMembership::ROLE_INVENTORY_MANAGER,
-                    TenantMembership::ROLE_ORDER_MANAGER,
-                    TenantMembership::ROLE_STAFF,
-                    User::ROLE_CUSTOMER,
-                ]),
-            ],
+            'role' => ['required', Rule::in($allowedRoles)],
         ]);
-
+        
+        if (! $this->isMultiTenant()) {
+            abort_unless($request->user()->hasAnyRole(User::ROLE_ADMIN), 403);
+            abort_if($user->isPlatformAdmin(), 403);
+            abort_if($request->user()->is($user), 403);
+        
+            $user->update([
+                'role' => $validated['role'],
+            ]);
+        
+            return back()->with(
+                'success',
+                "Role {$user->name} berhasil diperbarui."
+            );
+        }
+        
         $tenant = app(TenantContext::class)->require();
         $tenantId = (int) $tenant->id;
         $role = $validated['role'];
 
         $membership = TenantMembership::query()
-        ->where('tenant_id', $tenantId)
-        ->where('user_id', $user->id)
-        ->where('status', 'active')
-        ->first();
+                    ->where('tenant_id', $tenantId)
+                    ->where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->first();
 
         if ($role === User::ROLE_CUSTOMER) {
             if (! $membership) {

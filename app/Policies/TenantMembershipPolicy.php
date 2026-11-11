@@ -10,6 +10,10 @@ class TenantMembershipPolicy
 {
     public function viewAny(User $user): bool
     {
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            return $user->hasAnyRole(User::ROLE_ADMIN);
+        }
+    
         return $user->hasTenantPermission('users.manage');
     }
 
