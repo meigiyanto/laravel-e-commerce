@@ -21,9 +21,7 @@ class ServiceConsistencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         config(['operational.mode' => 'multi_tenant']);
-
         app(TenantContext::class)->clear();
     }
 

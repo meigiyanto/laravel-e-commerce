@@ -20,9 +20,7 @@ class IsolationSecurityTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         config(['operational.mode' => 'multi_tenant']);
-
         app(TenantContext::class)->clear();
     }
 
@@ -38,17 +36,12 @@ class IsolationSecurityTest extends TestCase
             'role' => TenantMembership::ROLE_OWNER,
             'status' => 'active',
         ]);
-
-        $orderB = Order::factory()->create([
-            'tenant_id' => $tenantB->id,
-        ]);
-
-        app(TenantContext::class)->set($tenantA);
+        
+        $orderB = app(TenantContext::class)->run($tenantB, fn () => Order::factory()->create(['tenant_id' => $tenantB->id])
+        );
 
         $this->actingAs($user);
-
         $result = Order::query()->find($orderB->id);
-
         $this->assertNull($result);
     }
 
@@ -57,39 +50,44 @@ class IsolationSecurityTest extends TestCase
         $tenantA = Tenant::factory()->create(['status' => 'active']);
         $tenantB = Tenant::factory()->create(['status' => 'active']);
 
-        $categoryB = Category::factory()->create([
-            'tenant_id' => $tenantB->id,
-        ]);
+        [$categoryB, $subCategoryB, $productB] = app(TenantContext::class)->run(
+            $tenantB,
+            function () use ($tenantB) {
+                $category = Category::factory()->create([
+                    'tenant_id' => $tenantB->id,
+                ]);
 
-        $subCategoryB = SubCategory::factory()->create([
-            'category_id' => $categoryB->id,
-            'tenant_id' => $tenantB->id,
-        ]);
+                $subCategory = SubCategory::factory()->create([
+                    'category_id' => $category->id,
+                    'tenant_id' => $tenantB->id,
+                ]);
 
-        $productB = Product::factory()->create([
-            'tenant_id' => $tenantB->id,
-            'category_id' => $categoryB->id,
-            'sub_category_id' => $subCategoryB->id,
-        ]);
+                $product = Product::factory()->create([
+                    'tenant_id' => $tenantB->id,
+                    'category_id' => $category->id,
+                    'sub_category_id' => $subCategory->id,
+                ]);
 
-        app(TenantContext::class)->set($tenantA);
-
-        $result = Product::query()->find($productB->id);
-
+                return [$category, $subCategory, $product];
+            }
+        );
+        
+        $result = app(TenantContext::class)->run($tenantA, fn () => Product::query()->find($productB->id));
         $this->assertNull($result);
     }
 
     public function test_tenant_context_is_cleared_after_request(): void
     {
         $tenant = Tenant::factory()->create(['status' => 'active']);
-
         $context = app(TenantContext::class);
-        $context->set($tenant);
-
-        $this->assertSame($tenant->id, $context->current()->id);
-
-        $context->clear();
-
+        
+        $context->run($tenant, function () use ($context, $tenant): void {
+            $this->assertSame($tenant->id, $context->current()->id);
+            $this->assertTrue($context->hasTenant());
+        });
+        
         $this->assertNull($context->current());
+        $this->assertFalse($context->hasTenant());
+        $context->set($tenant);
     }
 }

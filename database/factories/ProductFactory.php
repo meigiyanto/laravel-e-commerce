@@ -18,9 +18,7 @@ class ProductFactory extends Factory
 
         return [
             'sub_category_id' => SubCategory::factory(),
-            'category_id' => fn (array $attributes) => DB::table('sub_categories')
-                ->where('id', $attributes['sub_category_id'])
-                ->value('category_id'),
+            'category_id' => fn (array $attributes) => DB::table('sub_categories')->where('id', $attributes['sub_category_id'])->value('category_id'),
             'name' => $name,
             'slug' => str()->slug($name),
             'description' => fake()->sentence(),

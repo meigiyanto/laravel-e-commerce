@@ -15,6 +15,24 @@ use Illuminate\Support\Facades\Gate;
 class InventoryController extends Controller
 {
     private const LOW_STOCK_THRESHOLD = 5;
+    
+    protected Tenant $tenant;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+    
+        config(['operational.mode' => 'multi_tenant']);
+    
+        $context = app(TenantContext::class);
+        $context->clear();
+    
+        $this->tenant = Tenant::factory()->create([
+            'status' => 'active',
+        ]);
+    
+        $context->set($this->tenant);
+    }
 
     public function index(Request $request)
     {

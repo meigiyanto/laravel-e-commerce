@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +19,7 @@ class OrderFactory extends Factory
         $shippingCost = fake()->randomFloat(2, 0, 50000);
 
         return [
-            'tenant_id' => Tenant::factory(),
+            'tenant_id' => fn () => app(TenantContext::class)->current()?->getKey() ?? Tenant::factory(),
             'user_id' => User::factory(),
             'order_number' => 'ORD-'.fake()->unique()->numerify('########'),
             'status' => 'pending',

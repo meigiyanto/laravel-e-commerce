@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Category;
 use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +19,7 @@ class CategoryFactory extends Factory
         $name = fake()->unique()->words(2, true);
 
         return [
-            'tenant_id' => Tenant::factory(),
+            'tenant_id' => fn () => app(TenantContext::class)->current()?->getKey() ?? Tenant::factory(),
             'name' => $name,
             'slug' => str()->slug($name),
             'image' => null,

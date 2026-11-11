@@ -44,6 +44,20 @@ class TenantContext
             $this->tenant = $previous;
         }
     }
+    
+    /**
+     * @deprecated Gunakan run() untuk membatasi umur tenant context.
+     */
+    public function set(Tenant $tenant): void
+    {
+        if ($tenant->status !== 'active') {
+            throw new LogicException(
+                'Tenant context requires an active tenant.'
+            );
+        }
+    
+        $this->tenant = $tenant;
+    }
 
     public function clear(): void
     {
