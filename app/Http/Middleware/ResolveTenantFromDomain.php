@@ -20,9 +20,7 @@ class ResolveTenantFromDomain
             return true;
         }
 
-        if (
-            $path === 'tenant/invitations' || str_starts_with($path, 'tenant/invitations/')
-        ) {
+        if ($path === 'tenant/invitations' || str_starts_with($path, 'tenant/invitations/')) {
             return true;
         }
 
@@ -76,9 +74,10 @@ class ResolveTenantFromDomain
 
             abort_unless($tenant && $tenant->status === 'active', 404);
 
-            $context->set($tenant);
-
-            return $next($request);
+            return $context->run(
+                $tenant,
+                fn () => $next($request)
+            );
         } finally {
             $context->clear();
         }

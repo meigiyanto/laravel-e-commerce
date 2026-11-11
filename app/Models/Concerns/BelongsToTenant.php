@@ -35,34 +35,35 @@ trait BelongsToTenant
                 $model->setAttribute('tenant_id', null);
                 return;
             }
-
-            $contextTenantId = app(TenantContext::class)
-                ->current()?->getKey();
-
+        
+            $contextTenantId = (int) app(TenantContext::class)
+                ->require()
+                ->getKey();
+        
+            $providedTenantId = $model->getAttribute('tenant_id');
             $parentTenantId = $model->resolveParentTenantId();
-
-            $tenantId = $model->getAttribute('tenant_id')
-                ?: $parentTenantId
-                ?: $contextTenantId;
-
-            if (! $tenantId) {
-                throw new LogicException(sprintf(
-                    '%s requires tenant_id or an initialized TenantContext.',
-                    $model::class
-                ));
-            }
-
+        
             if (
-                $contextTenantId !== null
-                && (int) $tenantId !== (int) $contextTenantId
+                $providedTenantId !== null &&
+                (int) $providedTenantId !== $contextTenantId
             ) {
                 throw new LogicException(sprintf(
-                    '%s cannot be created outside the active tenant.',
+                    '%s cannot be created for another tenant.',
                     $model::class
                 ));
             }
-
-            $model->setAttribute('tenant_id', $tenantId);
+        
+            if (
+                $parentTenantId !== null &&
+                $parentTenantId !== $contextTenantId
+            ) {
+                throw new LogicException(sprintf(
+                    '%s parent belongs to another tenant.',
+                    $model::class
+                ));
+            }
+        
+            $model->setAttribute('tenant_id', $contextTenantId);
         });
     }
 

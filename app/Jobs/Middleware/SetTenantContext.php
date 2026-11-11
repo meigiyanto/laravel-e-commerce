@@ -17,13 +17,14 @@ class SetTenantContext
 
         try {
             $tenant = Tenant::query()
-                ->whereKey($this->tenantId)
-                ->where('status', 'active')
-                ->firstOrFail();
+            ->whereKey($this->tenantId)
+            ->where('status', 'active')
+            ->firstOrFail();
 
-            $context->set($tenant);
-
-            return $next($job);
+            return $context->run(
+                $tenant,
+                fn () => $next($job)
+            );
         } finally {
             $context->clear();
         }
