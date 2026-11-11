@@ -25,8 +25,8 @@ class OrderStatusConsistencyTest extends TestCase
         parent::setUp();
 
         config(['operational.mode' => 'multi_tenant']);
-
-        app(TenantContext::class)->clear();
+        $tenant = Tenant::factory()->create();
+        app(TenantContext::class)->set($tenant);
     }
 
     public function test_admin_cannot_cancel_shipped_order(): void

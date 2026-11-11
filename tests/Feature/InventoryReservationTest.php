@@ -25,8 +25,8 @@ class InventoryReservationTest extends TestCase
         parent::setUp();
 
         config(['operational.mode' => 'multi_tenant']);
-
-        app(TenantContext::class)->clear();
+        $tenant = Tenant::factory()->create();
+        app(TenantContext::class)->set($tenant);
     }
     
     private function createFixture(int $stock = 10): array
