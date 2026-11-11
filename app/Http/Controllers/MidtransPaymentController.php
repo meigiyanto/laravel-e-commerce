@@ -330,11 +330,23 @@ class MidtransPaymentController extends Controller
             
             // Tenant webhook harus mengikuti kepemilikan Order.
             // Aktifkan sebelum mengakses proses yang menggunakan global scope.
-            $tenant = Tenant::query()
-                ->whereKey($order->tenant_id)
-                ->where('status', 'active')
-                ->first();
+            if (config('operational.mode', 'single_store') === 'multi_tenant') {
+                $tenant = Tenant::query()
+                    ->whereKey($order->tenant_id)
+                    ->where('status', 'active')
+                    ->first();
             
+                if (! $tenant) {
+                    return response()->json([
+                        'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
+                    ], 404);
+                }
+            
+                $tenantContext->set($tenant);
+            } else {
+                $tenantContext->clear();
+            }
+
             if (! $tenant) {
                 return response()->json([
                     'message' => 'Tenant pesanan tidak ditemukan atau tidak aktif.',
