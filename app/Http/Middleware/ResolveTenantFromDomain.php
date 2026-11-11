@@ -11,6 +11,31 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ResolveTenantFromDomain
 {
+    private function isPlatformOrCallbackPath(string $path): bool
+    {
+        if (in_array($path, [
+            'stripe/webhook',
+            'payment/midtrans/notification',
+        ], true)) {
+            return true;
+        }
+
+        if (
+            $path === 'tenant/invitations' || str_starts_with($path, 'tenant/invitations/')
+        ) {
+            return true;
+        }
+
+        if ($path === 'platform' || str_starts_with($path, 'platform/')) {
+            return preg_match(
+                '#^platform/tenant-access/[^/]+$#',
+                $path
+            ) !== 1;
+        }
+
+        return false;
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $context = app(TenantContext::class);
@@ -30,22 +55,21 @@ class ResolveTenantFromDomain
             $host = strtolower(rtrim($request->getHost(), '.'));
 
             $storeDomain = StoreDomain::query()
-                ->with('store.tenant')
-                ->whereRaw('LOWER(domain) = ?', [$host])
-                ->where('verification_status', 'verified')
-                ->first();
+            ->with('store.tenant')
+            ->whereRaw('LOWER(domain) = ?', [$host])
+            ->where('verification_status', 'verified')
+            ->first();
 
             $store = $storeDomain?->store;
             $tenant = $store?->tenant;
 
             if (
-                ! $tenant
-                && in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+                ! $tenant && in_array($host, ['localhost', '127.0.0.1', '::1'], true)
             ) {
                 $tenant = Tenant::query()
-                    ->where('slug', 'default')
-                    ->where('status', 'active')
-                    ->first();
+                ->where('slug', 'default')
+                ->where('status', 'active')
+                ->first();
             } else {
                 abort_unless($store && $store->status === 'active', 404);
             }
@@ -58,24 +82,5 @@ class ResolveTenantFromDomain
         } finally {
             $context->clear();
         }
-    }
-
-    private function isPlatformOrCallbackPath(string $path): bool
-    {
-        if (in_array($path, [
-            'stripe/webhook',
-            'payment/midtrans/notification',
-        ], true)) {
-            return true;
-        }
-
-        if ($path === 'platform' || str_starts_with($path, 'platform/')) {
-            return preg_match(
-                '#^platform/tenant-access/[^/]+$#',
-                $path
-            ) !== 1;
-        }
-
-        return false;
     }
 }
