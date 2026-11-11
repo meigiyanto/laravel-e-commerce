@@ -24,6 +24,14 @@ class StripeWebhookController extends Controller
 
     private function activateTenantContext(Order $order): void
     {
+        $context = app(TenantContext::class);
+
+        if (config('operational.mode', 'single_store') === 'single_store') {
+            $context->clear();
+
+            return;
+        }
+
         $tenant = Tenant::query()->find($order->tenant_id);
 
         if (! $tenant) {
@@ -32,7 +40,7 @@ class StripeWebhookController extends Controller
             );
         }
 
-        app(TenantContext::class)->set($tenant);
+        $context->set($tenant);
     }
 
     public function handle(Request $request): Response
@@ -180,8 +188,10 @@ class StripeWebhookController extends Controller
 
         // Refund dilakukan setelah transaksi transisi selesai.
         $payment = Payment::query()
-        ->where('provider', 'stripe')
-        ->where('stripe_payment_intent_id', $paymentIntent->id)
+        ->where('provider',
+            'stripe')
+        ->where('stripe_payment_intent_id',
+            $paymentIntent->id)
         ->first();
 
         if (! $payment) {
@@ -256,8 +266,10 @@ class StripeWebhookController extends Controller
     {
         // Ambil referensi awal untuk mengetahui order_id.
         $paymentReference = Payment::query()
-        ->where('provider', 'stripe')
-        ->where('stripe_payment_intent_id', $paymentIntentId)
+        ->where('provider',
+            'stripe')
+        ->where('stripe_payment_intent_id',
+            $paymentIntentId)
         ->first();
 
         if (! $paymentReference) {

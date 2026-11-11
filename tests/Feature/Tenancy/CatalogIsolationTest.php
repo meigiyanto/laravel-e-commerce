@@ -22,6 +22,15 @@ class CatalogIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
+
     private function createTenant(string $name, string $slug): Tenant
     {
         return Tenant::create([

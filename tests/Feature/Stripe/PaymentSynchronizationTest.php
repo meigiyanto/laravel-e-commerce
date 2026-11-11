@@ -47,6 +47,7 @@ class PaymentSynchronizationTest extends TestCase
         return [$order,
             $payment];
     }
+    
     private function syncPaymentIntent(
         Order $order,
         Payment $payment,

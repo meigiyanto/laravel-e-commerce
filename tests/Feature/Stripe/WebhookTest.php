@@ -30,10 +30,7 @@ class WebhookTest extends TestCase
     {
         parent::setUp();
 
-        Config::set(
-            'services.stripe.webhook_secret',
-            self::WEBHOOK_SECRET
-        );
+        Config::set('services.stripe.webhook_secret',self::WEBHOOK_SECRET);
     }
 
     /*
@@ -41,7 +38,6 @@ class WebhookTest extends TestCase
     | Happy path
     |--------------------------------------------------------------------------
     */
-
     public function test_stripe_webhook_completes_pending_payment_and_order(): void
     {
         $payment = $this->createPayment();

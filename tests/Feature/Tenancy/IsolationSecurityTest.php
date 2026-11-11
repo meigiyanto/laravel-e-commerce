@@ -17,6 +17,15 @@ class IsolationSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['operational.mode' => 'multi_tenant']);
+
+        app(TenantContext::class)->clear();
+    }
+
     public function test_tenant_a_cannot_read_tenant_b_orders(): void
     {
         $tenantA = Tenant::factory()->create(['status' => 'active']);
