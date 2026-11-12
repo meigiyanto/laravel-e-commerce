@@ -13,27 +13,77 @@ use App\Services\VariantInventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
 
 class OrderCancellationRequestController extends Controller
 {
-    public function index()
+    private function authorizeOrderManagement(): void
     {
-        $requests = OrderCancellationRequest::query()
-            ->with(['order', 'user', 'reviewer'])
-            ->latest()
-            ->paginate(20);
+        $user = request()->user();
+
+        abort_unless($user, 403);
+
+        if (config('operational.mode', 'single_store') === 'single_store') {
+            abort_unless($user->hasAnyRole('admin'), 403);
+
+            return;
+        }
+
+        $tenant = app(TenantContext::class)->current();
+
+        abort_unless($tenant, 403);
+        abort_unless($user->hasTenantPermission('orders.manage'), 403);
+    }
+
+    private function cancellationRequestQuery(): Builder
+    {
+        $query = OrderCancellationRequest::query();
+
+        if (config('operational.mode', 'single_store') === 'single_store') {
+            return $query->whereHas('order', function ($orders) {
+                $orders->whereNull('tenant_id');
+            });
+        }
+
+        $tenant = app(TenantContext::class)->current();
+
+        abort_unless($tenant, 403);
+
+        return $query->whereHas('order', function ($orders) use ($tenant) {
+            $orders->where('tenant_id', $tenant->id);
+        });
+    }
+
+    private function findScopedCancellationRequest(int $id): OrderCancellationRequest
+    {
+        return $this->cancellationRequestQuery()->findOrFail($id);
+    }
+
+    public function index() {
+        $this->authorizeOrderManagement();
+
+        $requests = $this->cancellationRequestQuery()
+        ->with(['order', 'user', 'reviewer'])
+        ->latest()
+        ->paginate(20);
 
         return view('admin.order-cancellation-requests.index', compact('requests'));
     }
 
-    public function show(OrderCancellationRequest $cancellationRequest)
-    {
+    public function show(OrderCancellationRequest $cancellationRequest) {
+        $this->authorizeOrderManagement();
+
+        $cancellationRequest = $this->findScopedCancellationRequest(
+            (int) $cancellationRequest->id
+        );
+
         $cancellationRequest->load(['order.items', 'user', 'reviewer']);
 
         auth()->user()->unreadNotifications()
-            ->where('type', \App\Notifications\OrderCancellationRequestedNotification::class)
-            ->where('data->cancellation_request_id', $cancellationRequest->id)
-            ->update(['read_at' => now()]);
+        ->where('type', \App\Notifications\OrderCancellationRequestedNotification::class)
+        ->where('data->cancellation_request_id', $cancellationRequest->id)
+        ->update(['read_at' => now()]);
 
         return view('admin.order-cancellation-requests.show', compact('cancellationRequest'));
     }
@@ -42,6 +92,10 @@ class OrderCancellationRequestController extends Controller
         Request $request,
         OrderCancellationRequest $cancellationRequest
     ) {
+        $this->authorizeOrderManagement();
+
+        $cancellationRequest = $this->findScopedCancellationRequest((int) $cancellationRequest->id);
+
         $validated = $request->validate([
             'decision' => ['required', 'in:approved,rejected'],
             'admin_note' => ['nullable', 'string', 'max:2000'],
@@ -52,7 +106,7 @@ class OrderCancellationRequestController extends Controller
                 'max:1500',
             ],
         ]);
-    
+
         /*
          * Penolakan permintaan tidak memerlukan perubahan status order
          * atau panggilan ke provider pembayaran.
@@ -62,67 +116,68 @@ class OrderCancellationRequestController extends Controller
                 $cancellationRequest,
                 $validated
             ) {
-                $lockedRequest = OrderCancellationRequest::query()
-                    ->whereKey($cancellationRequest->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-    
+
+                $lockedRequest = $this->cancellationRequestQuery()
+                ->whereKey($cancellationRequest->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
                 if ($lockedRequest->status !== 'pending') {
                     return 'already_reviewed';
                 }
-    
+
                 $lockedRequest->update([
                     'status' => 'rejected',
                     'admin_note' => $validated['admin_note'] ?? null,
                     'reviewed_by' => auth()->id(),
                     'reviewed_at' => now(),
                 ]);
-    
+
                 return $lockedRequest->id;
             });
-    
+
             if ($result !== $cancellationRequest->id) {
                 return back()->with(
                     'error',
                     'Permintaan ini sudah ditinjau sebelumnya.'
                 );
             }
-    
+
             $cancellationRequest->refresh()->load('order');
-    
+
             \App\Models\User::find($cancellationRequest->user_id)
-                ?->notify(
-                    new \App\Notifications\OrderCancellationDecisionNotification(
-                        $cancellationRequest
-                    )
-                );
-    
-            return redirect()
-                ->route(
-                    'admin.order-cancellation-requests.show',
+            ?->notify(
+                new \App\Notifications\OrderCancellationDecisionNotification(
                     $cancellationRequest
                 )
-                ->with('success', 'Permintaan pembatalan ditolak.');
+            );
+
+            return redirect()
+            ->route(
+                'admin.order-cancellation-requests.show',
+                $cancellationRequest
+            )
+            ->with('success', 'Permintaan pembatalan ditolak.');
         }
-    
+
         /*
          * Ambil snapshot awal. Pemeriksaan status request yang otoritatif
          * tetap dilakukan kembali di dalam transaksi.
          */
         $cancellationRequest->loadMissing('order');
-    
+
         $order = $cancellationRequest->order;
-    
+
         if (! $order) {
             return back()->with('error', 'Pesanan tidak ditemukan.');
         }
-    
+
         $payment = $order->payment()->first();
-    
+
         $stripeCancellationConfirmed = false;
         $midtransCancellationConfirmed = false;
         $paymentSucceeded = false;
-    
+
         /*
          * PRE-FLIGHT PROVIDER
          *
@@ -141,16 +196,16 @@ class OrderCancellationRequestController extends Controller
                         'PaymentIntent Stripe tidak ditemukan. Periksa transaksi sebelum menyetujui pembatalan.'
                     );
                 }
-    
+
                 try {
                     $stripe = app(
                         \App\Services\StripePaymentService::class
                     );
-    
+
                     $intent = $stripe->retrieve(
                         $payment->stripe_payment_intent_id
                     );
-    
+
                     if ($intent->status === 'succeeded') {
                         $paymentSucceeded = true;
                     } elseif ($intent->status === 'canceled') {
@@ -159,7 +214,7 @@ class OrderCancellationRequestController extends Controller
                         $intent = $stripe->cancel(
                             $payment->stripe_payment_intent_id
                         );
-    
+
                         if ($intent->status === 'succeeded') {
                             $paymentSucceeded = true;
                         } elseif ($intent->status === 'canceled') {
@@ -180,7 +235,7 @@ class OrderCancellationRequestController extends Controller
                             'message' => $e->getMessage(),
                         ]
                     );
-    
+
                     return back()->with(
                         'error',
                         'Status Stripe belum dapat dipastikan. Permintaan tetap pending; periksa kembali sebelum mengambil keputusan.'
@@ -191,72 +246,66 @@ class OrderCancellationRequestController extends Controller
                     $midtrans = app(
                         \App\Services\MidtransService::class
                     );
-    
+
                     $status = $midtrans->getStatus(
                         $order->order_number
                     );
-    
+
                     $transactionStatus = strtolower(
                         (string) ($status->transaction_status ?? '')
                     );
-    
+
                     $statusCode = (string) ($status->status_code ?? '');
-    
+
                     $fraudStatus = strtolower(
                         (string) ($status->fraud_status ?? '')
                     );
-    
+
                     $isSuccessful =
-                        $transactionStatus === 'settlement'
-                        || (
-                            $transactionStatus === 'capture'
-                            && in_array($statusCode, ['', '200'], true)
-                            && in_array($fraudStatus, ['', 'accept'], true)
-                        );
-    
+                    $transactionStatus === 'settlement' || (
+                        $transactionStatus === 'capture' && in_array($statusCode, ['', '200'], true) && in_array($fraudStatus, ['', 'accept'], true)
+                    );
+
                     if ($isSuccessful) {
                         $paymentSucceeded = true;
                     } elseif (in_array(
-                        $transactionStatus,
-                        ['cancel', 'expire', 'deny', 'failure'],
-                        true
-                    )) {
+                            $transactionStatus,
+                            ['cancel', 'expire', 'deny', 'failure'],
+                            true
+                        )) {
                         $midtransCancellationConfirmed = true;
                     } elseif ($transactionStatus === 'pending') {
                         $midtrans->cancelTransaction(
                             $order->order_number
                         );
-    
+
                         $verified = $midtrans->verifyCancellation(
                             $order->order_number
                         );
-    
+
                         $verifiedStatus = strtolower(
                             (string) ($verified->transaction_status ?? '')
                         );
-    
+
                         $verifiedCode = (string) (
                             $verified->status_code ?? ''
                         );
-    
+
                         $verifiedFraud = strtolower(
                             (string) ($verified->fraud_status ?? '')
                         );
-    
-                        $verifiedSucceeded = $verifiedStatus === 'settlement'
-                            || (
-                                $verifiedStatus === 'capture'
-                                && in_array($verifiedCode, ['', '200'], true)
-                                && in_array($verifiedFraud, ['', 'accept'], true)
-                            );
-    
+
+                        $verifiedSucceeded = $verifiedStatus === 'settlement' || (
+                            $verifiedStatus === 'capture' && in_array($verifiedCode, ['', '200'], true) && in_array($verifiedFraud, ['', 'accept'], true)
+                        );
+
                         if ($verifiedSucceeded) {
                             $paymentSucceeded = true;
                         } elseif (in_array(
-                            $verifiedStatus,
-                            ['cancel', 'expire', 'deny', 'failure'],
-                            true
-                        )) {
+                                $verifiedStatus,
+                                ['cancel', 'expire', 'deny', 'failure'],
+                                true
+                            )) {
                             $midtransCancellationConfirmed = true;
                         } else {
                             return back()->with(
@@ -279,15 +328,14 @@ class OrderCancellationRequestController extends Controller
                             'message' => $e->getMessage(),
                         ]
                     );
-    
+
                     return back()->with(
                         'error',
                         'Status atau pembatalan Midtrans belum dapat dipastikan. Permintaan tetap pending untuk pemeriksaan ulang.'
                     );
                 }
             } elseif (
-                $payment->payment_method !== 'cod'
-                || $payment->status !== 'pending'
+                $payment->payment_method !== 'cod' || $payment->status !== 'pending'
             ) {
                 return back()->with(
                     'error',
@@ -295,7 +343,7 @@ class OrderCancellationRequestController extends Controller
                 );
             }
         }
-    
+
         /*
          * COMMIT KE DATABASE
          *
@@ -310,34 +358,34 @@ class OrderCancellationRequestController extends Controller
             $paymentSucceeded
         ) {
             $lockedRequest = OrderCancellationRequest::query()
-                ->whereKey($cancellationRequest->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-    
+            ->whereKey($cancellationRequest->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
             if ($lockedRequest->status !== 'pending') {
                 return 'already_reviewed';
             }
-    
+
             $order = Order::query()
-                ->whereKey($lockedRequest->order_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-    
+            ->whereKey($lockedRequest->order_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
             $payment = $order->payment()
-                ->lockForUpdate()
-                ->first();
-    
+            ->lockForUpdate()
+            ->first();
+
             if ($order->status !== 'pending') {
                 return 'order_not_pending';
             }
-    
+
             if ($payment) {
                 if ($payment->status === 'succeeded') {
                     /**
-                     * Database adalah sumber status terkini.
-                     * Jangan menimpa succeeded dengan hasil pre-flight provider
-                     * yang mungkin sudah kedaluwarsa.
-                     */
+                    * Database adalah sumber status terkini.
+                    * Jangan menimpa succeeded dengan hasil pre-flight provider
+                    * yang mungkin sudah kedaluwarsa.
+                    */
                     $paymentSucceeded = true;
                     $payment->paid_at = $payment->paid_at ?? now();
                     $payment->save();
@@ -349,25 +397,24 @@ class OrderCancellationRequestController extends Controller
                     $payment->status = 'succeeded';
                     $payment->paid_at = $payment->paid_at ?? now();
                     $payment->save();
-                } elseif (in_array($payment->status,['failed', 'expired', 'canceled'],true)) {
+                } elseif (in_array($payment->status, ['failed', 'expired', 'canceled'], true)) {
                     // Sudah terminal; tidak perlu membatalkan lagi.
                 } elseif ($payment->provider === 'stripe') {
                     if (! $stripeCancellationConfirmed) {
                         return 'payment_not_safe';
                     }
-    
+
                     $payment->status = 'canceled';
                     $payment->save();
                 } elseif ($payment->provider === 'midtrans') {
                     if (! $midtransCancellationConfirmed) {
                         return 'payment_not_safe';
                     }
-    
+
                     $payment->status = 'canceled';
                     $payment->save();
                 } elseif (
-                    $payment->payment_method === 'cod'
-                    && $payment->status === 'pending'
+                    $payment->payment_method === 'cod' && $payment->status === 'pending'
                 ) {
                     $payment->status = 'canceled';
                     $payment->transaction_status = 'canceled';
@@ -376,73 +423,72 @@ class OrderCancellationRequestController extends Controller
                     return 'payment_not_safe';
                 }
             }
-    
+
             /**
-             * VariantInventoryService menangani seluruh item order.
-             * Pemanggilan cukup satu kali dalam transaksi.
-             */
+            * VariantInventoryService menangani seluruh item order.
+            * Pemanggilan cukup satu kali dalam transaksi.
+            */
             app(VariantInventoryService::class)->cancelStockForOrder($order);
-            
+
             $order->update(['status' => 'canceled']);
-    
+
             $lockedRequest->update([
                 'status' => 'approved',
                 'admin_note' => $validated['admin_note'] ?? null,
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
             ]);
-    
+
             return $lockedRequest->id;
         });
-    
+
         if ($result !== $cancellationRequest->id) {
             $message = match ($result) {
                 'already_reviewed' =>
-                    'Permintaan ini sudah ditinjau sebelumnya.',
+                'Permintaan ini sudah ditinjau sebelumnya.',
                 'order_not_pending' =>
-                    'Pesanan tidak lagi pending. Periksa status terbaru sebelum melanjutkan.',
+                'Pesanan tidak lagi pending. Periksa status terbaru sebelum melanjutkan.',
                 'payment_not_safe' =>
-                    'Pembayaran belum dapat dipastikan terminal. Permintaan tetap pending untuk pemeriksaan ulang.',
+                'Pembayaran belum dapat dipastikan terminal. Permintaan tetap pending untuk pemeriksaan ulang.',
                 default =>
                     'Permintaan pembatalan belum dapat diselesaikan.',
-            };
-    
-            return back()->with('error', $message);
-        }
-    
-        /*
+                };
+
+                return back()->with('error', $message);
+            }
+
+            /*
          * Refund diproses setelah commit agar tidak menahan database lock
          * selama komunikasi dengan provider.
          */
-        $cancellationRequest->refresh()->load('order.payment');
-    
-        $order = $cancellationRequest->order;
-        $payment = $order?->payment;
-    
-        if (
-            $order?->status === 'canceled'
-            && $payment?->status === 'succeeded'
-        ) {
-            try {
-                app(\App\Services\RefundService::class)
+            $cancellationRequest->refresh()->load('order.payment');
+
+            $order = $cancellationRequest->order;
+            $payment = $order?->payment;
+
+            if (
+                $order?->status === 'canceled' && $payment?->status === 'succeeded'
+            ) {
+                try {
+                    app(\App\Services\RefundService::class)
                     ->requestLateCanceledOrderRefund($order, $payment);
-            } catch (\Throwable $e) {
-                /*
+                } catch (\Throwable $e) {
+                    /*
                  * Order sudah canceled. Catat kegagalan pembuatan permintaan
                  * refund agar dapat diperiksa dan diperbaiki secara operasional.
                  */
-                \Illuminate\Support\Facades\Log::error(
-                    'Cancellation approved but refund request creation failed.',
-                    [
-                        'order_id' => $order->id,
-                        'payment_id' => $payment->id,
-                        'cancellation_request_id' => $cancellationRequest->id,
-                        'exception' => get_class($e),
-                        'message' => $e->getMessage(),
-                    ]
-                );
-    
-                return redirect()
+                    \Illuminate\Support\Facades\Log::error(
+                        'Cancellation approved but refund request creation failed.',
+                        [
+                            'order_id' => $order->id,
+                            'payment_id' => $payment->id,
+                            'cancellation_request_id' => $cancellationRequest->id,
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                        ]
+                    );
+
+                    return redirect()
                     ->route(
                         'admin.order-cancellation-requests.show',
                         $cancellationRequest
@@ -451,17 +497,17 @@ class OrderCancellationRequestController extends Controller
                         'warning',
                         'Pembatalan disetujui, tetapi permintaan refund belum berhasil dibuat. Perlu tindak lanjut admin.'
                     );
+                }
             }
-        }
-    
-        \App\Models\User::find($cancellationRequest->user_id)
+
+            \App\Models\User::find($cancellationRequest->user_id)
             ?->notify(
                 new \App\Notifications\OrderCancellationDecisionNotification(
                     $cancellationRequest
                 )
             );
-    
-        return redirect()
+
+            return redirect()
             ->route(
                 'admin.order-cancellation-requests.show',
                 $cancellationRequest
@@ -469,8 +515,8 @@ class OrderCancellationRequestController extends Controller
             ->with(
                 'success',
                 $payment?->status === 'succeeded'
-                    ? 'Pembatalan disetujui. Permintaan refund telah dibuat untuk ditinjau.'
-                    : 'Permintaan pembatalan disetujui dan pesanan dibatalkan.'
+                ? 'Pembatalan disetujui. Permintaan refund telah dibuat untuk ditinjau.'
+                : 'Permintaan pembatalan disetujui dan pesanan dibatalkan.'
             );
+        }
     }
-}

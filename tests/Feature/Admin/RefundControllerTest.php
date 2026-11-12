@@ -15,7 +15,7 @@ use Tests\TestCase;
 class RefundControllerTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected Tenant $tenant;
 
     protected function setUp(): void
@@ -114,11 +114,11 @@ class RefundControllerTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.refunds.index'));
 
         $response->assertOk()
-            ->assertViewIs('admin.refunds.index')
-            ->assertSee($orderNumber)
-            ->assertSee('Rp 50.000')
-            ->assertSee('Stripe')
-            ->assertSee('Requested');
+        ->assertViewIs('admin.refunds.index')
+        ->assertSee($orderNumber)
+        ->assertSee('Rp 50.000')
+        ->assertSee('Stripe')
+        ->assertSee('Requested');
     }
 
     public function test_admin_can_view_refund_detail(): void
@@ -134,17 +134,17 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this
-            ->actingAs($admin)
-            ->get(
-                route('admin.refunds.show', $refund)
-            );
+        ->actingAs($admin)
+        ->get(
+            route('admin.refunds.show', $refund)
+        );
 
         $response
-            ->assertOk()
-            ->assertViewIs('admin.refunds.show')
-            ->assertSee('Barang tidak sesuai')
-            ->assertSee('Rp 75.000')
-            ->assertSee('Requested');
+        ->assertOk()
+        ->assertViewIs('admin.refunds.show')
+        ->assertSee('Barang tidak sesuai')
+        ->assertSee('Rp 75.000')
+        ->assertSee('Requested');
     }
 
     public function test_non_admin_cannot_access_refund_management(): void
@@ -187,14 +187,14 @@ class RefundControllerTest extends TestCase
     public function test_admin_can_filter_refunds_by_status(): void
     {
         $admin = $this->createTenantAdmin();
-        
+
         $requested = $this->createRefund(
             admin: $admin,
             orderNumber: 'ORD-REQUESTED',
             amount: 50000,
             status: Refund::STATUS_REQUESTED,
         );
-        
+
         $requestedOrderNumber = $requested->order->order_number;
 
         $completed = $this->createRefund(
@@ -203,16 +203,16 @@ class RefundControllerTest extends TestCase
             amount: 25000,
             status: Refund::STATUS_COMPLETED,
         );
-        
+
         $completedOrderNumber = $completed->order->order_number;
-        
+
         $response = $this->actingAs($admin)->get(route('admin.refunds.index', [
             'status' => Refund::STATUS_REQUESTED,
         ]));
-        
+
         $response->assertOk()
-            ->assertSee($requestedOrderNumber)
-            ->assertDontSee($completedOrderNumber);
+        ->assertSee($requestedOrderNumber)
+        ->assertDontSee($completedOrderNumber);
     }
 
     public function test_admin_can_search_refunds_by_order_number(): void
@@ -225,7 +225,7 @@ class RefundControllerTest extends TestCase
             amount: 50000,
             status: Refund::STATUS_REQUESTED,
         );
-        
+
         $matchedOrderNumber = $matched->order->orderNumber;
 
         $notMatched = $this->createRefund(
@@ -234,17 +234,17 @@ class RefundControllerTest extends TestCase
             amount: 75000,
             status: Refund::STATUS_REQUESTED,
         );
-        
+
         $notMatchedOrderNumber = $notMatched->order->orderNumber;
 
         $response = $this->actingAs($admin)
-                        ->get(route('admin.refunds.index', [
-                            'search' => 'ORD-SEARCH-001',
-                        ]));
+        ->get(route('admin.refunds.index', [
+            'search' => 'ORD-SEARCH-001',
+        ]));
 
         $response->assertOk()
-                ->assertSee($matchedOrderNumber)
-                ->assertDontSee($notMatchedOrderNumber);
+        ->assertSee($matchedOrderNumber)
+        ->assertDontSee($notMatchedOrderNumber);
     }
 
     public function test_admin_can_search_refunds_by_customer_name(): void
@@ -257,7 +257,7 @@ class RefundControllerTest extends TestCase
             customerName: 'Budi Refund',
             amount: 50000,
         );
-        
+
         $matchedOrderNumber = $matched->order->orderNumber;
 
         $notMatched = $this->createRefund(
@@ -266,17 +266,17 @@ class RefundControllerTest extends TestCase
             customerName: 'Andi Customer',
             amount: 75000,
         );
-        
+
         $notMatchedOrderNumber = $notMatched->order->orderNumber;
 
         $response = $this->actingAs($admin)
-                    ->get(route('admin.refunds.index', [
-                        'search' => 'Budi Refund',
-                    ]));
+        ->get(route('admin.refunds.index', [
+            'search' => 'Budi Refund',
+        ]));
 
         $response->assertOk()
-                ->assertSee($matchedOrderNumber)
-                ->assertDontSee($notMatchedOrderNumber);
+        ->assertSee($matchedOrderNumber)
+        ->assertDontSee($notMatchedOrderNumber);
     }
 
     public function test_admin_can_process_requested_cod_refund(): void
@@ -293,9 +293,9 @@ class RefundControllerTest extends TestCase
         );
 
         $response = $this->actingAs($admin)
-                        ->post(
-                            route('admin.refunds.process', $refund)
-                        );
+        ->post(
+            route('admin.refunds.process', $refund)
+        );
 
         $response->assertRedirect(
             route('admin.refunds.show', $refund)
@@ -467,5 +467,83 @@ class RefundControllerTest extends TestCase
             'id' => $refund->id,
             'status' => Refund::STATUS_REQUESTED,
         ]);
+    }
+
+    public function test_admin_cannot_access_refund_owned_by_another_tenant(): void
+    {
+        config(['operational.mode' => 'multi_tenant']);
+
+        $admin = $this->createTenantAdmin();
+
+        $otherTenant = Tenant::factory()->create([
+            'status' => 'active',
+        ]);
+
+        $context = app(TenantContext::class);
+        $context->set($otherTenant);
+
+        $order = Order::factory()->create([
+            'user_id' => $admin->id,
+            'status' => 'completed',
+            'total' => 150000,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'order_id' => $order->id,
+            'provider' => 'stripe',
+            'status' => 'succeeded',
+            'gross_amount' => 150000,
+        ]);
+
+        $refund = Refund::create([
+            'order_id' => $order->id,
+            'payment_id' => $payment->id,
+            'amount' => 50000,
+            'currency' => 'IDR',
+            'reason' => 'Foreign tenant refund',
+            'status' => Refund::STATUS_REQUESTED,
+            'provider' => 'stripe',
+            'requested_at' => now(),
+        ]);
+
+        $context->set($this->tenant);
+
+        $this->actingAs($admin)
+        ->get(route('admin.refunds.show', $refund))
+        ->assertNotFound();
+
+        $this->actingAs($admin)
+        ->post(route('admin.refunds.process', $refund))
+        ->assertNotFound();
+
+        $this->actingAs($admin)
+        ->post(route('admin.refunds.reject', $refund))
+        ->assertNotFound();
+
+        $this->assertDatabaseHas('refunds', [
+            'id' => $refund->id,
+            'status' => Refund::STATUS_REQUESTED,
+        ]);
+    }
+
+    public function test_inventory_manager_without_refunds_permission_cannot_manage_refunds(): void
+    {
+        config(['operational.mode' => 'multi_tenant']);
+
+        $manager = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $manager->id,
+            'role' => TenantMembership::ROLE_INVENTORY_MANAGER,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+
+        $this->actingAs($manager)
+        ->get(route('admin.refunds.index'))
+        ->assertForbidden();
     }
 }
