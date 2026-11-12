@@ -8,6 +8,7 @@ use App\Models\Store;
 use App\Models\StoreDomain;
 use App\Models\SubCategory;
 use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
 use App\Models\TenantMembership;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,14 +50,28 @@ class FoundationTest extends TestCase
         }
         $this->assertTrue(Schema::hasColumn('product_variant_attribute_values', 'tenant_id'));
     }
-
+    
     public function test_same_category_slug_can_exist_in_different_tenants(): void
     {
         config(['operational.mode' => 'multi_tenant']);
+    
         $tenantA = $this->createTenant(User::factory()->create(), 'Tenant A', 'tenant-a');
         $tenantB = $this->createTenant(User::factory()->create(), 'Tenant B', 'tenant-b');
-        Category::create(['tenant_id' => $tenantA->id, 'name' => 'Shoes', 'slug' => 'shoes']);
-        Category::create(['tenant_id' => $tenantB->id, 'name' => 'Shoes', 'slug' => 'shoes']);
+    
+        $context = app(TenantContext::class);
+    
+        $context->run($tenantA, fn () => Category::create([
+            'tenant_id' => $tenantA->id,
+            'name' => 'Shoes',
+            'slug' => 'shoes',
+        ]));
+    
+        $context->run($tenantB, fn () => Category::create([
+            'tenant_id' => $tenantB->id,
+            'name' => 'Shoes',
+            'slug' => 'shoes',
+        ]));
+    
         $this->assertDatabaseCount('categories', 2);
     }
 

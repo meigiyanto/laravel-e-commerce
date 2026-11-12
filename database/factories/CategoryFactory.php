@@ -19,7 +19,7 @@ class CategoryFactory extends Factory
         $name = fake()->unique()->words(2, true);
 
         return [
-            'tenant_id' => fn () => app(TenantContext::class)->current()?->getKey() ?? Tenant::factory(),
+            'tenant_id' => fn () => config('operational.mode') === 'multi_tenant' ? app(TenantContext::class)->require()->getKey() : null,
             'name' => $name,
             'slug' => str()->slug($name),
             'image' => null,

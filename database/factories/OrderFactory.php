@@ -19,7 +19,7 @@ class OrderFactory extends Factory
         $shippingCost = fake()->randomFloat(2, 0, 50000);
 
         return [
-            'tenant_id' => fn () => app(TenantContext::class)->current()?->getKey() ?? Tenant::factory(),
+            'tenant_id' => fn () => config('operational.mode') === 'multi_tenant' ? app(TenantContext::class)->require()->getKey() : null,
             'user_id' => User::factory(),
             'order_number' => 'ORD-'.fake()->unique()->numerify('########'),
             'status' => 'pending',

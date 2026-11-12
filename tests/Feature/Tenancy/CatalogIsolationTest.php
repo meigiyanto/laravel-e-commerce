@@ -13,7 +13,6 @@ use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use LogicException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 use Illuminate\Database\QueryException;
@@ -31,6 +30,11 @@ class CatalogIsolationTest extends TestCase
         app(TenantContext::class)->set($tenant);
     }
 
+    private function runForTenant(Tenant $tenant, callable $callback): mixed
+    {
+        return app(TenantContext::class)->run($tenant, fn () => $callback());
+    }
+
     private function createTenant(string $name, string $slug): Tenant
     {
         return Tenant::create([
@@ -43,31 +47,33 @@ class CatalogIsolationTest extends TestCase
 
     private function createCategory(Tenant $tenant, string $name): Category
     {
-        return Category::create([
+        return $this->runForTenant($tenant, fn () => Category::create([
             'tenant_id' => $tenant->id,
             'name' => $name,
             'slug' => strtolower(str_replace(' ', '-', $name)),
-        ]);
+        ]));
     }
 
     private function createProduct(Tenant $tenant, Category $category): Product
     {
-        $subCategory = SubCategory::create([
-            'tenant_id' => $tenant->id,
-            'category_id' => $category->id,
-            'name' => 'Sub '.$tenant->slug,
-            'slug' => 'sub-'.$tenant->slug,
-        ]);
+        return $this->runForTenant($tenant, function () use ($tenant, $category) {
+            $subCategory = SubCategory::create([
+                'tenant_id' => $tenant->id,
+                'category_id' => $category->id,
+                'name' => 'Sub '.$tenant->slug,
+                'slug' => 'sub-'.$tenant->slug,
+            ]);
 
-        return Product::create([
-            'tenant_id' => $tenant->id,
-            'category_id' => $category->id,
-            'sub_category_id' => $subCategory->id,
-            'name' => 'Product '.$tenant->slug,
-            'slug' => 'product-'.$tenant->slug,
-            'price' => 10000,
-            'stock' => 5,
-        ]);
+            return Product::create([
+                'tenant_id' => $tenant->id,
+                'category_id' => $category->id,
+                'sub_category_id' => $subCategory->id,
+                'name' => 'Product '.$tenant->slug,
+                'slug' => 'product-'.$tenant->slug,
+                'price' => 10000,
+                'stock' => 5,
+            ]);
+        });
     }
 
     public function test_catalog_queries_return_empty_without_tenant_context(): void
@@ -119,32 +125,42 @@ class CatalogIsolationTest extends TestCase
             Product::query()->pluck('id')->all()
         );
     }
-
+    
     public function test_product_cannot_use_another_tenants_category(): void
     {
-        $tenantA = $this->createTenant('Tenant A', 'tenant-a');
-        $tenantB = $this->createTenant('Tenant B', 'tenant-b');
-
-        $categoryB = $this->createCategory($tenantB, 'Shoes B');
-
-        $subCategoryB = SubCategory::create([
-            'tenant_id' => $tenantB->id,
-            'category_id' => $categoryB->id,
-            'name' => 'Sub B',
-            'slug' => 'sub-b',
-        ]);
-
-        $this->expectException(QueryException::class);
-
-        Product::create([
-            'tenant_id' => $tenantA->id,
-            'category_id' => $categoryB->id,
-            'sub_category_id' => $subCategoryB->id,
-            'name' => 'Invalid Product',
-            'slug' => 'invalid-product',
-            'price' => 10000,
-            'stock' => 1,
-        ]);
+        $tenantA = Tenant::factory()->create();
+        $tenantB = Tenant::factory()->create();
+    
+        $categoryB = app(TenantContext::class)->run($tenantB, function () use ($tenantB) {
+            $category = Category::create([
+                'tenant_id' => $tenantB->id,
+                'name' => 'Category B',
+                'slug' => 'category-b',
+            ]);
+    
+            SubCategory::create([
+                'tenant_id' => $tenantB->id,
+                'category_id' => $category->id,
+                'name' => 'SubCategory B',
+                'slug' => 'subcategory-b',
+            ]);
+    
+            return $category;
+        });
+    
+        app(TenantContext::class)->run($tenantA, function () use ($tenantA, $categoryB) {
+            $this->expectException(\LogicException::class);
+    
+            Product::create([
+                'tenant_id' => $tenantA->id,
+                'category_id' => $categoryB->id,
+                'sub_category_id' => SubCategory::where('category_id', $categoryB->id)->value('id'),
+                'name' => 'Product A',
+                'slug' => 'product-a',
+                'price' => 10000,
+                'stock' => 10,
+            ]);
+        });
     }
 
     public function test_verified_domain_resolves_correct_tenant_and_clears_context(): void

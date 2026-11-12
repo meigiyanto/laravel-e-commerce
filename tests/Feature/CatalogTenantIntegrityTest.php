@@ -46,17 +46,9 @@ class CatalogTenantIntegrityTest extends TestCase
 
     private function createCategory(Tenant $tenant, string $name): Category
     {
-        /*
-        return Category::create([
-            'tenant_id' => $tenant->id,
-            'name' => $name,
-            'slug' => strtolower(str_replace(' ', '-', $name)),
-        ]);
-        */
-
         return $this->runForTenant($tenant, fn () => Category::create([
             'tenant_id' => $tenant->id,
-            'name' => $name,b
+            'name' => $name,
             'slug' => strtolower(str_replace(' ', '-', $name)),
         ]));
     }
@@ -65,7 +57,6 @@ class CatalogTenantIntegrityTest extends TestCase
         Tenant $tenant,
         Category $category
     ): SubCategory {
-        // return SubCategory::create([
         return $this->runForTenant($tenant, fn () => SubCategory::create([
             'tenant_id' => $tenant->id,
             'category_id' => $category->id,
@@ -80,7 +71,6 @@ class CatalogTenantIntegrityTest extends TestCase
     ): Product {
         $subCategory = $this->createSubCategory($tenant, $category);
 
-        // return Product::create([
         return $this->runForTenant($tenant, fn () => Product::create([
             'tenant_id' => $tenant->id,
             'category_id' => $category->id,
@@ -96,7 +86,6 @@ class CatalogTenantIntegrityTest extends TestCase
         Tenant $tenant,
         Product $product
     ): ProductVariant {
-        // return ProductVariant::create([
         return $this->runForTenant($tenant, fn () => ProductVariant::create([
             'tenant_id' => $tenant->id,
             'product_id' => $product->id,
@@ -116,19 +105,6 @@ class CatalogTenantIntegrityTest extends TestCase
         $categoryB = $this->createCategory($tenantB, 'Category B');
         $subCategoryB = $this->createSubCategory($tenantB, $categoryB);
 
-        /*
-        $this->expectException(QueryException::class);
-        Product::create([
-            'tenant_id' => $tenantA->id,
-            'category_id' => $categoryB->id,
-            'sub_category_id' => $subCategoryB->id,
-            'name' => 'Invalid Product',
-            'slug' => 'invalid-product',
-            'price' => 100000,
-            'stock' => 1,
-        ]);
-        */
-        
         $this->expectException(LogicException::class);
 
         $this->runForTenant($tenantA, fn () => Product::create([
@@ -150,9 +126,8 @@ class CatalogTenantIntegrityTest extends TestCase
         $categoryB = $this->createCategory($tenantB, 'Category B');
         $productB = $this->createProduct($tenantB, $categoryB);
 
-        $this->expectException(QueryException::class);
+        $this->expectException(\LogicException::class);
 
-        // ProductVariant::create([
         $this->runForTenant($tenantA, fn () => ProductVariant::create([
             'tenant_id' => $tenantA->id,
             'product_id' => $productB->id,
@@ -182,25 +157,25 @@ class CatalogTenantIntegrityTest extends TestCase
             'updated_at' => now(),
         ]);
     }
-
+    
     public function test_attribute_value_cannot_be_attached_to_variant_from_another_tenant(): void
     {
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
-
+    
         $categoryA = $this->createCategory($tenantA, 'Category A');
         $productA = $this->createProduct($tenantA, $categoryA);
         $variantA = $this->createVariant($tenantA, $productA);
-
-        $attributeB = Attribute::create([
+    
+        $attributeB = $this->runForTenant($tenantB, fn () => Attribute::create([
             'tenant_id' => $tenantB->id,
             'name' => 'Color',
             'slug' => 'color',
             'type' => 'select',
             'is_variant' => true,
             'sort_order' => 0,
-        ]);
-
+        ]));
+    
         $attributeValueB = DB::table('attribute_values')->insertGetId([
             'tenant_id' => $tenantB->id,
             'attribute_id' => $attributeB->id,
@@ -210,9 +185,9 @@ class CatalogTenantIntegrityTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-
+    
         $this->expectException(QueryException::class);
-
+    
         DB::table('product_variant_attribute_values')->insert([
             'tenant_id' => $tenantA->id,
             'product_variant_id' => $variantA->id,
@@ -221,36 +196,32 @@ class CatalogTenantIntegrityTest extends TestCase
             'updated_at' => now(),
         ]);
     }
-
+    
     public function test_same_sku_can_exist_in_different_tenants(): void
     {
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
-
+    
         $categoryA = $this->createCategory($tenantA, 'Category A');
         $categoryB = $this->createCategory($tenantB, 'Category B');
-
+    
         $productA = $this->createProduct($tenantA, $categoryA);
         $productB = $this->createProduct($tenantB, $categoryB);
-
-        // ProductVariant::create([
-        $this->runForTenant($tenantA, fn () => Product::create([
+    
+        $this->runForTenant($tenantA, fn () => ProductVariant::create([
             'tenant_id' => $tenantA->id,
             'product_id' => $productA->id,
-            'category_id' => $categoryA->id,
             'sku' => 'SHARED-SKU',
             'price' => 100000,
         ]));
-
-        // ProductVariant::create([
-        $this->runForTenant($tenantA, fn () => ProductVariant::create([
+    
+        $this->runForTenant($tenantB, fn () => ProductVariant::create([
             'tenant_id' => $tenantB->id,
             'product_id' => $productB->id,
-            'category_id' => $categoryB->id,
             'sku' => 'SHARED-SKU',
             'price' => 100000,
         ]));
-
+    
         $this->assertDatabaseCount('product_variants', 2);
     }
 
@@ -259,14 +230,12 @@ class CatalogTenantIntegrityTest extends TestCase
         $tenantA = $this->createTenant('Tenant A');
         $tenantB = $this->createTenant('Tenant B');
 
-        // Category::create([
         $this->runForTenant($tenantA, fn () => Category::create([
             'tenant_id' => $tenantA->id, 
             'name' => 'Shoes', 
             'slug' => 'shoes'
         ]));
         
-        // Category::create([
         $this->runForTenant($tenantB, fn () => Category::create([
             'tenant_id' => $tenantB->id, 
             'name' => 'Shoes', 
@@ -275,11 +244,6 @@ class CatalogTenantIntegrityTest extends TestCase
 
         $categoryA = $this->createCategory($tenantA, 'Fashion');
         $categoryB = $this->createCategory($tenantB, 'Fashion');
-        
-        /*
-        SubCategory::create(['tenant_id' => $tenantA->id, 'category_id' => $categoryA->id, 'name' => 'Sneakers', 'slug' => 'sneakers']);
-        SubCategory::create(['tenant_id' => $tenantB->id, 'category_id' => $categoryB->id, 'name' => 'Sneakers', 'slug' => 'sneakers']);
-        */
         
         $this->runForTenant($tenantA, fn () => SubCategory::create([
             'tenant_id' => $tenantA->id, 
@@ -298,7 +262,6 @@ class CatalogTenantIntegrityTest extends TestCase
         $subA = $this->createSubCategory($tenantA, $categoryA);
         $subB = $this->createSubCategory($tenantB, $categoryB);
         
-        // Product::create([
         $this->runForTenant($tenantA, fn () => Product::create([
             'tenant_id' => $tenantA->id, 
             'category_id' => $categoryA->id, 
@@ -309,7 +272,6 @@ class CatalogTenantIntegrityTest extends TestCase
             'stock' => 1
         ]));
         
-        // Product::create([
         $this->runForTenant($tenantB, fn () => Product::create([
             'tenant_id' => $tenantB->id, 
             'category_id' => $categoryB->id, 
@@ -321,8 +283,23 @@ class CatalogTenantIntegrityTest extends TestCase
         ]));
         
         
-        Attribute::create(['tenant_id' => $tenantA->id, 'name' => 'Color', 'slug' => 'color', 'type' => 'select', 'is_variant' => true, 'sort_order' => 0]);
-        Attribute::create(['tenant_id' => $tenantB->id, 'name' => 'Color', 'slug' => 'color', 'type' => 'select', 'is_variant' => true, 'sort_order' => 0]);
+        $this->runForTenant($tenantA, fn () => Attribute::create([
+            'tenant_id' => $tenantA->id, 
+            'name' => 'Color', 
+            'slug' => 'color', 
+            'type' => 'select', 
+            'is_variant' => true, 
+            'sort_order' => 0
+        ]));
+        
+        $this->runForTenant($tenantB, fn () => Attribute::create([
+            'tenant_id' => $tenantB->id, 
+            'name' => 'Color', 
+            'slug' => 'color', 
+            'type' => 'select', 
+            'is_variant' => true, 
+            'sort_order' => 0
+        ]));
 
         $this->assertSame(2, DB::table('categories')->where('slug', 'shoes')->count());
         $this->assertSame(2, DB::table('sub_categories')->where('slug', 'sneakers')->count());
@@ -340,7 +317,6 @@ class CatalogTenantIntegrityTest extends TestCase
         $productA = $this->createProduct($tenantA, $categoryA);
         $productB = $this->createProduct($tenantB, $categoryB);
 
-        // ProductVariant::create([
         $this->runForTenant($tenantA, fn () => ProductVariant::create([
             'tenant_id' => $tenantA->id,
             'product_id' => $productA->id, 
@@ -349,7 +325,6 @@ class CatalogTenantIntegrityTest extends TestCase
             'price' => 100000
         ]));
         
-        // ProductVariant::create([
         $this->runForTenant($tenantB, fn () => ProductVariant::create([
             'tenant_id' => $tenantB->id, 
             'product_id' => $productB->id, 
@@ -367,7 +342,6 @@ class CatalogTenantIntegrityTest extends TestCase
         $category = $this->createCategory($tenant, 'Category A');
         $product = $this->createProduct($tenant, $category);
 
-        // ProductVariant::create([
         $this->runForTenant($tenant, fn () => ProductVariant::create([
             'tenant_id' => $tenant->id, 
             'product_id' => $product->id, 
@@ -377,7 +351,6 @@ class CatalogTenantIntegrityTest extends TestCase
 
         $this->expectException(QueryException::class);
 
-        // ProductVariant::create([
         $this->runForTenant($tenant, fn () => ProductVariant::create([
             'tenant_id' => $tenant->id, 
             'product_id' => $product->id, 
@@ -392,7 +365,6 @@ class CatalogTenantIntegrityTest extends TestCase
         $category = $this->createCategory($tenant, 'Category A');
         $product = $this->createProduct($tenant, $category);
 
-        // ProductVariant::create([
         $this->runForTenant($tenant, fn () => ProductVariant::create([
             'tenant_id' => $tenant->id, 
             'product_id' => $product->id, 
@@ -403,7 +375,6 @@ class CatalogTenantIntegrityTest extends TestCase
 
         $this->expectException(QueryException::class);
 
-        // ProductVariant::create([
         $this->runForTenant($tenant, fn () => ProductVariant::create([
             'tenant_id' => $tenant->id, 
             'product_id' => $product->id, 
