@@ -1,3 +1,4 @@
+
 <?php
 
 namespace App\Services\Tenancy;
@@ -6,26 +7,34 @@ use App\Models\TenantInvitation;
 use App\Models\TenantMembership;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class OwnerInvitationService
 {
-    public function accept(string $plainToken, User $user): TenantMembership
-    {
+    public function accept(
+        string $plainToken,
+        User $user
+    ): TenantMembership {
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            abort(404);
+        }
+
         return DB::transaction(function () use ($plainToken, $user) {
             $invitation = TenantInvitation::query()
                 ->where('token_hash', hash('sha256', $plainToken))
                 ->lockForUpdate()
                 ->first();
 
-            if (!$invitation || !$invitation->isUsable()) {
+            if (! $invitation || ! $invitation->isUsable()) {
                 throw ValidationException::withMessages([
                     'invitation' => 'Undangan tidak valid atau sudah kedaluwarsa.',
                 ]);
             }
 
-            if (mb_strtolower($user->email) !== mb_strtolower($invitation->email)) {
+            if (
+                mb_strtolower($user->email)
+                !== mb_strtolower($invitation->email)
+            ) {
                 throw ValidationException::withMessages([
                     'email' => 'Email akun tidak cocok dengan email undangan.',
                 ]);

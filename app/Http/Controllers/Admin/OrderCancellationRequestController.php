@@ -132,11 +132,7 @@ class OrderCancellationRequestController extends Controller
         if ($payment) {
             if ($payment->status === 'succeeded') {
                 $paymentSucceeded = true;
-            } elseif (in_array(
-                $payment->status,
-                ['failed', 'expired', 'canceled'],
-                true
-            )) {
+            } elseif (in_array($payment->status, ['failed', 'expired', 'canceled'], true)) {
                 // Pembayaran sudah terminal.
             } elseif ($payment->provider === 'stripe') {
                 if (! $payment->stripe_payment_intent_id) {
@@ -336,19 +332,24 @@ class OrderCancellationRequestController extends Controller
             }
     
             if ($payment) {
-                if ($paymentSucceeded) {
+                if ($payment->status === 'succeeded') {
+                    /**
+                     * Database adalah sumber status terkini.
+                     * Jangan menimpa succeeded dengan hasil pre-flight provider
+                     * yang mungkin sudah kedaluwarsa.
+                     */
+                    $paymentSucceeded = true;
+                    $payment->paid_at = $payment->paid_at ?? now();
+                    $payment->save();
+                } elseif ($paymentSucceeded) {
                     /*
-                     * Jangan mengubah succeeded menjadi canceled.
-                     * Status sukses dipertahankan untuk proses refund.
+                     * Provider mengonfirmasi pembayaran berhasil.
+                     * Simpan status succeeded agar refund dapat dibuat setelah commit.
                      */
                     $payment->status = 'succeeded';
                     $payment->paid_at = $payment->paid_at ?? now();
                     $payment->save();
-                } elseif (in_array(
-                    $payment->status,
-                    ['failed', 'expired', 'canceled'],
-                    true
-                )) {
+                } elseif (in_array($payment->status,['failed', 'expired', 'canceled'],true)) {
                     // Sudah terminal; tidak perlu membatalkan lagi.
                 } elseif ($payment->provider === 'stripe') {
                     if (! $stripeCancellationConfirmed) {
@@ -376,42 +377,12 @@ class OrderCancellationRequestController extends Controller
                 }
             }
     
-            $items = $order->items()
-                ->orderBy('product_id')
-                ->orderBy('product_variant_id')
-                ->orderBy('id')
-                ->get();
-    
-            $productIds = $items->pluck('product_id')
-                ->filter()
-                ->unique()
-                ->sort()
-                ->values();
-    
-            $products = \App\Models\Product::query()
-                ->whereIn('id', $productIds)
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
-    
-            $inventoryService = app(
-                \App\Services\VariantInventoryService::class
-            );
-    
-            foreach ($items as $item) {
-                $product = $products->get($item->product_id);
-    
-                if (! $product) {
-                    throw new \RuntimeException(
-                        "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
-                    );
-                }
-                
-                $inventoryService = app(VariantInventoryService::class);
-                $inventoryService->cancelStockForOrder($order);
-            }
-    
+            /**
+             * VariantInventoryService menangani seluruh item order.
+             * Pemanggilan cukup satu kali dalam transaksi.
+             */
+            app(VariantInventoryService::class)->cancelStockForOrder($order);
+            
             $order->update(['status' => 'canceled']);
     
             $lockedRequest->update([

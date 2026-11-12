@@ -7,6 +7,9 @@ use App\View\Composers\StorefrontComposer;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Models\Inventory;
+use App\Policies\InventoryPolicy;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Inventory::class, InventoryPolicy::class);
+        
         Paginator::useBootstrapFive();
 
         View::composer(

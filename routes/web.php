@@ -63,26 +63,54 @@ Route::get('/cart/drawer', [CartController::class, 'drawer'])->name('cart.drawer
 Route::post('/payment/midtrans/notification', [MidtransPaymentController::class, 'notification'])->name('payment.midtrans.notification');
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
-Route::get('/platform/tenant-access/{token}', [PlatformTenantController::class, 'consume'])->middleware('throttle:10,1')->name('platform.tenant-access.consume');
+Route::middleware(['operational.mode:multi_tenant', 'throttle:10,1'])->get('/platform/tenant-access/{token}', [PlatformTenantController::class, 'consume'])->name('platform.tenant-access.consume');
 
 /*
 |-----------------------------------------------------------|
 | Authenticated User Routes
 |-----------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
+
+/*
+|--------------------------------------------------------------------------
+| Tenant SaaS Routes
+|--------------------------------------------------------------------------
+| Semua endpoint ini hanya aktif ketika aplikasi berjalan sebagai
+| Multi Tenant. Single Store tidak boleh membuat membership,
+| domain tenant, subscription, atau tenant access.
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'verified', 'operational.mode:multi_tenant'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
     Route::get('/{token}', function (string $token) {
         return view('tenant.invitations.accept', compact('token'));
     })->name('show');
+    
     Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
 });
 
-Route::middleware(['auth', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth','verified','operational.mode:multi_tenant'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
+    Route::get('/{token}', function (string $token) {
+        return view('tenant.invitations.accept', compact('token'));
+    })->name('show');
+
+    Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
+});
+
+Route::middleware(['auth', 'operational.mode:multi_tenant', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('/domains', [ManagementController::class, 'createDomain'])->name('domains.store');
     Route::post('/domains/{domain}/verify', [ManagementController::class, 'verifyDomain'])->name('domains.verify');
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+});
+
+Route::middleware(['auth', 'platform.admin', 'operational.mode:multi_tenant'])->prefix('platform')->name('platform.')->group(function () {
+    Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
+    Route::get('/tenants/{tenant}', [PlatformTenantController::class, 'show'])->name('tenants.show');
+    Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
+    Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
+    Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -149,12 +177,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platform.')->group(function () {
     Route::get('/dashboard', [PlatformDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/tenants', [PlatformTenantController::class, 'index'])->name('tenants.index');
-    Route::get('/tenants/{tenant}', [PlatformTenantController::class, 'show'])->name('tenants.show');
-    Route::post('/tenants/{tenant}/enter', [PlatformTenantController::class, 'enter'])->name('tenants.enter');
-    Route::post('/tenants/provision', [ManagementController::class, 'provisionTenant'])->name('tenants.provision');
-    Route::patch('/tenants/{tenant}/status', [ManagementController::class, 'changeTenantStatus'])->name('tenants.status');
-    
+
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->whereNumber('auditLog')->name('audit-logs.show');
     
@@ -176,6 +199,7 @@ Route::middleware(['auth', 'platform.admin'])->prefix('platform')->name('platfor
         Route::post('/assessments/{assessment}/findings',[AssessmentLifecycleController::class, 'storeFinding'])->whereNumber('assessment')->name('assessments.findings.store');
     });
 });
+
 /*
 |-----------------------------------------------------------
 | Admin and Staff Operational Routes

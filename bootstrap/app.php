@@ -4,6 +4,7 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\ResolveTenantFromDomain;
 use App\Http\Middleware\PlatformAdminMiddleware;
+use App\Http\Middleware\RequireOperationalMode;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'tenant.role' => RoleMiddleware::class,
             'platform.admin' => PlatformAdminMiddleware::class,
+            'operational.mode' => RequireOperationalMode::class,
         ]);
         $middleware->redirectGuestsTo(fn (Request $request) =>
             $request->is('platform/*') ? route('platform.login') : ($request->is('admin/*') ? route('admin.login') : route('login'))
