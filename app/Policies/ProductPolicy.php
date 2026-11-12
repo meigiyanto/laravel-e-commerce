@@ -27,27 +27,34 @@ class ProductPolicy
     private function canView(User $user): bool
     {
         return $this->isMultiTenant()
-            ? $user->hasTenantPermission('products.view')
-            : $user->hasAnyRole('admin', 'staff');
+        ? $user->hasTenantPermission('products.view')
+        : $user->hasAnyRole('admin', 'staff');
     }
 
     private function canManage(User $user): bool
     {
         return $this->isMultiTenant()
-            ? $user->hasTenantPermission('products.manage')
-            : $user->hasAnyRole('admin');
+        ? $user->hasTenantPermission('products.manage')
+        : $user->hasAnyRole('admin');
     }
 
     private function canManageInventory(User $user): bool
     {
         return $this->isMultiTenant()
-            ? $user->hasTenantPermission('inventory.manage')
-            : $user->hasAnyRole('admin');
+        ? $user->hasTenantPermission('inventory.manage')
+        : $user->hasAnyRole('admin');
     }
 
     public function viewAny(User $user): bool
     {
         return $this->canView($user);
+    }
+
+    public function viewAnyInventory(User $user): bool
+    {
+        return $this->isMultiTenant()
+        ? $user->hasTenantPermission('inventory.view')
+        : $user->hasAnyRole('admin', 'staff');
     }
 
     public function view(User $user, Product $product): bool

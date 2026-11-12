@@ -322,4 +322,34 @@ class InventoryControllerTest extends TestCase
         $this->assertSame(12, (int) $inventoryB->fresh()->quantity);
         $this->assertSame(17, (int) $product->fresh()->stock);
     }
+
+    public function test_inventory_manager_can_view_inventory_without_product_management_permission(): void
+    {
+        $product = Product::factory()->create(['stock' => 10]);
+
+        $tenant = Tenant::query()->findOrFail($product->tenant_id);
+
+        $manager = User::factory()->create([
+            'role' => 'inventory_manager',
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $manager->id,
+            'role' => TenantMembership::ROLE_INVENTORY_MANAGER,
+            'status' => 'active',
+            'accepted_at' => now(),
+        ]);
+
+        $response = $this
+        ->actingAs($manager)
+        ->get($this->tenantUrl($product, 'admin.inventory.index'));
+
+        $this->activateTenant($product);
+
+        $response
+        ->assertOk()
+        ->assertViewIs('admin.inventory.index')
+        ->assertSee($product->name);
+    }
 }

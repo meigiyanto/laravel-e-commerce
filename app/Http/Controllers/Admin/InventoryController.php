@@ -18,7 +18,7 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
-        Gate::authorize('viewAny', Inventory::class);
+        Gate::authorize('viewAnyInventory', Product::class);
 
         $search = trim((string) $request->input('search', ''));
         $stockStatus = $request->input('stock_status');
