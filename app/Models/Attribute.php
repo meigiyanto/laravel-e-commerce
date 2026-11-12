@@ -10,15 +10,19 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Attribute extends Model
 {
     use BelongsToTenant;
-    protected $fillable = ['tenant_id',
+    protected $fillable = [
+        'tenant_id',
         'name',
         'slug',
         'type',
         'is_variant',
-        'sort_order'];
+        'sort_order'
+    ];
+    
     public function tenant(): BelongsTo {
         return $this->belongsTo(Tenant::class);
     }
+    
     public function values(): HasMany {
         return $this->hasMany(AttributeValue::class);
     }

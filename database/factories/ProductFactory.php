@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Product;
 use App\Models\SubCategory;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\DB;
 
@@ -17,6 +18,7 @@ class ProductFactory extends Factory
         $name = fake()->unique()->words(3, true);
 
         return [
+            'tenant_id' => fn () => app(TenantContext::class)->current()?->getKey() ?? Tenant::factory(),
             'sub_category_id' => SubCategory::factory(),
             'category_id' => fn (array $attributes) => DB::table('sub_categories')->where('id', $attributes['sub_category_id'])->value('category_id'),
             'name' => $name,
