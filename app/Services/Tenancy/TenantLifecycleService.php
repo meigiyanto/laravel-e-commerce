@@ -55,6 +55,23 @@ class TenantLifecycleService
         ) {
             $locked = Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
             $previous = $locked->status;
+            
+            if ($status === 'active') {
+                $store = $locked->store;
+            
+                $hasVerifiedPrimary = $store
+                    && $store->domains()
+                        ->where('verification_status', 'verified')
+                        ->whereNotNull('verified_at')
+                        ->where('is_primary', true)
+                        ->exists();
+            
+                if (! $hasVerifiedPrimary) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Tenant belum dapat diaktifkan. Verifikasi domain primary terlebih dahulu.',
+                    ]);
+                }
+}
 
             $locked->update(['status' => $status]);
 

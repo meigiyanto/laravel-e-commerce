@@ -81,12 +81,10 @@ Route::middleware(['operational.mode:multi_tenant', 'throttle:10,1'])->get('/pla
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'operational.mode:multi_tenant'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
-    Route::get('/{token}', function (string $token) {
-        return view('tenant.invitations.accept', compact('token'));
-    })->name('show');
-    
-    Route::post('/{token}', [ManagementController::class, 'acceptInvitation'])->middleware('throttle:10,1')->name('accept');
+Route::middleware(['auth', 'verified', 'operational.mode:multi_tenant'])->prefix('tenant/setup/{tenant}')->name('tenant.setup.')->group(function () {
+    Route::get('/domain', [ManagementController::class, 'showDomainSetup'])->name('domain.show');
+    Route::post('/domain', [ManagementController::class, 'createDomain'])->middleware('throttle:10,1')->name('domain.store');
+    Route::post('/domain/{domain}/verify', [ManagementController::class, 'verifyDomain'])->middleware('throttle:10,1')->name('domain.verify');
 });
 
 Route::middleware(['auth','verified','operational.mode:multi_tenant'])->prefix('tenant/invitations')->name('tenant.invitations.')->group(function () {
@@ -98,8 +96,6 @@ Route::middleware(['auth','verified','operational.mode:multi_tenant'])->prefix('
 });
 
 Route::middleware(['auth', 'operational.mode:multi_tenant', 'tenant.role:owner,admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::post('/domains', [ManagementController::class, 'createDomain'])->name('domains.store');
-    Route::post('/domains/{domain}/verify', [ManagementController::class, 'verifyDomain'])->name('domains.verify');
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::post('/subscription', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
     Route::post('/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');

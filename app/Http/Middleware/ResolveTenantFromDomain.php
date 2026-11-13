@@ -30,6 +30,10 @@ class ResolveTenantFromDomain
                 $path
             ) !== 1;
         }
+        
+        if ($path === 'tenant/setup' || str_starts_with($path, 'tenant/setup/')) {
+            return true;
+        }
 
         return false;
     }

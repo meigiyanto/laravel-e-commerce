@@ -22,7 +22,7 @@ use Tests\TestCase;
 class AuditLogBusinessFlowTest extends TestCase
 {
     use RefreshDatabase;
-    
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,17 +40,16 @@ class AuditLogBusinessFlowTest extends TestCase
     }
 
     private function tenantWithVerifiedDomain(
-        string $domain = 'shop.example.test'
+        string $domain = 'shop.example.test',
+        string $status = 'active'
     ): Tenant {
-        $tenant = Tenant::factory()->create([
-            'status' => 'active',
-        ]);
+        $tenant = Tenant::factory()->create(['status' => $status]);
 
         $store = Store::create([
             'tenant_id' => $tenant->id,
             'name' => 'Test Store',
             'slug' => 'test-store-'.$tenant->id,
-            'status' => 'active',
+            'status' => $status,
             'settings' => [],
         ]);
 
@@ -154,9 +153,9 @@ class AuditLogBusinessFlowTest extends TestCase
     public function test_status_change_records_previous_and_new_status(): void
     {
         $admin = $this->platformAdmin();
-        $tenant = Tenant::factory()->create([
-            'status' => 'pending',
-        ]);
+
+        // $tenant = $this->tenantWithVerifiedDomain('shop-'.$this->name().'.example.test', 'pending');
+        $tenant = $this->tenantWithVerifiedDomain('status-previous.example.test', 'pending');
 
         app(TenantLifecycleService::class)->activate($tenant, $admin);
 
@@ -174,9 +173,8 @@ class AuditLogBusinessFlowTest extends TestCase
         $this->setAuditRequestContext();
 
         $admin = $this->platformAdmin();
-        $tenant = Tenant::factory()->create([
-            'status' => 'pending',
-        ]);
+        // $tenant = $this->tenantWithVerifiedDomain('shop-'.$this->name().'.example.test', 'pending');
+        $tenant = $this->tenantWithVerifiedDomain('status-actor.example.test', 'pending');
 
         app(TenantLifecycleService::class)->activate($tenant, $admin);
 
@@ -196,9 +194,9 @@ class AuditLogBusinessFlowTest extends TestCase
         $tenant = $this->tenantWithVerifiedDomain();
 
         $response = $this->actingAs($admin)->post(route('platform.tenants.enter', $tenant));
-        
+
         $response->assertRedirect();
-        
+
         $this->assertDatabaseHas('platform_audit_logs', [
             'user_id' => $admin->id,
             'tenant_id' => $tenant->id,
@@ -206,9 +204,9 @@ class AuditLogBusinessFlowTest extends TestCase
         ]);
 
         $log = PlatformAuditLog::query()
-                    ->where('tenant_id', $tenant->id)
-                    ->where('action', PlatformAuditAction::TENANT_ACCESS_REQUESTED)
-                    ->firstOrFail();
+        ->where('tenant_id', $tenant->id)
+        ->where('action', PlatformAuditAction::TENANT_ACCESS_REQUESTED)
+        ->firstOrFail();
 
         $this->assertSame(
             'shop.example.test',
@@ -231,7 +229,7 @@ class AuditLogBusinessFlowTest extends TestCase
         ]);
 
         $response = $this->get('http://shop.example.test/platform/tenant-access/'.$plainToken);
-        
+
         $response->assertRedirect(route('admin.dashboard'));
 
         $this->assertDatabaseHas('platform_audit_logs', [
@@ -241,9 +239,9 @@ class AuditLogBusinessFlowTest extends TestCase
         ]);
 
         $logs = PlatformAuditLog::query()
-                    ->where('action', PlatformAuditAction::TENANT_ACCESS_GRANTED)
-                    ->where('tenant_id', $tenant->id)
-                    ->get();
+        ->where('action', PlatformAuditAction::TENANT_ACCESS_GRANTED)
+        ->where('tenant_id', $tenant->id)
+        ->get();
 
         $this->assertCount(1, $logs);
         $this->assertSame(

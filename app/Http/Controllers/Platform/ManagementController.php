@@ -14,7 +14,7 @@ use App\Services\Tenancy\DomainVerificationService;
 use App\Services\Tenancy\OwnerInvitationService;
 use App\Services\Tenancy\TenantLifecycleService;
 use App\Services\Tenancy\TenantProvisioningService;
-use App\Support\Tenancy\TenantContext;
+// use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -40,10 +40,10 @@ class ManagementController extends Controller
         );
 
         Notification::route('mail', $data['owner_email'])
-            ->notify(new TenantOwnerInvitation(
-                $result['tenant']->name,
-                $result['plain_token']
-            ));
+        ->notify(new TenantOwnerInvitation(
+            $result['tenant']->name,
+            $result['plain_token']
+        ));
 
         return back()->with('success', 'Tenant dibuat dan undangan owner dikirim.');
     }
@@ -53,35 +53,50 @@ class ManagementController extends Controller
         string $token,
         OwnerInvitationService $service
     ): RedirectResponse {
-        $service->accept($token, $request->user());
+        $membership = $service->accept($token, $request->user());
 
         return redirect()
-            ->route('storefront.home')
-            ->with('success', 'Undangan tenant berhasil diterima.');
+        ->route('tenant.setup.domain.show', $membership->tenant_id)
+        ->with('success', 'Undangan diterima. Silakan daftarkan domain toko.');
+    }
+
+    public function showDomainSetup(Request $request, Tenant $tenant) {
+        $this->authorizeTenantSetup($request, $tenant);
+
+        $store = Store::query()
+        ->where('tenant_id', $tenant->id)
+        ->firstOrFail();
+
+        $domains = $store->domains()
+        ->with('verificationChallenge')
+        ->orderByDesc('is_primary')
+        ->latest('id')
+        ->get();
+
+        return view('tenant.setup.domain', compact('tenant', 'store', 'domains'));
     }
 
     public function createDomain(
         Request $request,
+        Tenant $tenant,
         DomainVerificationService $service
     ): RedirectResponse {
-        $tenant = app(TenantContext::class)->require();
-
-        abort_unless(
-            $request->user()->hasTenantRole('owner', 'admin'),
-            403
-        );
+        $this->authorizeTenantSetup($request, $tenant);
 
         $data = $request->validate([
             'domain' => ['required', 'string', 'max:253'],
         ]);
 
         $store = Store::query()
-            ->where('tenant_id', $tenant->id)
-            ->firstOrFail();
+        ->where('tenant_id', $tenant->id)
+        ->firstOrFail();
 
         $challenge = $service->create($store, $data['domain']);
 
-        return back()->with('verification_record', [
+        return redirect()
+        ->route('tenant.setup.domain.show', $tenant)
+        ->with('success', 'Instruksi DNS TXT berhasil dibuat.')
+        ->with('verification_record', [
             'name' => $challenge->record_name,
             'type' => 'TXT',
             'value' => $challenge->record_value,
@@ -91,34 +106,47 @@ class ManagementController extends Controller
 
     public function verifyDomain(
         Request $request,
+        Tenant $tenant,
         StoreDomain $domain,
         DomainVerificationService $service
     ): RedirectResponse {
-        $tenant = app(TenantContext::class)->require();
+        $this->authorizeTenantSetup($request, $tenant);
 
-        abort_unless(
-            $request->user()->hasTenantRole('owner', 'admin'),
-            403
-        );
+        $store = Store::query()
+                    ->where('tenant_id', $tenant->id)
+                    ->firstOrFail();
 
-        abort_unless(
-            (int) $domain->store?->tenant_id === (int) $tenant->id,
-            404
-        );
+        abort_unless((int) $domain->store_id === (int) $store->id, 404);
 
         $challenge = $domain->verificationChallenge;
 
         abort_unless($challenge, 404);
 
-        if (!$service->verify($challenge)) {
+        if (! $service->verify($challenge)) {
             return back()->withErrors([
                 'domain' => 'DNS TXT record belum ditemukan atau sudah kedaluwarsa.',
             ]);
         }
 
-        return back()->with('success', 'Domain berhasil diverifikasi.');
+        return redirect()->route('tenant.setup.domain.show', $tenant)->with('success', 'Domain berhasil diverifikasi. Tunggu aktivasi dari platform administrator.');
     }
 
+    private function authorizeTenantSetup(Request $request, Tenant $tenant): void
+    {
+        abort_unless(
+            in_array($tenant->status, ['pending', 'active'], true),
+            404
+        );
+
+        $membership = $request->user()
+        ->activeTenantMembership((int) $tenant->id);
+
+        abort_unless(
+            $membership && in_array($membership->role, ['owner', 'admin'], true),
+            403
+        );
+    }
+    
     public function changeTenantStatus(
         Request $request,
         Tenant $tenant,
@@ -142,14 +170,13 @@ class ManagementController extends Controller
         return back()->with('success', 'Status tenant berhasil diperbarui.');
     }
 
-    public function plans()
-    {
+    public function plans() {
         return response()->json([
             'plans' => SubscriptionPlan::query()
-                ->where('is_active', true)
-                ->with('features')
-                ->orderBy('sort_order')
-                ->get(),
+            ->where('is_active', true)
+            ->with('features')
+            ->orderBy('sort_order')
+            ->get(),
         ]);
     }
 }

@@ -16,8 +16,7 @@ class DomainVerificationService
         $domain = strtolower(rtrim(trim($domain), '.'));
 
         if (
-            !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
-            || str_contains($domain, '/')
+            !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) || str_contains($domain, '/')
         ) {
             throw ValidationException::withMessages([
                 'domain' => 'Hostname domain tidak valid.',
@@ -64,54 +63,77 @@ class DomainVerificationService
 
     public function verify(DomainVerificationChallenge $challenge): bool
     {
+        $challenge->refresh();
+
         if ($challenge->verified_at) {
             return true;
         }
 
-        if ($challenge->expires_at->isPast()) {
+        if (! $challenge->expires_at || $challenge->expires_at->isPast()) {
             return false;
         }
 
-        $records = @dns_get_record(
-            $challenge->record_name,
-            DNS_TXT
-        );
+        $records = @dns_get_record($challenge->record_name, DNS_TXT);
 
-        if (!is_array($records)) {
+        if (! is_array($records)) {
             return false;
         }
 
         $matched = collect($records)->contains(function ($record) use ($challenge) {
-            $value = $record['txt'] ?? '';
-
-            return hash_equals($challenge->record_value, $value);
+            return hash_equals(
+                $challenge->record_value,
+                (string) ($record['txt'] ?? '')
+            );
         });
 
-        if (!$matched) {
+        if (! $matched) {
             return false;
         }
 
-        DB::transaction(function () use ($challenge) {
+        return DB::transaction(function () use ($challenge) {
             $locked = DomainVerificationChallenge::query()
-                ->lockForUpdate()
-                ->findOrFail($challenge->id);
+            ->lockForUpdate()
+            ->findOrFail($challenge->id);
 
             if ($locked->verified_at) {
-                return;
+                return true;
             }
 
-            $locked->update(['verified_at' => now()]);
+            if (! $locked->expires_at || $locked->expires_at->isPast()) {
+                return false;
+            }
 
             $domain = StoreDomain::query()
-                ->lockForUpdate()
-                ->findOrFail($locked->store_domain_id);
+            ->lockForUpdate()
+            ->findOrFail($locked->store_domain_id);
 
+            $store = Store::query()
+            ->lockForUpdate()
+            ->findOrFail($domain->store_id);
+
+            $hasVerifiedPrimary = $store->domains()
+                ->where('verification_status', 'verified')
+                ->whereNotNull('verified_at')
+                ->where('is_primary', true)
+                ->where('id', '!=', $domain->id)
+                ->exists();
+            
+            $locked->update(['verified_at' => now()]);
+            
+            if (! $hasVerifiedPrimary) {
+                $store->domains()
+                    ->where('is_primary', true)
+                    ->where('id', '!=', $domain->id)
+                    ->update(['is_primary' => false]);
+            }
+            
             $domain->update([
                 'verification_status' => 'verified',
                 'verified_at' => now(),
+                'is_primary' => ! $hasVerifiedPrimary,
             ]);
+            
+            return true;
         });
-
-        return true;
     }
 }
