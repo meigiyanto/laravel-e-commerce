@@ -330,22 +330,6 @@ class VariantInventoryService
 
     public function commitReservation(string $idempotencyKey): InventoryReservation
     {
-        DB::transaction(function () use ($order): void {
-            $lockedOrder = Order::query()
-                ->whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-    
-            $keys = $lockedOrder->reservations()
-                ->orderBy('product_variant_id')
-                ->orderBy('id')
-                ->pluck('idempotency_key');
-    
-            foreach ($keys as $key) {
-                $this->commitReservation($key);
-            }
-        });
-        
         return DB::transaction(function () use ($idempotencyKey) {
             $context = $this->lockReservationContext($idempotencyKey);
     
@@ -415,37 +399,6 @@ class VariantInventoryService
     
     public function releaseReservation(string $idempotencyKey): InventoryReservation
     {
-        DB::transaction(function () use ($order): void {
-            $lockedOrder = Order::query()
-                ->whereKey($order->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-    
-            $keys = $lockedOrder->reservations()
-                ->orderBy('product_variant_id')
-                ->orderBy('id')
-                ->pluck('idempotency_key');
-    
-            foreach ($keys as $key) {
-                $reservation = InventoryReservation::query()
-                    ->where('idempotency_key', $key)
-                    ->firstOrFail();
-    
-                if (
-                    $reservation->status === InventoryReservation::STATUS_RELEASED
-                    || $reservation->status === InventoryReservation::STATUS_COMMITTED
-                ) {
-                    continue;
-                }
-    
-                if ($reservation->status !== InventoryReservation::STATUS_RESERVED) {
-                    throw new \LogicException('Status reservasi tidak dikenal.');
-                }
-    
-                $this->releaseReservation($key);
-            }
-        });
-        
         return DB::transaction(function () use ($idempotencyKey) {
             $context = $this->lockReservationContext($idempotencyKey);
     

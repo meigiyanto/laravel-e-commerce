@@ -18,8 +18,13 @@ class RecoverProcessingRefundsCommand extends Command
         $refunds = $refundService->recoverProcessing();
 
         foreach ($refunds as $refund) {
+            $tenantId = $refund->recovery_tenant_id !== null
+                ? (int) $refund->recovery_tenant_id
+                : null;
+        
             RecoverProcessingRefundJob::dispatch(
-                $refund->id
+                (int) $refund->id,
+                $tenantId
             );
         }
 
