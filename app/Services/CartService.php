@@ -4,15 +4,14 @@ namespace App\Services;
 
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\Product;
 use App\Models\Inventory;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\Tenancy\TenantContext;
-use Illuminate\Support\Facades\DB;
-use App\Services\VariantInventoryService;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CartService
 {
@@ -55,7 +54,7 @@ class CartService
     public function getUserCart(int $userId): Cart
     {
         $query = $this->scopeCartQuery(Cart::query())
-        ->where('user_id', $userId);
+            ->where('user_id', $userId);
 
         $cart = $query->first();
 
@@ -80,19 +79,19 @@ class CartService
     }
 
     /**
-    * Migrasikan item cart user lama yang belum memiliki variant ID.
-    *
-    * Method ini aman dipanggil di dalam transaksi checkout.
-    * Produk dikunci berdasarkan ID secara berurutan sebelum
-    * resolusi varian dan inventory dilakukan.
-    */
+     * Migrasikan item cart user lama yang belum memiliki variant ID.
+     *
+     * Method ini aman dipanggil di dalam transaksi checkout.
+     * Produk dikunci berdasarkan ID secara berurutan sebelum
+     * resolusi varian dan inventory dilakukan.
+     */
     public function normalizeLegacyUserCartItems(Cart $cart): Collection
     {
         return DB::transaction(function () use ($cart) {
             $items = $cart->items()
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
             $legacyItems = $items->whereNull('product_variant_id');
 
@@ -105,17 +104,17 @@ class CartService
             }
 
             $productIds = $legacyItems
-            ->pluck('product_id')
-            ->unique()
-            ->sort()
-            ->values();
+                ->pluck('product_id')
+                ->unique()
+                ->sort()
+                ->values();
 
             $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
             $inventoryService = app(VariantInventoryService::class);
 
@@ -143,13 +142,13 @@ class CartService
     }
 
     /**
-    * Ambil cart guest dari session.
-    *
-    * Format:
-    * [
-    *     product_id => quantity,
-    * ]
-    */
+     * Ambil cart guest dari session.
+     *
+     * Format:
+     * [
+     *     product_id => quantity,
+     * ]
+     */
     public function getGuestCart(): array
     {
         return session()->get('cart',
@@ -175,9 +174,9 @@ class CartService
                     }
 
                     $variant = ProductVariant::query()
-                    ->whereKey($variantId)
-                    ->where('product_id', $productId)
-                    ->first();
+                        ->whereKey($variantId)
+                        ->where('product_id', $productId)
+                        ->first();
 
                     if (! $variant) {
                         continue;
@@ -221,15 +220,16 @@ class CartService
 
             foreach ($normalized as $key => $item) {
                 $variant = ProductVariant::query()
-                ->with('inventory')
-                ->whereKey($item['product_variant_id'])
-                ->where('product_id', $item['product_id'])
-                ->first();
+                    ->with('inventory')
+                    ->whereKey($item['product_variant_id'])
+                    ->where('product_id', $item['product_id'])
+                    ->first();
 
                 $inventory = $variant?->inventory;
 
                 if (! $variant || $variant->status !== 'active' || ! $inventory) {
                     unset($normalized[$key]);
+
                     continue;
                 }
 
@@ -237,6 +237,7 @@ class CartService
 
                 if ($available < 1) {
                     unset($normalized[$key]);
+
                     continue;
                 }
 
@@ -267,14 +268,14 @@ class CartService
     }
 
     /**
-    * Tambahkan produk ke cart.
-    *
-    * Guest:
-    *   disimpan di session.
-    *
-    * User:
-    *   disimpan di database.
-    */
+     * Tambahkan produk ke cart.
+     *
+     * Guest:
+     *   disimpan di session.
+     *
+     * User:
+     *   disimpan di database.
+     */
     public function add(
         Product $product,
         int $quantity = 1,
@@ -324,20 +325,20 @@ class CartService
                 $cart = $this->getUserCart(auth()->id());
 
                 $item = CartItem::query()
-                ->where('cart_id', $cart->id)
-                ->where('product_variant_id', $variant->id)
-                ->lockForUpdate()
-                ->first();
+                    ->where('cart_id', $cart->id)
+                    ->where('product_variant_id', $variant->id)
+                    ->lockForUpdate()
+                    ->first();
 
                 // Item lama tanpa variant_id hanya dapat dipetakan
                 // otomatis jika produk ini memiliki varian tersebut.
                 if (! $item && $variant->is_default) {
                     $item = CartItem::query()
-                    ->where('cart_id', $cart->id)
-                    ->where('product_id', $product->id)
-                    ->whereNull('product_variant_id')
-                    ->lockForUpdate()
-                    ->first();
+                        ->where('cart_id', $cart->id)
+                        ->where('product_id', $product->id)
+                        ->whereNull('product_variant_id')
+                        ->lockForUpdate()
+                        ->first();
 
                     if ($item) {
                         $item->update([
@@ -405,8 +406,8 @@ class CartService
     }
 
     /**
-    * Tambahkan produk ke cart user.
-    */
+     * Tambahkan produk ke cart user.
+     */
     protected function addToUserCart(
         int $userId,
         Product $product,
@@ -416,9 +417,9 @@ class CartService
 
         $cartItem = CartItem::where('cart_id',
             $cart->id)
-        ->where('product_id',
-            $product->id)
-        ->first();
+            ->where('product_id',
+                $product->id)
+            ->first();
 
         $newQuantity = $quantity;
 
@@ -449,8 +450,8 @@ class CartService
     }
 
     /**
-    * Tambahkan produk ke cart guest.
-    */
+     * Tambahkan produk ke cart guest.
+     */
     protected function addToGuestCart(
         Product $product,
         int $quantity
@@ -475,10 +476,10 @@ class CartService
     }
 
     /**
-    * Update item keranjang.
-    * Authenticated menggunakan CartItem.id.
-    * Guest menggunakan ProductVariant.id.
-    */
+     * Update item keranjang.
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
+     */
     public function update(int $itemId, int $quantity): array
     {
         if ($quantity < 1) {
@@ -510,10 +511,9 @@ class CartService
         );
     }
 
-
     /**
-    * Update item database berdasarkan CartItem.id dan pemilik cart.
-    */
+     * Update item database berdasarkan CartItem.id dan pemilik cart.
+     */
     public function updateUserCartItem(
         int $cartItemId,
         int $userId,
@@ -526,25 +526,25 @@ class CartService
         return DB::transaction(function () use ($cartItemId, $userId, $quantity) {
 
             $cart = $this->scopeCartQuery(Cart::query())
-            ->where('user_id', $userId)
-            ->lockForUpdate()
-            ->firstOrFail();
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $item = CartItem::query()
-            ->whereKey($cartItemId)
-            ->where('cart_id', $cart->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($item->product_variant_id) {
                 $variant = ProductVariant::query()
-                ->whereKey($item->product_variant_id)
-                ->where('product_id', $item->product_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+                    ->whereKey($item->product_variant_id)
+                    ->where('product_id', $item->product_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
             } else {
                 $resolved = app(VariantInventoryService::class)
-                ->resolve($item->product);
+                    ->resolve($item->product);
 
                 $variant = $resolved['variant'];
 
@@ -552,9 +552,9 @@ class CartService
             }
 
             $inventory = Inventory::query()
-            ->where('product_variant_id', $variant->id)
-            ->lockForUpdate()
-            ->first();
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
 
             $this->assertVariantCanContainQuantity(
                 $variant,
@@ -570,8 +570,8 @@ class CartService
     }
 
     /**
-    * Update guest cart berdasarkan ProductVariant.id.
-    */
+     * Update guest cart berdasarkan ProductVariant.id.
+     */
     public function updateGuestCartVariant(
         int $variantId,
         int $quantity
@@ -594,15 +594,15 @@ class CartService
             $item = $cart[$key];
 
             $variant = ProductVariant::query()
-            ->whereKey($variantId)
-            ->where('product_id', (int) $item['product_id'])
-            ->lockForUpdate()
-            ->firstOrFail();
+                ->whereKey($variantId)
+                ->where('product_id', (int) $item['product_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $inventory = Inventory::query()
-            ->where('product_variant_id', $variant->id)
-            ->lockForUpdate()
-            ->first();
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
 
             $this->assertVariantCanContainQuantity(
                 $variant,
@@ -619,8 +619,8 @@ class CartService
     }
 
     /**
-    * Validasi status varian dan stok tersedia.
-    */
+     * Validasi status varian dan stok tersedia.
+     */
     private function assertVariantCanContainQuantity(
         ProductVariant $variant,
         ?Inventory $inventory,
@@ -647,8 +647,8 @@ class CartService
     }
 
     /**
-    * Update cart guest.
-    */
+     * Update cart guest.
+     */
     protected function updateGuestCart(
         Product $product,
         int $quantity
@@ -657,7 +657,7 @@ class CartService
 
         $productId = (string) $product->id;
 
-        if (!array_key_exists($productId, $cart)) {
+        if (! array_key_exists($productId, $cart)) {
             throw new \RuntimeException(
                 'Produk tidak ditemukan di keranjang.'
             );
@@ -669,15 +669,16 @@ class CartService
     }
 
     /**
-    * Hapus item keranjang.
-    *
-    * Authenticated menggunakan CartItem.id.
-    * Guest menggunakan ProductVariant.id.
-    */
+     * Hapus item keranjang.
+     *
+     * Authenticated menggunakan CartItem.id.
+     * Guest menggunakan ProductVariant.id.
+     */
     public function remove(int $itemId): void
     {
         if (auth()->check()) {
             $this->removeUserCartItem($itemId, (int) auth()->id());
+
             return;
         }
 
@@ -685,34 +686,34 @@ class CartService
     }
 
     /**
-    * Hapus item database berdasarkan CartItem.id dan pemilik cart.
-    */
+     * Hapus item database berdasarkan CartItem.id dan pemilik cart.
+     */
     public function removeUserCartItem(int $cartItemId, int $userId): void
     {
         DB::transaction(function () use ($cartItemId, $userId) {
-            $cart = Cart::query()
-            ->where('user_id', $userId)
-            ->lockForUpdate()
-            ->firstOrFail();
+            $cart = $this->scopeCartQuery(Cart::query())
+                ->where('user_id', $userId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $item = CartItem::query()
-            ->whereKey($cartItemId)
-            ->where('cart_id', $cart->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+                ->whereKey($cartItemId)
+                ->where('cart_id', $cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $item->delete();
         });
     }
 
     /**
-    * Hapus guest cart berdasarkan ProductVariant.id.
-    *
-    * Kompatibilitas URL lama:
-    * Jika ID tidak ditemukan sebagai variant ID, izinkan
-    * pencarian berdasarkan product ID hanya jika hasilnya
-    * tepat satu item.
-    */
+     * Hapus guest cart berdasarkan ProductVariant.id.
+     *
+     * Kompatibilitas URL lama:
+     * Jika ID tidak ditemukan sebagai variant ID, izinkan
+     * pencarian berdasarkan product ID hanya jika hasilnya
+     * tepat satu item.
+     */
     public function removeGuestCartVariant(int $variantId): void
     {
         $cart = $this->getGuestCart();
@@ -742,19 +743,19 @@ class CartService
     }
 
     /**
-    * Hitung jumlah seluruh item dalam cart.
-    */
+     * Hitung jumlah seluruh item dalam cart.
+     */
     /**
-    * Hitung jumlah seluruh unit produk dalam cart.
-    */
+     * Hitung jumlah seluruh unit produk dalam cart.
+     */
     public function count(): int
     {
         if (auth()->check()) {
             return (int) CartItem::query()
-            ->whereHas('cart', function ($query) {
-                $this->scopeCartQuery($query)->where('user_id', auth()->id());
-            })
-            ->sum('quantity');
+                ->whereHas('cart', function ($query) {
+                    $this->scopeCartQuery($query)->where('user_id', auth()->id());
+                })
+                ->sum('quantity');
         }
 
         $count = 0;
@@ -767,20 +768,20 @@ class CartService
     }
 
     /**
-    * Hitung subtotal cart.
-    */
+     * Hitung subtotal cart.
+     */
     public function total(): float
     {
 
         if (auth()->check()) {
             $cart = $this->scopeCartQuery(Cart::query())
-            ->where('user_id', auth()->id())
-            ->with([
-                'items.product',
-                'items.variant.product',
-                'items.variant.inventory',
-            ])
-            ->first();
+                ->where('user_id', auth()->id())
+                ->with([
+                    'items.product',
+                    'items.variant.product',
+                    'items.variant.inventory',
+                ])
+                ->first();
 
             if (! $cart) {
                 return 0.0;
@@ -842,16 +843,17 @@ class CartService
         }
 
         $variants = empty($variantIds) ? collect() : ProductVariant::query()
-        ->with(['product', 'inventory'])
-        ->whereIn('id', array_unique($variantIds))
-        ->get()
-        ->keyBy('id');
+            ->with(['product', 'inventory'])
+            ->whereIn('id', array_unique($variantIds))
+            ->get()
+            ->keyBy('id');
 
         $fallbackProductIds = [];
 
         foreach ($items as $item) {
             if ($item['variant_id'] < 1) {
                 $fallbackProductIds[] = $item['product_id'];
+
                 continue;
             }
 
@@ -863,9 +865,9 @@ class CartService
         }
 
         $products = empty($fallbackProductIds) ? collect() : Product::query()
-        ->whereIn('id', array_unique($fallbackProductIds))
-        ->get()
-        ->keyBy('id');
+            ->whereIn('id', array_unique($fallbackProductIds))
+            ->get()
+            ->keyBy('id');
 
         $total = 0.0;
 
@@ -888,21 +890,21 @@ class CartService
     }
 
     /**
-    * Gabungkan cart guest ke cart user setelah login.
-    *
-    * Contoh:
-    *
-    * Guest:
-    *   Product A = 2
-    *   Product B = 3
-    *
-    * User:
-    *   Product A = 1
-    *
-    * Hasil:
-    *   Product A = 3
-    *   Product B = 3
-    */
+     * Gabungkan cart guest ke cart user setelah login.
+     *
+     * Contoh:
+     *
+     * Guest:
+     *   Product A = 2
+     *   Product B = 3
+     *
+     * User:
+     *   Product A = 1
+     *
+     * Hasil:
+     *   Product A = 3
+     *   Product B = 3
+     */
     public function mergeGuestCartIntoUserCart(int $userId): void
     {
         $guestCart = $this->normalizeGuestCart();
@@ -915,54 +917,54 @@ class CartService
             $cart = $this->getUserCart($userId);
 
             $cart = Cart::query()
-            ->whereKey($cart->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+                ->whereKey($cart->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             // Kunci item cart lebih dahulu, dengan urutan yang stabil.
             $cartItems = $cart->items()
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
             $productIds = collect($guestCart)
-            ->pluck('product_id')
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->sort()
-            ->values();
+                ->pluck('product_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->sort()
+                ->values();
 
             $variantIds = collect($guestCart)
-            ->pluck('product_variant_id')
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->sort()
-            ->values();
+                ->pluck('product_variant_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->sort()
+                ->values();
 
             // Urutan lock mengikuti jalur checkout: product -> variant -> inventory.
             $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
             $variants = ProductVariant::query()
-            ->whereIn('id', $variantIds)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+                ->whereIn('id', $variantIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
             // Inventory harus dikunci sebelum available quantity dibaca.
             $inventories = Inventory::query()
-            ->whereIn('product_variant_id', $variantIds)
-            ->orderBy('product_variant_id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('product_variant_id');
+                ->whereIn('product_variant_id', $variantIds)
+                ->orderBy('product_variant_id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('product_variant_id');
 
             foreach ($guestCart as $item) {
                 if (! is_array($item)) {
@@ -1014,15 +1016,13 @@ class CartService
                 }
 
                 $cartItem = $cartItems->first(
-                    fn (CartItem $existing) =>
-                    (int) $existing->product_variant_id === $variant->id
+                    fn (CartItem $existing) => (int) $existing->product_variant_id === $variant->id
                 );
 
                 // Migrasikan item lama tanpa variant ID jika varian default cocok.
                 if (! $cartItem && $variant->is_default) {
                     $cartItem = $cartItems->first(
-                        fn (CartItem $existing) =>
-                        (int) $existing->product_id === $product->id && $existing->product_variant_id === null
+                        fn (CartItem $existing) => (int) $existing->product_id === $product->id && $existing->product_variant_id === null
                     );
 
                     if ($cartItem) {
@@ -1063,30 +1063,30 @@ class CartService
     }
 
     /**
-    * Bersihkan cart guest.
-    */
+     * Bersihkan cart guest.
+     */
     public function clearGuestCart(): void
     {
         session()->forget('cart');
     }
 
     /**
-    * Apakah cart guest kosong?
-    */
+     * Apakah cart guest kosong?
+     */
     public function isGuestCartEmpty(): bool
     {
         return empty($this->getGuestCart());
     }
 
     /**
-    * Apakah cart user kosong?
-    */
+     * Apakah cart user kosong?
+     */
     public function isUserCartEmpty(int $userId): bool
     {
         $cart = $this->scopeCartQuery(Cart::query())
-        ->where('user_id',
-            $userId)
-        ->first();
+            ->where('user_id',
+                $userId)
+            ->first();
 
         return ! $cart || ! $cart->items()->exists();
     }
