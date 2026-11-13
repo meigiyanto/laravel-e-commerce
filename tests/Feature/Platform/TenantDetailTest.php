@@ -17,6 +17,15 @@ use Tests\TestCase;
 class TenantDetailTest extends TestCase
 {
     use RefreshDatabase;
+    
+    protected function setUp(): void
+    {
+        parent::setUp();
+    
+        config([
+            'operational.mode' => 'multi_tenant',
+        ]);
+    }
 
     public function test_platform_admin_can_open_tenant_detail(): void
     {
