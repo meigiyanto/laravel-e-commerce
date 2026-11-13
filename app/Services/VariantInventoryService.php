@@ -920,6 +920,47 @@ class VariantInventoryService
             ->lockForUpdate()
             ->get()
             ->keyBy('id');
+            
+            $variants = ProductVariant::query()
+                        ->whereIn(
+                            'id',
+                            $items->pluck('product_variant_id')->filter()->unique()
+                        )
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('id');
+            
+            foreach ($items as $item) {
+                $product = $products->get($item->product_id);
+            
+                if (! $product) {
+                    throw new \RuntimeException(
+                        "Produk {$item->product_id} tidak ditemukan saat membatalkan order."
+                    );
+                }
+            
+                if ($item->quantity < 1) {
+                    throw new \LogicException(
+                        "Jumlah item order {$item->id} tidak valid."
+                    );
+                }
+            
+                if ($item->product_variant_id === null) {
+                    continue;
+                }
+            
+                $variant = $variants->get($item->product_variant_id);
+            
+                if (
+                    ! $variant
+                    || (int) $variant->product_id !== (int) $product->id
+                ) {
+                    throw new \LogicException(
+                        "Varian pada order item {$item->id} tidak dimiliki oleh produk tersebut."
+                    );
+                }
+            }
 
             $reservationsByVariant = $reservations->groupBy(
                 'product_variant_id'
