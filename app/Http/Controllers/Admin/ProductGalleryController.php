@@ -7,13 +7,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Controllers\Admin\Concerns\AuthorizesCatalogManagement;
+use App\Models\Product;
 
 class ProductGalleryController extends Controller
 {
+    use AuthorizesCatalogManagement;
+    
     private const DISK = 'public';
     private const DIRECTORY = 'products';
     private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
     private const MAX_IMAGE_KB = 5120;
+
+    private function scopedProductIds()
+    {
+        return Product::query()->select('id');
+    }
 
     public function index(Request $request)
     {
@@ -26,7 +35,8 @@ class ProductGalleryController extends Controller
         $status = $request->input('status', 'all');
 
         $productNamesByPath = collect();
-
+        
+        /*
         DB::table('product_images')
             ->join('products', 'products.id', '=', 'product_images.product_id')
             ->whereNotNull('product_images.path')
@@ -40,7 +50,16 @@ class ProductGalleryController extends Controller
                         ->push($row->name)->filter()->unique()->values()->all()
                 );
             });
-
+        */
+        
+        DB::table('product_images')
+            ->join('products', 'products.id', '=', 'product_images.product_id')
+            ->whereIn('products.id', $this->scopedProductIds())
+            ->whereNotNull('product_images.path')
+            ->select('product_images.path', 'products.name')
+            ->get();
+        
+        /*
         DB::table('products')
             ->whereNotNull('image')->where('image', '!=', '')
             ->select('image', 'name')->get()
@@ -52,7 +71,15 @@ class ProductGalleryController extends Controller
                         ->push($row->name)->filter()->unique()->values()->all()
                 );
             });
-
+        */
+        
+        DB::table('products')
+            ->whereIn('id', $this->scopedProductIds())
+            ->whereNotNull('image')
+            ->where('image', '!=', '')
+            ->select('image', 'name')
+            ->get();
+        
         $images = collect(Storage::disk(self::DISK)->files(self::DIRECTORY))
             ->filter(fn ($path) => in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), self::ALLOWED_EXTENSIONS, true))
             ->map(function ($path) use ($productNamesByPath) {
@@ -132,16 +159,35 @@ class ProductGalleryController extends Controller
                     $oldPath, $normalizedOldPath, '/' . $normalizedOldPath,
                     'storage/' . $normalizedOldPath, '/storage/' . $normalizedOldPath,
                 ]);
+                
+                /*
                 DB::table('product_images')->whereIn('path', $oldRepresentations)->update([
                     'path' => $normalizedNewPath,
                     'updated_at' => now(),
                 ]);
+                */
+                
+                DB::table('product_images')
+                    ->whereIn('product_id', $this->scopedProductIds())
+                    ->whereIn('path', $oldRepresentations)
+                    ->update([
+                        'path' => $normalizedNewPath,
+                        'updated_at' => now(),
+                    ]);
 
                 // Preserve the legacy representation style in products.image.
-                DB::table('products')->where('image', $oldPath)->update(['image' => $normalizedNewPath]);
-                DB::table('products')->where('image', '/' . $normalizedOldPath)->update(['image' => '/' . $normalizedNewPath]);
-                DB::table('products')->where('image', 'storage/' . $normalizedOldPath)->update(['image' => 'storage/' . $normalizedNewPath]);
-                DB::table('products')->where('image', '/storage/' . $normalizedOldPath)->update(['image' => '/storage/' . $normalizedNewPath]);
+                
+                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', $oldPath)->update(['image' => $normalizedNewPath]);
+                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', '/' . $normalizedOldPath)->update(['image' => '/' . $normalizedNewPath]);
+                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', 'storage/' . $normalizedOldPath)->update(['image' => 'storage/' . $normalizedNewPath]);
+                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', '/storage/' . $normalizedOldPath)->update(['image' => '/storage/' . $normalizedNewPath]);
+                
+                /*
+                DB::table('products')
+                    ->whereIn('id', $this->scopedProductIds())
+                    ->where('image', $oldPath)
+                    ->update(['image' => $normalizedNewPath]);
+                */
             });
         } catch (\Throwable $exception) {
             Storage::disk(self::DISK)->delete($newPath);

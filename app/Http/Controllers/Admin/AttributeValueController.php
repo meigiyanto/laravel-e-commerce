@@ -8,11 +8,15 @@ use App\Models\AttributeValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Http\Controllers\Admin\Concerns\AuthorizesCatalogManagement;
 
 class AttributeValueController extends Controller
 {
+    use AuthorizesCatalogManagement;
+    
     public function store(Request $request, Attribute $attribute)
     {
+        $this->authorizeCatalogManagement();
         $data = $request->validate([
             'value' => ['required', 'string', 'max:150'],
             'slug' => ['nullable', 'string', 'max:150'],
@@ -42,9 +46,7 @@ class AttributeValueController extends Controller
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
-        return redirect()
-            ->route('admin.attributes.edit', $attribute)
-            ->with('success', 'Nilai atribut berhasil ditambahkan.');
+        return redirect()->route('admin.attributes.edit', $attribute)->with('success', 'Nilai atribut berhasil ditambahkan.');
     }
 
     public function update(
@@ -52,10 +54,8 @@ class AttributeValueController extends Controller
         Attribute $attribute,
         AttributeValue $attributeValue
     ) {
-        abort_unless(
-            $attributeValue->attribute_id === $attribute->id,
-            404
-        );
+        abort_unless($attributeValue->attribute_id === $attribute->id,404);
+        $this->authorizeCatalogManagement();
 
         $data = $request->validate([
             'value' => ['required', 'string', 'max:150'],
@@ -89,19 +89,15 @@ class AttributeValueController extends Controller
             'sort_order' => $data['sort_order'] ?? 0,
         ]);
 
-        return redirect()
-            ->route('admin.attributes.edit', $attribute)
-            ->with('success', 'Nilai atribut berhasil diperbarui.');
+        return redirect()->route('admin.attributes.edit', $attribute)->with('success', 'Nilai atribut berhasil diperbarui.');
     }
 
     public function destroy(
         Attribute $attribute,
         AttributeValue $attributeValue
     ) {
-        abort_unless(
-            $attributeValue->attribute_id === $attribute->id,
-            404
-        );
+        abort_unless($attributeValue->attribute_id === $attribute->id,404);
+        $this->authorizeCatalogManagement();
 
         if ($attributeValue->variants()->exists()) {
             return back()->with(
@@ -112,8 +108,6 @@ class AttributeValueController extends Controller
 
         $attributeValue->delete();
 
-        return redirect()
-            ->route('admin.attributes.edit', $attribute)
-            ->with('success', 'Nilai atribut berhasil dihapus.');
+        return redirect()->route('admin.attributes.edit', $attribute)->with('success', 'Nilai atribut berhasil dihapus.');
     }
 }

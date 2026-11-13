@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\SubCategory;
+use App\Support\Tenancy\TenantContext
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -55,7 +56,20 @@ class SubCategoryController extends Controller
         $validated = $request->validate([
             'category_id' => [
                 'required',
-                'exists:categories,id',
+                Rule::exists('categories', 'id')
+                    ->where(function ($query) {
+                        if (config('operational.mode', 'single_store') === 'multi_tenant') {
+                            $tenantId = app(TenanContext::class)
+                                ->require()
+                                ->getKey();
+            
+                            $query->where('tenant_id', $tenantId);
+            
+                            return;
+                        }
+            
+                        $query->whereNull('tenant_id');
+                    }),
             ],
 
             'name' => [
@@ -122,8 +136,22 @@ class SubCategoryController extends Controller
         $validated = $request->validate([
             'category_id' => [
                 'required',
-                'exists:categories,id',
+                Rule::exists('categories', 'id')
+                    ->where(function ($query) {
+                        if (config('operational.mode', 'single_store') === 'multi_tenant') {
+                            $tenantId = app(TenanContext::class)
+                                ->require()
+                                ->getKey();
+            
+                            $query->where('tenant_id', $tenantId);
+            
+                            return;
+                        }
+            
+                        $query->whereNull('tenant_id');
+                    }),
             ],
+
 
             'name' => [
                 'required',

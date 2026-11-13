@@ -141,12 +141,22 @@ class OrderCancellationRequestControllerTest extends TestCase
         $admin = $this->createMember(
             TenantMembership::ROLE_ADMIN
         );
+        
+        $context = app(TenantContext::class);
 
         $otherTenant = Tenant::factory()->create([
             'status' => 'active',
         ]);
+        
+        $context->set($otherTenant);
 
-        [$order, $payment, $cancellationRequest] = app(TenantContext::class)->run($otherTenant, fn () => $this->createCancellationRequest($otherTenant));
+        $this->assertSame($otherTenant->id, $context->require()->id);
+
+        [$order, $payment, $cancellationRequest] = $this->createCancellationRequest($otherTenant);
+
+        $context->set($this->tenant);
+
+        $this->assertSame($this->tenant->id, $context->require()->id);
 
         $this->actingAs($admin)
             ->get(route(

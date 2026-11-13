@@ -7,11 +7,36 @@ use App\Models\Attribute;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Http\Controllers\Admin\Concerns\AuthorizesCatalogManagement;
 
 class AttributeController extends Controller
 {
+    use AuthorizesCatalogManagement;
+    
+    private function makeUniqueSlug(string $slug, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($slug) ?: 'attribute';
+        $candidate = $base;
+        $suffix = 1;
+
+        while (
+            Attribute::query()
+                ->where('slug', $candidate)
+                ->when(
+                    $ignoreId,
+                    fn ($query) => $query->where('id', '!=', $ignoreId)
+                )
+                ->exists()
+        ) {
+            $candidate = $base . '-' . $suffix++;
+        }
+
+        return $candidate;
+    }
+    
     public function index()
     {
+        $this->authorizeCatalogView();
         $attributes = Attribute::withCount('values')
             ->with([
                 'values' => fn ($query) => $query
@@ -32,6 +57,8 @@ class AttributeController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeCatalogManagement();
+        
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:attributes,name'],
             'slug' => ['nullable', 'string', 'max:100', 'unique:attributes,slug'],
@@ -56,6 +83,7 @@ class AttributeController extends Controller
 
     public function edit(Attribute $attribute)
     {
+        $this->authorizeCatalogManagement();
         $attribute->load([
             'values' => fn ($query) => $query
                 ->withCount('variants')
@@ -68,6 +96,7 @@ class AttributeController extends Controller
 
     public function update(Request $request, Attribute $attribute)
     {
+        $this->authorizeCatalogManagement();
         $data = $request->validate([
             'name' => [
                 'required',
@@ -103,6 +132,7 @@ class AttributeController extends Controller
 
     public function destroy(Attribute $attribute)
     {
+        $this->authorizeCatalogManagement();
         if ($attribute->values()->whereHas('variants')->exists()) {
             return back()->with(
                 'error',
@@ -115,26 +145,5 @@ class AttributeController extends Controller
         return redirect()
             ->route('admin.attributes.index')
             ->with('success', 'Atribut berhasil dihapus.');
-    }
-
-    private function makeUniqueSlug(string $slug, ?int $ignoreId = null): string
-    {
-        $base = Str::slug($slug) ?: 'attribute';
-        $candidate = $base;
-        $suffix = 1;
-
-        while (
-            Attribute::query()
-                ->where('slug', $candidate)
-                ->when(
-                    $ignoreId,
-                    fn ($query) => $query->where('id', '!=', $ignoreId)
-                )
-                ->exists()
-        ) {
-            $candidate = $base . '-' . $suffix++;
-        }
-
-        return $candidate;
     }
 }

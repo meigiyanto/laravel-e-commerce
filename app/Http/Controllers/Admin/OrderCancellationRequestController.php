@@ -118,9 +118,9 @@ class OrderCancellationRequestController extends Controller
             ) {
 
                 $lockedRequest = $this->cancellationRequestQuery()
-                ->whereKey($cancellationRequest->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+                                    ->whereKey($cancellationRequest->id)
+                                    ->lockForUpdate()
+                                    ->firstOrFail();
 
                 if ($lockedRequest->status !== 'pending') {
                     return 'already_reviewed';
@@ -357,10 +357,10 @@ class OrderCancellationRequestController extends Controller
             $midtransCancellationConfirmed,
             $paymentSucceeded
         ) {
-            $lockedRequest = OrderCancellationRequest::query()
-            ->whereKey($cancellationRequest->id)
-            ->lockForUpdate()
-            ->firstOrFail();
+            $lockedRequest = $this->cancellationRequestQuery()
+                    ->whereKey($cancellationRequest->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
             if ($lockedRequest->status !== 'pending') {
                 return 'already_reviewed';
