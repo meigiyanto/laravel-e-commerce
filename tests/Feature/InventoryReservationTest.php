@@ -28,7 +28,7 @@ class InventoryReservationTest extends TestCase
         $tenant = Tenant::factory()->create();
         app(TenantContext::class)->set($tenant);
     }
-    
+
     private function createFixture(int $stock = 10): array
     {
         $product = Product::factory()->create([
@@ -268,6 +268,44 @@ class InventoryReservationTest extends TestCase
         } catch (LogicException $exception) {
             $this->assertSame(
                 'Reservasi yang sudah di-commit tidak dapat dilepas.',
+                $exception->getMessage()
+            );
+        }
+
+        $this->assertSame(8, $fixture['inventory']->fresh()->quantity);
+        $this->assertSame(0, $fixture['inventory']->fresh()->reserved_quantity);
+    }
+
+    public function test_reserve_rejects_reusing_committed_or_released_reservation_key(): void
+    {
+        $fixture = $this->createFixture(10);
+        $service = app(VariantInventoryService::class);
+
+        $releasedKey = 'order:'.$fixture['order']->id.':reservation:terminal-1';
+        $committedKey = 'order:'.$fixture['order']->id.':reservation:terminal-2';
+
+        $this->reserveFixture($fixture, 2, $releasedKey);
+        $service->releaseReservation($releasedKey);
+
+        try {
+            $this->reserveFixture($fixture, 2, $releasedKey);
+            $this->fail('Key reservasi released tidak boleh digunakan kembali.');
+        } catch (LogicException $exception) {
+            $this->assertSame(
+                'Reservasi dengan idempotency key ini sudah tidak aktif.',
+                $exception->getMessage()
+            );
+        }
+
+        $this->reserveFixture($fixture, 2, $committedKey);
+        $service->commitReservation($committedKey);
+
+        try {
+            $this->reserveFixture($fixture, 2, $committedKey);
+            $this->fail('Key reservasi committed tidak boleh digunakan kembali.');
+        } catch (LogicException $exception) {
+            $this->assertSame(
+                'Reservasi dengan idempotency key ini sudah tidak aktif.',
                 $exception->getMessage()
             );
         }

@@ -461,4 +461,44 @@ class StockRestorationIdempotencyTest extends TestCase
         $this->assertSame('canceled', $order->fresh()->status);
         $this->assertSame('canceled', $payment->fresh()->status);
     }
+
+    public function test_deduct_for_order_rejects_variant_from_another_product(): void
+    {
+        $first = $this->createInventoryFixture(10);
+        $second = $this->createInventoryFixture(10);
+        $order = $this->createOrder($first['product']->tenant_id);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(
+            'Varian tidak dimiliki oleh produk yang diberikan.'
+        );
+
+        app(VariantInventoryService::class)->deductForOrder(
+            $first['product'],
+            $second['variant'],
+            $second['inventory'],
+            2,
+            $order
+        );
+    }
+
+    public function test_deduct_for_order_rejects_inventory_from_another_variant(): void
+    {
+        $first = $this->createInventoryFixture(10);
+        $second = $this->createInventoryFixture(10);
+        $order = $this->createOrder($first['product']->tenant_id);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(
+            'Inventory tidak dimiliki oleh varian yang diberikan.'
+        );
+
+        app(VariantInventoryService::class)->deductForOrder(
+            $first['product'],
+            $first['variant'],
+            $second['inventory'],
+            2,
+            $order
+        );
+    }
 }
