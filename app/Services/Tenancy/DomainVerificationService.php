@@ -16,33 +16,42 @@ class DomainVerificationService
         $domain = strtolower(rtrim(trim($domain), '.'));
 
         if (
-            !filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) || str_contains($domain, '/')
+            ! filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)
+            || filter_var($domain, FILTER_VALIDATE_IP)
+            || str_contains($domain, '/')
+            || str_contains($domain, ':')
+            || in_array($domain, ['localhost', '127.0.0.1'], true)
         ) {
             throw ValidationException::withMessages([
                 'domain' => 'Hostname domain tidak valid.',
             ]);
         }
 
-        if (in_array($domain, ['localhost', '127.0.0.1'], true)) {
-            throw ValidationException::withMessages([
-                'domain' => 'Domain lokal tidak dapat digunakan sebagai custom domain.',
-            ]);
-        }
-
         return DB::transaction(function () use ($store, $domain) {
-            $storeDomain = StoreDomain::query()->firstOrCreate(
-                ['domain' => $domain],
-                [
+            $storeDomain = StoreDomain::query()
+                ->where('domain', $domain)
+                ->lockForUpdate()
+                ->first();
+
+            if ($storeDomain && (int) $storeDomain->store_id !== (int) $store->id) {
+                throw ValidationException::withMessages([
+                    'domain' => 'Domain sudah digunakan oleh store lain.',
+                ]);
+            }
+
+            if ($storeDomain?->verification_status === 'verified') {
+                throw ValidationException::withMessages([
+                    'domain' => 'Domain ini sudah berhasil diverifikasi.',
+                ]);
+            }
+
+            if (! $storeDomain) {
+                $storeDomain = StoreDomain::create([
                     'store_id' => $store->id,
+                    'domain' => $domain,
                     'type' => 'custom',
                     'is_primary' => false,
                     'verification_status' => 'pending',
-                ]
-            );
-
-            if ((int) $storeDomain->store_id !== (int) $store->id) {
-                throw ValidationException::withMessages([
-                    'domain' => 'Domain sudah digunakan oleh store lain.',
                 ]);
             }
 
@@ -69,47 +78,58 @@ class DomainVerificationService
             return true;
         }
 
-        if (! $challenge->expires_at || $challenge->expires_at->isPast()) {
+        if (
+            $challenge->method !== 'dns_txt'
+            || ! $challenge->expires_at
+            || $challenge->expires_at->isPast()
+        ) {
             return false;
         }
 
-        $records = @dns_get_record($challenge->record_name, DNS_TXT);
+        $expectedValue = $challenge->record_value;
+        $records = $this->lookupTxtRecords($challenge->record_name);
 
-        if (! is_array($records)) {
-            return false;
-        }
-
-        $matched = collect($records)->contains(function ($record) use ($challenge) {
-            return hash_equals(
-                $challenge->record_value,
-                (string) ($record['txt'] ?? '')
-            );
-        });
+        $matched = collect($records)->contains(
+            fn (string $value): bool => hash_equals($expectedValue, $value)
+        );
 
         if (! $matched) {
             return false;
         }
 
-        return DB::transaction(function () use ($challenge) {
+        return DB::transaction(function () use ($challenge, $expectedValue) {
             $locked = DomainVerificationChallenge::query()
-            ->lockForUpdate()
-            ->findOrFail($challenge->id);
+                ->lockForUpdate()
+                ->findOrFail($challenge->id);
 
             if ($locked->verified_at) {
                 return true;
             }
 
-            if (! $locked->expires_at || $locked->expires_at->isPast()) {
+            // Pastikan token belum diganti setelah DNS diperiksa.
+            if (! hash_equals($locked->record_value, $expectedValue)) {
+                return false;
+            }
+
+            if (
+                $locked->method !== 'dns_txt'
+                || ! $locked->expires_at
+                || $locked->expires_at->isPast()
+            ) {
                 return false;
             }
 
             $domain = StoreDomain::query()
-            ->lockForUpdate()
-            ->findOrFail($locked->store_domain_id);
+                ->lockForUpdate()
+                ->findOrFail($locked->store_domain_id);
 
             $store = Store::query()
-            ->lockForUpdate()
-            ->findOrFail($domain->store_id);
+                ->lockForUpdate()
+                ->findOrFail($domain->store_id);
+
+            if ($domain->verification_status === 'verified') {
+                return true;
+            }
 
             $hasVerifiedPrimary = $store->domains()
                 ->where('verification_status', 'verified')
@@ -117,23 +137,52 @@ class DomainVerificationService
                 ->where('is_primary', true)
                 ->where('id', '!=', $domain->id)
                 ->exists();
-            
+
             $locked->update(['verified_at' => now()]);
-            
+
             if (! $hasVerifiedPrimary) {
                 $store->domains()
                     ->where('is_primary', true)
                     ->where('id', '!=', $domain->id)
                     ->update(['is_primary' => false]);
             }
-            
+
             $domain->update([
                 'verification_status' => 'verified',
                 'verified_at' => now(),
                 'is_primary' => ! $hasVerifiedPrimary,
             ]);
-            
+
             return true;
         });
+    }
+
+    /**
+     * Menggabungkan TXT record yang mungkin dikembalikan DNS
+     * sebagai beberapa character-string.
+     */
+    protected function lookupTxtRecords(string $hostname): array
+    {
+        $records = @dns_get_record($hostname, DNS_TXT);
+
+        if (! is_array($records)) {
+            return [];
+        }
+
+        $values = [];
+
+        foreach ($records as $record) {
+            if (isset($record['entries']) && is_array($record['entries'])) {
+                $values[] = implode('', $record['entries']);
+
+                continue;
+            }
+
+            if (isset($record['txt'])) {
+                $values[] = (string) $record['txt'];
+            }
+        }
+
+        return $values;
     }
 }

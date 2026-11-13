@@ -7,8 +7,6 @@ use App\Models\Store;
 use App\Models\StoreDomain;
 use App\Models\SubscriptionPlan;
 use App\Models\Tenant;
-use App\Models\TenantInvitation;
-use App\Models\User;
 use App\Notifications\TenantOwnerInvitation;
 use App\Services\Tenancy\DomainVerificationService;
 use App\Services\Tenancy\OwnerInvitationService;
@@ -39,11 +37,7 @@ class ManagementController extends Controller
             $data['owner_email']
         );
 
-        Notification::route('mail', $data['owner_email'])
-        ->notify(new TenantOwnerInvitation(
-            $result['tenant']->name,
-            $result['plain_token']
-        ));
+        Notification::route('mail', $data['owner_email'])->notify(new TenantOwnerInvitation($result['tenant']->name, $result['plain_token']));
 
         return back()->with('success', 'Tenant dibuat dan undangan owner dikirim.');
     }
@@ -55,23 +49,20 @@ class ManagementController extends Controller
     ): RedirectResponse {
         $membership = $service->accept($token, $request->user());
 
-        return redirect()
-        ->route('tenant.setup.domain.show', $membership->tenant_id)
-        ->with('success', 'Undangan diterima. Silakan daftarkan domain toko.');
+        return redirect()->route('tenant.setup.domain.show', $membership->tenant_id)->with('success', 'Undangan diterima. Silakan daftarkan domain toko.');
     }
 
-    public function showDomainSetup(Request $request, Tenant $tenant) {
+    public function showDomainSetup(Request $request, Tenant $tenant)
+    {
         $this->authorizeTenantSetup($request, $tenant);
 
-        $store = Store::query()
-        ->where('tenant_id', $tenant->id)
-        ->firstOrFail();
+        $store = Store::query()->where('tenant_id', $tenant->id)->firstOrFail();
 
         $domains = $store->domains()
-        ->with('verificationChallenge')
-        ->orderByDesc('is_primary')
-        ->latest('id')
-        ->get();
+            ->with('verificationChallenge')
+            ->orderByDesc('is_primary')
+            ->latest('id')
+            ->get();
 
         return view('tenant.setup.domain', compact('tenant', 'store', 'domains'));
     }
@@ -87,21 +78,19 @@ class ManagementController extends Controller
             'domain' => ['required', 'string', 'max:253'],
         ]);
 
-        $store = Store::query()
-        ->where('tenant_id', $tenant->id)
-        ->firstOrFail();
+        $store = Store::query()->where('tenant_id', $tenant->id)->firstOrFail();
 
         $challenge = $service->create($store, $data['domain']);
 
         return redirect()
-        ->route('tenant.setup.domain.show', $tenant)
-        ->with('success', 'Instruksi DNS TXT berhasil dibuat.')
-        ->with('verification_record', [
-            'name' => $challenge->record_name,
-            'type' => 'TXT',
-            'value' => $challenge->record_value,
-            'expires_at' => $challenge->expires_at->toDateTimeString(),
-        ]);
+            ->route('tenant.setup.domain.show', $tenant)
+            ->with('success', 'Instruksi DNS TXT berhasil dibuat.')
+            ->with('verification_record', [
+                'name' => $challenge->record_name,
+                'type' => 'TXT',
+                'value' => $challenge->record_value,
+                'expires_at' => $challenge->expires_at->toDateTimeString(),
+            ]);
     }
 
     public function verifyDomain(
@@ -113,8 +102,8 @@ class ManagementController extends Controller
         $this->authorizeTenantSetup($request, $tenant);
 
         $store = Store::query()
-                    ->where('tenant_id', $tenant->id)
-                    ->firstOrFail();
+            ->where('tenant_id', $tenant->id)
+            ->firstOrFail();
 
         abort_unless((int) $domain->store_id === (int) $store->id, 404);
 
@@ -124,7 +113,7 @@ class ManagementController extends Controller
 
         if (! $service->verify($challenge)) {
             return back()->withErrors([
-                'domain' => 'DNS TXT record belum ditemukan atau sudah kedaluwarsa.',
+                'domain' => 'DNS TXT record belum ditemukan, token tidak cocok, atau sudah kedaluwarsa.',
             ]);
         }
 
@@ -133,20 +122,13 @@ class ManagementController extends Controller
 
     private function authorizeTenantSetup(Request $request, Tenant $tenant): void
     {
-        abort_unless(
-            in_array($tenant->status, ['pending', 'active'], true),
-            404
-        );
+        abort_unless(in_array($tenant->status, ['pending', 'active'], true), 404);
 
-        $membership = $request->user()
-        ->activeTenantMembership((int) $tenant->id);
+        $membership = $request->user()->activeTenantMembership((int) $tenant->id);
 
-        abort_unless(
-            $membership && in_array($membership->role, ['owner', 'admin'], true),
-            403
-        );
+        abort_unless($membership && in_array($membership->role, ['owner', 'admin'], true), 403);
     }
-    
+
     public function changeTenantStatus(
         Request $request,
         Tenant $tenant,
@@ -170,13 +152,14 @@ class ManagementController extends Controller
         return back()->with('success', 'Status tenant berhasil diperbarui.');
     }
 
-    public function plans() {
+    public function plans()
+    {
         return response()->json([
             'plans' => SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->with('features')
-            ->orderBy('sort_order')
-            ->get(),
+                ->where('is_active', true)
+                ->with('features')
+                ->orderBy('sort_order')
+                ->get(),
         ]);
     }
 }
