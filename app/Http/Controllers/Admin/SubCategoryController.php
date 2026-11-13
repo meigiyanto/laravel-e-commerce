@@ -5,18 +5,36 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\SubCategory;
-use App\Support\Tenancy\TenantContext
+use App\Http\Controllers\Admin\Concerns\AuthorizesCatalogManagement;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SubCategoryController extends Controller
 {
+    use AuthorizesCatalogManagement;
+    
+    private function categoryExistsRule()
+    {
+        return Rule::exists('categories', 'id')->where(function ($query) {
+            if (config('operational.mode', 'single_store') === 'multi_tenant') {
+                $tenantId = app(TenantContext::class)->current()?->getKey();
+                abort_unless($tenantId, 403);
+                $query->where('tenant_id', $tenantId);
+                return;
+            }
+    
+            $query->whereNull('tenant_id');
+        });
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
+        $this->authorizeCatalogManagement();
         $search = trim((string) $request->input('search', ''));
 
         $subCategories = SubCategory::with('category')
@@ -40,6 +58,7 @@ class SubCategoryController extends Controller
      */
     public function create()
     {
+        $this->authorizeCatalogManagement();
         $categories = Category::orderBy('name')->get();
 
         return view(
@@ -53,6 +72,7 @@ class SubCategoryController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizeCatalogManagement();
         $validated = $request->validate([
             'category_id' => [
                 'required',
@@ -107,6 +127,7 @@ class SubCategoryController extends Controller
      */
     public function show(SubCategory $subCategory)
     {
+        $this->authorizeCatalogManagement();
         return redirect()->route(
             'admin.sub-categories.edit',
             $subCategory
@@ -118,6 +139,7 @@ class SubCategoryController extends Controller
      */
     public function edit(SubCategory $subCategory)
     {
+        $this->authorizeCatalogManagement();
         $categories = Category::orderBy('name')->get();
 
         return view(
@@ -133,6 +155,7 @@ class SubCategoryController extends Controller
         Request $request,
         SubCategory $subCategory
     ) {
+        $this->authorizeCatalogManagement();
         $validated = $request->validate([
             'category_id' => [
                 'required',
@@ -189,6 +212,7 @@ class SubCategoryController extends Controller
      */
     public function destroy(SubCategory $subCategory)
     {
+        $this->authorizeCatalogManagement();
         if ($subCategory->products()->exists()) {
             return redirect()
                 ->route('admin.sub-categories.index')

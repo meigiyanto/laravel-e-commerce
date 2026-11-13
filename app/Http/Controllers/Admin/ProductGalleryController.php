@@ -24,8 +24,84 @@ class ProductGalleryController extends Controller
         return Product::query()->select('id');
     }
 
+    private function pathRepresentations(string $path): array
+    {
+        $normalized = $this->normalizeStoredPath($path);
+    
+        return array_values(array_unique([
+            $normalized,
+            '/' . $normalized,
+            'storage/' . $normalized,
+            '/storage/' . $normalized,
+        ]));
+    }
+    
+    private function isPathUsedInCurrentTenant(string $path): bool
+    {
+        $representations = $this->pathRepresentations($path);
+    
+        $productImageUsed = Product::query()
+            ->whereIn('image', $representations)
+            ->exists();
+    
+        $galleryUsed = DB::table('product_images')
+            ->whereIn('product_id', $this->scopedProductIds())
+            ->whereIn('path', $representations)
+            ->exists();
+    
+        return $productImageUsed || $galleryUsed;
+    }
+    
+    /**
+     * Pemeriksaan global hanya untuk keamanan file fisik.
+     * Jangan gunakan hasilnya untuk menampilkan nama produk tenant lain.
+     */
+    private function isPathUsedAnywhere(string $path): bool
+    {
+        $representations = $this->pathRepresentations($path);
+    
+        return DB::table('products')
+            ->whereIn('image', $representations)
+            ->exists()
+            || DB::table('product_images')
+                ->whereIn('path', $representations)
+                ->exists();
+    }
+    
+    private function pathFromFilename(string $filename): string
+    {
+        abort_if($filename === '' || basename($filename) !== $filename || Str::contains($filename, ['/', '\\', '..']), 404);
+        abort_unless(in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), self::ALLOWED_EXTENSIONS, true), 404);
+
+        return self::DIRECTORY . '/' . $filename;
+    }
+    
+    private function normalizeStoredPath(?string $path): string
+    {
+        $path = ltrim((string) $path, '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return $path;
+    }
+
+    /*
+    private function isPathUsed(string $path): bool
+    {
+        $normalized = $this->normalizeStoredPath($path);
+
+        $productImageUsed = DB::table('products')->whereNotNull('image')->get(['image'])
+            ->contains(fn ($product) => $this->normalizeStoredPath($product->image) === $normalized);
+
+        return $productImageUsed || DB::table('product_images')->get(['path'])
+            ->contains(fn ($image) => $this->normalizeStoredPath($image->path) === $normalized);
+    }
+    */
+
     public function index(Request $request)
     {
+        $this->authorizeCatalogView();
         $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'in:all,unused,used'],
@@ -36,9 +112,9 @@ class ProductGalleryController extends Controller
 
         $productNamesByPath = collect();
         
-        /*
         DB::table('product_images')
             ->join('products', 'products.id', '=', 'product_images.product_id')
+            ->whereIn('products.id', $this->scopedProductIds())
             ->whereNotNull('product_images.path')
             ->select('product_images.path', 'products.name')
             ->get()
@@ -50,19 +126,13 @@ class ProductGalleryController extends Controller
                         ->push($row->name)->filter()->unique()->values()->all()
                 );
             });
-        */
         
-        DB::table('product_images')
-            ->join('products', 'products.id', '=', 'product_images.product_id')
-            ->whereIn('products.id', $this->scopedProductIds())
-            ->whereNotNull('product_images.path')
-            ->select('product_images.path', 'products.name')
-            ->get();
-        
-        /*
         DB::table('products')
-            ->whereNotNull('image')->where('image', '!=', '')
-            ->select('image', 'name')->get()
+            ->whereIn('id', $this->scopedProductIds())
+            ->whereNotNull('image')
+            ->where('image', '!=', '')
+            ->select('image', 'name')
+            ->get()
             ->each(function ($row) use ($productNamesByPath) {
                 $path = $this->normalizeStoredPath($row->image);
                 $productNamesByPath->put(
@@ -70,15 +140,7 @@ class ProductGalleryController extends Controller
                     collect($productNamesByPath->get($path, []))
                         ->push($row->name)->filter()->unique()->values()->all()
                 );
-            });
-        */
-        
-        DB::table('products')
-            ->whereIn('id', $this->scopedProductIds())
-            ->whereNotNull('image')
-            ->where('image', '!=', '')
-            ->select('image', 'name')
-            ->get();
+            });        
         
         $images = collect(Storage::disk(self::DISK)->files(self::DIRECTORY))
             ->filter(fn ($path) => in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), self::ALLOWED_EXTENSIONS, true))
@@ -89,7 +151,7 @@ class ProductGalleryController extends Controller
                     'path' => $path,
                     'filename' => basename($path),
                     'url' => Storage::disk(self::DISK)->url($path),
-                    'is_used' => $this->isPathUsed($path),
+                    'is_used' => $this->isPathUsedInCurrentTenant($path),
                     'product_names' => $names,
                 ];
             })
@@ -125,6 +187,7 @@ class ProductGalleryController extends Controller
 
     public function upload(Request $request)
     {
+        $this->authorizeCatalogView();
         $validated = $request->validate([
             'images' => ['required', 'array', 'max:20'],
             'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:' . self::MAX_IMAGE_KB],
@@ -141,6 +204,7 @@ class ProductGalleryController extends Controller
     /** Replace a gallery file and atomically repoint every database reference to it. */
     public function replace(Request $request, string $filename)
     {
+        $this->authorizeCatalogView();
         $oldPath = $this->pathFromFilename($filename);
         abort_unless(Storage::disk(self::DISK)->exists($oldPath), 404);
 
@@ -154,19 +218,8 @@ class ProductGalleryController extends Controller
 
         try {
             DB::transaction(function () use ($oldPath, $normalizedOldPath, $normalizedNewPath) {
-                // Update gallery records even if older data used a leading slash or storage/ prefix.
-                $oldRepresentations = array_unique([
-                    $oldPath, $normalizedOldPath, '/' . $normalizedOldPath,
-                    'storage/' . $normalizedOldPath, '/storage/' . $normalizedOldPath,
-                ]);
-                
-                /*
-                DB::table('product_images')->whereIn('path', $oldRepresentations)->update([
-                    'path' => $normalizedNewPath,
-                    'updated_at' => now(),
-                ]);
-                */
-                
+                $oldRepresentations = $this->pathRepresentations($oldPath);
+        
                 DB::table('product_images')
                     ->whereIn('product_id', $this->scopedProductIds())
                     ->whereIn('path', $oldRepresentations)
@@ -174,75 +227,54 @@ class ProductGalleryController extends Controller
                         'path' => $normalizedNewPath,
                         'updated_at' => now(),
                     ]);
-
-                // Preserve the legacy representation style in products.image.
-                
-                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', $oldPath)->update(['image' => $normalizedNewPath]);
-                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', '/' . $normalizedOldPath)->update(['image' => '/' . $normalizedNewPath]);
-                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', 'storage/' . $normalizedOldPath)->update(['image' => 'storage/' . $normalizedNewPath]);
-                DB::table('products')->whereIn('id', $this->scopedProductIds())->where('image', '/storage/' . $normalizedOldPath)->update(['image' => '/storage/' . $normalizedNewPath]);
-                
-                /*
+        
+                $products = DB::table('products')
+                    ->whereIn('id', $this->scopedProductIds());
+        
+                $products->where('image', $oldPath)
+                    ->update(['image' => $normalizedNewPath]);
+        
                 DB::table('products')
                     ->whereIn('id', $this->scopedProductIds())
-                    ->where('image', $oldPath)
-                    ->update(['image' => $normalizedNewPath]);
-                */
+                    ->where('image', '/' . $normalizedOldPath)
+                    ->update(['image' => '/' . $normalizedNewPath]);
+        
+                DB::table('products')
+                    ->whereIn('id', $this->scopedProductIds())
+                    ->where('image', 'storage/' . $normalizedOldPath)
+                    ->update(['image' => 'storage/' . $normalizedNewPath]);
+        
+                DB::table('products')
+                    ->whereIn('id', $this->scopedProductIds())
+                    ->where('image', '/storage/' . $normalizedOldPath)
+                    ->update(['image' => '/storage/' . $normalizedNewPath]);
             });
         } catch (\Throwable $exception) {
             Storage::disk(self::DISK)->delete($newPath);
             throw $exception;
         }
 
-        Storage::disk(self::DISK)->delete($oldPath);
+        if (! $this->isPathUsedAnywhere($oldPath)) {
+            Storage::disk(self::DISK)->delete($oldPath);
+        }
 
-        return redirect()->route('admin.product-gallery.index')
-            ->with('success', 'Gambar berhasil diganti dan seluruh referensinya diperbarui.');
+        return redirect()->route('admin.product-gallery.index')->with('success', 'Gambar berhasil diganti dan seluruh referensinya diperbarui.');
     }
 
     /** Delete only files that are not referenced by products or product variants. */
     public function destroy(string $filename)
     {
+        $this->authorizeCatalogView();
         $path = $this->pathFromFilename($filename);
         abort_unless(Storage::disk(self::DISK)->exists($path), 404);
 
-        if ($this->isPathUsed($path)) {
+        if ($this->isPathUsedAnywhere($path)) {
             return redirect()->route('admin.product-gallery.index')
                 ->with('error', 'Gambar tidak dapat dihapus karena masih digunakan oleh produk atau varian.');
         }
 
         Storage::disk(self::DISK)->delete($path);
 
-        return redirect()->route('admin.product-gallery.index')
-            ->with('success', 'Gambar berhasil dihapus.');
-    }
-
-    private function pathFromFilename(string $filename): string
-    {
-        abort_if($filename === '' || basename($filename) !== $filename || Str::contains($filename, ['/', '\\', '..']), 404);
-        abort_unless(in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), self::ALLOWED_EXTENSIONS, true), 404);
-
-        return self::DIRECTORY . '/' . $filename;
-    }
-
-    private function normalizeStoredPath(?string $path): string
-    {
-        $path = ltrim((string) $path, '/');
-        if (str_starts_with($path, 'storage/')) {
-            $path = substr($path, strlen('storage/'));
-        }
-
-        return $path;
-    }
-
-    private function isPathUsed(string $path): bool
-    {
-        $normalized = $this->normalizeStoredPath($path);
-
-        $productImageUsed = DB::table('products')->whereNotNull('image')->get(['image'])
-            ->contains(fn ($product) => $this->normalizeStoredPath($product->image) === $normalized);
-
-        return $productImageUsed || DB::table('product_images')->get(['path'])
-            ->contains(fn ($image) => $this->normalizeStoredPath($image->path) === $normalized);
+        return redirect()->route('admin.product-gallery.index')->with('success', 'Gambar berhasil dihapus.');
     }
 }

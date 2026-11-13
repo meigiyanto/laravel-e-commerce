@@ -10,6 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Middleware\ResolveTenantFromDomain;
+use App\Support\Tenancy\TenantContext;
 use Tests\TestCase;
 
 class ProductGalleryControllerTest extends TestCase
@@ -270,5 +272,162 @@ class ProductGalleryControllerTest extends TestCase
 
         $response->assertSessionHas('success');
         Storage::disk('public')->assertMissing('products/unused.webp');
+    }
+
+    public function test_replace_only_updates_current_tenant_and_preserves_shared_file_until_last_reference_is_removed(): void
+    {
+        config()->set('operational.mode', 'multi_tenant');
+        $this->withoutMiddleware(ResolveTenantFromDomain::class);
+
+        $tenantA = $this->tenant;
+        $tenantB = Tenant::factory()->create([
+            'name' => 'Tenant B',
+            'slug' => 'tenant-b',
+            'status' => 'active',
+        ]);
+
+        $adminA = $this->admin();
+
+        $adminB = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+
+        TenantMembership::create([
+            'tenant_id' => $tenantB->id,
+            'user_id' => $adminB->id,
+            'role' => TenantMembership::ROLE_ADMIN,
+            'status' => 'active',
+        ]);
+
+        $context = app(TenantContext::class);
+
+        $productA = $context->run($tenantA, fn () => Product::factory()->create([
+            'image' => 'products/shared-image.jpg',
+        ]));
+
+        $productB = $context->run($tenantB, fn () => Product::factory()->create([
+            'image' => '/storage/products/shared-image.jpg',
+        ]));
+
+        DB::table('product_images')->insert([
+            [
+                'product_id' => $productA->id,
+                'product_variant_id' => null,
+                'path' => 'products/shared-image.jpg',
+                'alt_text' => 'Tenant A image',
+                'sort_order' => 0,
+                'is_primary' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'product_id' => $productB->id,
+                'product_variant_id' => null,
+                'path' => 'storage/products/shared-image.jpg',
+                'alt_text' => 'Tenant B image',
+                'sort_order' => 0,
+                'is_primary' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        Storage::disk('public')->put(
+            'products/shared-image.jpg',
+            'shared original image'
+        );
+
+        // Tenant A mengganti gambar.
+        $responseA = $context->run($tenantA, fn () =>
+            $this->actingAs($adminA)->put(
+                route('admin.product-gallery.replace', [
+                    'filename' => 'shared-image.jpg',
+                ]),
+                ['image' => UploadedFile::fake()->image('tenant-a-replacement.png')]
+            )
+        );
+
+        $responseA->assertRedirect(route('admin.product-gallery.index'));
+
+        $imageA = DB::table('products')
+        ->where('id', $productA->id)
+        ->value('image');
+
+        $imageB = DB::table('products')
+        ->where('id', $productB->id)
+        ->value('image');
+
+        $galleryA = DB::table('product_images')
+        ->where('product_id', $productA->id)
+        ->value('path');
+
+        $galleryB = DB::table('product_images')
+        ->where('product_id', $productB->id)
+        ->value('path');
+
+        // Referensi Tenant A berubah.
+        $this->assertNotSame('products/shared-image.jpg', $imageA);
+        $this->assertSame($imageA, $galleryA);
+
+        // Referensi Tenant B tidak boleh berubah.
+        $this->assertSame('/storage/products/shared-image.jpg', $imageB);
+        $this->assertSame('storage/products/shared-image.jpg', $galleryB);
+
+        // File lama masih digunakan Tenant B.
+        Storage::disk('public')->assertExists('products/shared-image.jpg');
+
+        // Tenant A tidak boleh menghapus file yang masih dipakai Tenant B.
+        $deleteResponse = $context->run($tenantA, fn () =>
+            $this->actingAs($adminA)->delete(
+                route('admin.product-gallery.destroy', [
+                    'filename' => 'shared-image.jpg',
+                ])
+            )
+        );
+
+        $deleteResponse->assertSessionHas('error');
+        Storage::disk('public')->assertExists('products/shared-image.jpg');
+
+        // Tenant B kemudian mengganti referensinya sendiri.
+        $responseB = $context->run($tenantB, fn () =>
+            $this->actingAs($adminB)->put(
+                route('admin.product-gallery.replace', [
+                    'filename' => 'shared-image.jpg',
+                ]),
+                ['image' => UploadedFile::fake()->image('tenant-b-replacement.webp')]
+            )
+        );
+
+        $responseB->assertRedirect(route('admin.product-gallery.index'));
+
+        // Setelah referensi terakhir berpindah, file lama boleh dihapus.
+        Storage::disk('public')->assertMissing('products/shared-image.jpg');
+
+        // Pastikan penggantian Tenant B tidak mengubah referensi Tenant A.
+        $this->assertSame(
+            $imageA,
+            DB::table('products')->where('id', $productA->id)->value('image')
+        );
+    }
+
+    public function test_single_store_staff_can_view_gallery_but_cannot_upload_images(): void
+    {
+        config()->set('operational.mode', 'single_store');
+
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+
+        $this->actingAs($staff)
+        ->get(route('admin.product-gallery.index'))
+        ->assertOk();
+
+        $this->actingAs($staff)
+        ->post(route('admin.product-gallery.upload'), [
+            'images' => [UploadedFile::fake()->image('forbidden.jpg')],
+        ])
+        ->assertForbidden();
+
+        $this->assertSame([], Storage::disk('public')->files('products'));
     }
 }

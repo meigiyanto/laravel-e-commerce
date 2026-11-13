@@ -37,6 +37,7 @@ class AttributeController extends Controller
     public function index()
     {
         $this->authorizeCatalogView();
+       
         $attributes = Attribute::withCount('values')
             ->with([
                 'values' => fn ($query) => $query
