@@ -11,9 +11,62 @@ use Illuminate\Support\Facades\DB;
 use App\Models\InventoryMovement;
 use Illuminate\Validation\ValidationException;
 use App\Models\InventoryReservation;
+use App\Models\Tenant;
+use App\Support\Tenancy\TenantContext;
+use Closure;
 
 class VariantInventoryService
 {
+    private function runInOrderTenantContext(
+        Order $order,
+        Closure $callback
+    ): mixed {
+        $snapshot = Order::withoutGlobalScope('tenant')
+            ->select(['id', 'tenant_id'])
+            ->whereKey($order->getKey())
+            ->firstOrFail();
+    
+        $tenantId = $snapshot->tenant_id !== null
+            ? (int) $snapshot->tenant_id
+            : null;
+    
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            if ($tenantId !== null) {
+                throw new \LogicException(
+                    'Order single-store tidak boleh terikat pada tenant.'
+                );
+            }
+    
+            return $callback();
+        }
+    
+        if ($tenantId === null) {
+            throw new \LogicException(
+                'Tenant untuk operasi inventory tidak ditemukan.'
+            );
+        }
+    
+        $context = app(TenantContext::class);
+        $currentTenant = $context->current();
+    
+        if ($currentTenant !== null) {
+            if ((int) $currentTenant->id !== $tenantId) {
+                // Pertahankan perilaku penyembunyian order lintas tenant.
+                Order::query()
+                    ->whereKey($order->getKey())
+                    ->firstOrFail();
+            }
+    
+            return $callback();
+        }
+    
+        $tenant = Tenant::query()
+            ->whereKey($tenantId)
+            ->where('status', 'active')
+            ->firstOrFail();
+    
+        return $context->run($tenant, $callback);
+    }
     /**
     * Resolusi varian dan inventaris di dalam transaksi.
     *
@@ -433,92 +486,43 @@ class VariantInventoryService
         });
     }
 
-    /**
-    * Commit seluruh reservasi milik order.
-    *
-    * Hanya reservasi dengan status reserved yang diproses.
-    * Pemanggil harus mengunci Order dan menjalankan operasi
-    * ini dalam transaksi checkout atau transisi pembayaran.
-    */
     public function commitReservationsForOrder(Order $order): void
     {
         DB::transaction(function () use ($order): void {
-            $reservations = $order->reservations()
-            ->orderBy('product_variant_id')
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-
-            foreach ($reservations as $reservation) {
-                if (
-                    $reservation->status ===
-                    InventoryReservation::STATUS_COMMITTED
-                ) {
-                    continue;
-                }
-
-                if (
-                    $reservation->status ===
-                    InventoryReservation::STATUS_RELEASED
-                ) {
-                    throw new \LogicException(
-                        'Order memiliki reservasi yang sudah dilepas.'
-                    );
-                }
-
-                $this->commitReservation(
-                    $reservation->idempotency_key
-                );
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $keys = $lockedOrder->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->pluck('idempotency_key');
+    
+            foreach ($keys as $key) {
+                $this->commitReservation($key);
             }
         });
     }
-
-    /**
-    * Release seluruh reservasi aktif milik order.
-    *
-    * Reservasi committed tidak boleh dilepas karena stok fisiknya
-    * sudah berkurang. Pemulihannya dilakukan melalui operasi return.
-    */
+    
     public function releaseReservationsForOrder(Order $order): void
     {
         DB::transaction(function () use ($order): void {
-            $reservations = $order->reservations()
-            ->orderBy('product_variant_id')
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-
-            foreach ($reservations as $reservation) {
-                if (
-                    $reservation->status ===
-                    InventoryReservation::STATUS_RELEASED
-                ) {
-                    continue;
-                }
-
-                if (
-                    $reservation->status ===
-                    InventoryReservation::STATUS_COMMITTED
-                ) {
-                    continue;
-                }
-
-                if (
-                    $reservation->status !==
-                    InventoryReservation::STATUS_RESERVED
-                ) {
-                    throw new \LogicException(
-                        'Status reservasi tidak dikenal.'
-                    );
-                }
-
-                $this->releaseReservation(
-                    $reservation->idempotency_key
-                );
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $keys = $lockedOrder->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->pluck('idempotency_key');
+    
+            foreach ($keys as $key) {
+                $this->releaseReservation($key);
             }
         });
     }
-
 
     /**
     * Kurangi stok saat order dibuat.
@@ -826,57 +830,52 @@ class VariantInventoryService
         ]);
     }
 
-    /**
-    * Memulihkan stok seluruh item pesanan.
-    *
-    * Pemanggil wajib:
-    * - berada di dalam DB transaction;
-    * - sudah mengunci baris Order dengan lockForUpdate();
-    * - hanya memanggil method ini ketika transisi ke canceled sah.
-    *
-    * Produk dikunci dalam urutan ID menaik agar konsisten
-    * di jalur admin, Stripe, dan Midtrans.
-    */
     public function restoreItemsForOrder(Order $order): void
     {
-        $items = $order->items()
-        ->orderBy('product_id')
-        ->orderBy('product_variant_id')
-        ->orderBy('id')
-        ->get();
-
-        $productIds = $items
-        ->pluck('product_id')
-        ->unique()
-        ->sort()
-        ->values();
-
-        $products = Product::query()
-        ->whereIn('id', $productIds)
-        ->orderBy('id')
-        ->lockForUpdate()
-        ->get()
-        ->keyBy('id');
-
-        foreach ($items as $item) {
-            $product = $products->get($item->product_id);
-
-            if (! $product) {
-                throw new \RuntimeException(
-                    "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
+        DB::transaction(function () use ($order): void {
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $items = $lockedOrder->items()
+                ->orderBy('product_id')
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->get();
+    
+            $productIds = $items->pluck('product_id')
+                ->unique()
+                ->sort()
+                ->values();
+    
+            $products = Product::query()
+                ->whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+    
+            foreach ($items as $item) {
+                $product = $products->get($item->product_id);
+    
+                if (! $product) {
+                    throw new \RuntimeException(
+                        "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
+                    );
+                }
+    
+                $this->restoreForOrder(
+                    $product,
+                    $item->product_variant_id
+                        ? (int) $item->product_variant_id
+                        : null,
+                    (int) $item->quantity,
+                    $lockedOrder,
+                    (int) $item->id
                 );
             }
-
-            $this->restoreForOrder(
-                $product,
-                $item->product_variant_id
-                ? (int) $item->product_variant_id
-                : null,
-                (int) $item->quantity,
-                $order,
-                (int) $item->id,
-            );
-        }
+        });
     }
 
     private function hasRecordedMovement(
@@ -918,36 +917,37 @@ class VariantInventoryService
     */
     public function cancelStockForOrder(Order $order): void
     {
-        DB::transaction(function () use ($order): void {
-            $lockedOrder = Order::query()
-                            ->whereKey($order->getKey())
-                            ->lockForUpdate()
-                            ->firstOrFail();
-
-            $reservations = $lockedOrder->reservations()
-                                    ->orderBy('product_variant_id')
-                                    ->orderBy('id')
-                                    ->get();
-
-            $items = $lockedOrder->items()
-                            ->orderBy('product_id')
-                            ->orderBy('product_variant_id')
-                            ->orderBy('id')
-                            ->get();
-
-            $productIds = $items->pluck('product_id')
-                                ->unique()
-                                ->sort()
-                                ->values();
-
-            $products = Product::query()
-                                ->whereIn('id', $productIds)
-                                ->orderBy('id')
-                                ->lockForUpdate()
-                                ->get()
-                                ->keyBy('id');
-            
-            $variants = ProductVariant::query()
+        $this->runInOrderTenantContext($order, function () use ($order): void {
+                DB::transaction(function () use ($order): void {
+                    $lockedOrder = Order::query()
+                        ->whereKey($order->getKey())
+                        ->lockForUpdate()
+                        ->firstOrFail();
+    
+                    $reservations = $lockedOrder->reservations()
+                        ->orderBy('product_variant_id')
+                        ->orderBy('id')
+                        ->get();
+    
+                    $items = $lockedOrder->items()
+                        ->orderBy('product_id')
+                        ->orderBy('product_variant_id')
+                        ->orderBy('id')
+                        ->get();
+    
+                    $productIds = $items->pluck('product_id')
+                        ->unique()
+                        ->sort()
+                        ->values();
+    
+                    $products = Product::query()
+                        ->whereIn('id', $productIds)
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('id');
+    
+                    $variants = ProductVariant::query()
                         ->whereIn(
                             'id',
                             $items->pluck('product_variant_id')->filter()->unique()
@@ -956,116 +956,143 @@ class VariantInventoryService
                         ->lockForUpdate()
                         ->get()
                         ->keyBy('id');
-            
-            foreach ($items as $item) {
-                $product = $products->get($item->product_id);
-            
-                if (! $product) {
-                    throw new \RuntimeException(
-                        "Produk {$item->product_id} tidak ditemukan saat membatalkan order."
-                    );
-                }
-            
-                if ($item->quantity < 1) {
-                    throw new \LogicException(
-                        "Jumlah item order {$item->id} tidak valid."
-                    );
-                }
-            
-                if ($item->product_variant_id === null) {
-                    continue;
-                }
-            
-                $variant = $variants->get($item->product_variant_id);
-            
-                if (
-                    ! $variant
-                    || (int) $variant->product_id !== (int) $product->id
-                ) {
-                    throw new \LogicException(
-                        "Varian pada order item {$item->id} tidak dimiliki oleh produk tersebut."
-                    );
-                }
-            }
-
-            $reservationsByVariant = $reservations->groupBy(
-                'product_variant_id'
-            );
-
-            $itemsByVariant = $items->groupBy(
-                fn ($item) => $item->product_variant_id === null ? 'legacy-'.$item->product_id : (string) $item->product_variant_id
-            );
-
-            $handledItemIds = [];
-
-            foreach ($reservationsByVariant as $variantId => $variantReservations) {
-                $statuses = $variantReservations->pluck('status')->unique();
-
-                if ($statuses->count() !== 1) {
-                    throw new \LogicException(
-                        "Status reservasi varian {$variantId} tidak konsisten."
-                    );
-                }
-
-                $status = $statuses->first();
-
-                $variantItems = $itemsByVariant->get((string) $variantId, collect());
-
-                $reservationQuantity = (int) $variantReservations->sum('quantity');
-                $itemQuantity = (int) $variantItems->sum('quantity');
-
-                if ($reservationQuantity !== $itemQuantity) {
-                    throw new \LogicException(
-                        "Jumlah reservasi varian {$variantId} tidak sesuai dengan item order."
-                    );
-                }
-
-                if ($status === InventoryReservation::STATUS_RESERVED) {
-                    foreach ($variantReservations as $reservation) {
-                        $this->releaseReservation($reservation->idempotency_key);
-                    }
-                } elseif ($status === InventoryReservation::STATUS_COMMITTED) {
-                    foreach ($variantItems as $item) {
+    
+                    foreach ($items as $item) {
                         $product = $products->get($item->product_id);
-
+    
                         if (! $product) {
-                            throw new \RuntimeException("Produk {$item->product_id} tidak ditemukan saat memulihkan stok.");
+                            throw new \RuntimeException(
+                                "Produk {$item->product_id} tidak ditemukan saat membatalkan order."
+                            );
                         }
-
-                        $this->restoreForOrder($product, (int) $variantId, (int) $item->quantity, $lockedOrder, (int) $item->id);
-
-                        $handledItemIds[] = (int) $item->id;
+    
+                        if ($item->quantity < 1) {
+                            throw new \LogicException(
+                                "Jumlah item order {$item->id} tidak valid."
+                            );
+                        }
+    
+                        if ($item->product_variant_id === null) {
+                            continue;
+                        }
+    
+                        $variant = $variants->get($item->product_variant_id);
+    
+                        if (
+                            ! $variant
+                            || (int) $variant->product_id !== (int) $product->id
+                        ) {
+                            throw new \LogicException(
+                                "Varian pada order item {$item->id} tidak dimiliki oleh produk tersebut."
+                            );
+                        }
                     }
-                } elseif ($status !== InventoryReservation::STATUS_RELEASED) {
-                    throw new \LogicException("Status reservasi {$status} tidak dikenal.");
-                }
+    
+                    $reservationsByVariant = $reservations->groupBy(
+                        'product_variant_id'
+                    );
+    
+                    $itemsByVariant = $items->groupBy(
+                        fn ($item) => $item->product_variant_id === null
+                            ? 'legacy-'.$item->product_id
+                            : (string) $item->product_variant_id
+                    );
+    
+                    $handledItemIds = [];
+    
+                    foreach ($reservationsByVariant as $variantId => $variantReservations) {
+                        $statuses = $variantReservations->pluck('status')->unique();
+    
+                        if ($statuses->count() !== 1) {
+                            throw new \LogicException(
+                                "Status reservasi varian {$variantId} tidak konsisten."
+                            );
+                        }
+    
+                        $status = $statuses->first();
+                        $variantItems = $itemsByVariant->get(
+                            (string) $variantId,
+                            collect()
+                        );
+    
+                        $reservationQuantity = (int) $variantReservations->sum('quantity');
+                        $itemQuantity = (int) $variantItems->sum('quantity');
+    
+                        if ($reservationQuantity !== $itemQuantity) {
+                            throw new \LogicException(
+                                "Jumlah reservasi varian {$variantId} tidak sesuai dengan item order."
+                            );
+                        }
+    
+                        if ($status === InventoryReservation::STATUS_RESERVED) {
+                            foreach ($variantReservations as $reservation) {
+                                $this->releaseReservation(
+                                    $reservation->idempotency_key
+                                );
+                            }
+                        } elseif ($status === InventoryReservation::STATUS_COMMITTED) {
+                            foreach ($variantItems as $item) {
+                                $product = $products->get($item->product_id);
+    
+                                if (! $product) {
+                                    throw new \RuntimeException(
+                                        "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
+                                    );
+                                }
+    
+                                $this->restoreForOrder(
+                                    $product,
+                                    (int) $variantId,
+                                    (int) $item->quantity,
+                                    $lockedOrder,
+                                    (int) $item->id
+                                );
+    
+                                $handledItemIds[] = (int) $item->id;
+                            }
+                        } elseif ($status !== InventoryReservation::STATUS_RELEASED) {
+                            throw new \LogicException(
+                                "Status reservasi {$status} tidak dikenal."
+                            );
+                        }
+                    }
+    
+                    foreach ($items as $item) {
+                        if (in_array((int) $item->id, $handledItemIds, true)) {
+                            continue;
+                        }
+    
+                        $variantKey = $item->product_variant_id === null
+                            ? null
+                            : (string) $item->product_variant_id;
+    
+                        if (
+                            $variantKey !== null
+                            && $reservationsByVariant->has($variantKey)
+                        ) {
+                            continue;
+                        }
+    
+                        $product = $products->get($item->product_id);
+    
+                        if (! $product) {
+                            throw new \RuntimeException(
+                                "Produk {$item->product_id} tidak ditemukan saat memulihkan stok."
+                            );
+                        }
+    
+                        $this->restoreForOrder(
+                            $product,
+                            $item->product_variant_id
+                                ? (int) $item->product_variant_id
+                                : null,
+                            (int) $item->quantity,
+                            $lockedOrder,
+                            (int) $item->id
+                        );
+                    }
+                });
             }
-
-            /*
-             * Item tanpa reservasi merupakan order legacy yang stoknya
-             * dipotong langsung. Item ini tetap menggunakan mekanisme
-             * pemulihan lama yang idempotent.
-             */
-            foreach ($items as $item) {
-                if (in_array((int) $item->id, $handledItemIds, true)) {
-                    continue;
-                }
-
-                $variantKey = $item->product_variant_id === null ? null : (string) $item->product_variant_id;
-
-                if ($variantKey !== null && $reservationsByVariant->has($variantKey)) {
-                    // Varian ini sudah ditangani berdasarkan status reservasinya.
-                    continue;
-                }
-
-                $product = $products->get($item->product_id);
-
-                if (! $product) {
-                    throw new \RuntimeException("Produk {$item->product_id} tidak ditemukan saat memulihkan stok.");
-                }
-
-                $this->restoreForOrder($product, $item->product_variant_id ? (int) $item->product_variant_id : null, (int) $item->quantity, $lockedOrder, (int) $item->id);
-            }
-        });
+        );
     }
 }

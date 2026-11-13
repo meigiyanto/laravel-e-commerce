@@ -12,11 +12,11 @@ use LogicException;
 class RecoverProcessingRefundJob implements ShouldQueue
 {
     use Queueable;
-
+    
     public function __construct(
-        public int $refundId
-    ) {
-    }
+        public int $refundId,
+        public ?int $tenantId = null
+    ) {}
 
     public function middleware(): array
     {
