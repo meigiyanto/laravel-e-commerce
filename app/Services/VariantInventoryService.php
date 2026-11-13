@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Inventory;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
@@ -679,52 +680,107 @@ class VariantInventoryService
         if ($quantity < 1) {
             return;
         }
-
-        $resolved = $this->resolve($product, $variantId);
-
-        $lockedProduct = $resolved['product'];
-        $variant = $resolved['variant'];
-        $inventory = $resolved['inventory'];
-
-        $idempotencyKey = $orderItemId !== null
-        ? sprintf(
-            'order:%d:item:%d:return',
-            $order->id,
-            $orderItemId
-        )
-        : sprintf(
-            'order:%d:variant:%d:return',
-            $order->id,
-            $variant->id
-        );
-
-        if ($this->hasRecordedMovement(
-            $idempotencyKey,
-            $variant->id,
-            'return',
+    
+        DB::transaction(function () use (
+            $product,
+            $variantId,
             $quantity,
-            Order::class,
-            (int) $order->id
-        )) {
-            return;
-        }
-
-        $inventory->update([
-            'quantity' => (int) $inventory->quantity + $quantity,
-        ]);
-
-        $variant->inventoryMovements()->create([
-            'type' => 'return',
-            'quantity' => $quantity,
-            'reference_type' => Order::class,
-            'reference_id' => $order->id,
-            'idempotency_key' => $idempotencyKey,
-            'note' => 'Stok dikembalikan karena pesanan dibatalkan.',
-            'created_by' => auth()->id(),
-        ]);
-
-        $this->syncLegacyStock($lockedProduct);
+            $order,
+            $orderItemId
+        ): void {
+            // Order harus ditemukan dalam tenant context aktif.
+            $lockedOrder = Order::query()
+                ->whereKey($order->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $resolved = $this->resolve($product, $variantId);
+    
+            $lockedProduct = $resolved['product'];
+            $variant = $resolved['variant'];
+            $inventory = $resolved['inventory'];
+    
+            $normalizeTenantId = static fn ($id) => $id === null
+                ? null
+                : (int) $id;
+    
+            $productTenantId = $normalizeTenantId($lockedProduct->tenant_id);
+            $orderTenantId = $normalizeTenantId($lockedOrder->tenant_id);
+            $variantTenantId = $normalizeTenantId($variant->tenant_id);
+            $inventoryTenantId = $normalizeTenantId($inventory->tenant_id);
+    
+            if (
+                $productTenantId !== $orderTenantId
+                || $productTenantId !== $variantTenantId
+                || $productTenantId !== $inventoryTenantId
+            ) {
+                throw new \LogicException(
+                    'Produk, varian, inventori, dan order harus berasal dari tenant yang sama.'
+                );
+            }
+    
+            if ($orderItemId !== null) {
+                $item = OrderItem::query()
+                    ->whereKey($orderItemId)
+                    ->where('order_id', $lockedOrder->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+    
+                if (
+                    (int) $item->product_id !== (int) $lockedProduct->id
+                    || (int) $item->quantity !== $quantity
+                    || (
+                        $item->product_variant_id !== null
+                        && (int) $item->product_variant_id !== (int) $variant->id
+                    )
+                ) {
+                    throw new \LogicException(
+                        'Order item tidak sesuai dengan produk, varian, atau jumlah pemulihan.'
+                    );
+                }
+            }
+    
+            $idempotencyKey = $orderItemId !== null
+                ? sprintf(
+                    'order:%d:item:%d:return',
+                    $lockedOrder->id,
+                    $orderItemId
+                )
+                : sprintf(
+                    'order:%d:variant:%d:return',
+                    $lockedOrder->id,
+                    $variant->id
+                );
+    
+            if ($this->hasRecordedMovement(
+                $idempotencyKey,
+                (int) $variant->id,
+                'return',
+                $quantity,
+                Order::class,
+                (int) $lockedOrder->id
+            )) {
+                return;
+            }
+    
+            $inventory->update([
+                'quantity' => (int) $inventory->quantity + $quantity,
+            ]);
+    
+            $variant->inventoryMovements()->create([
+                'type' => 'return',
+                'quantity' => $quantity,
+                'reference_type' => Order::class,
+                'reference_id' => $lockedOrder->id,
+                'idempotency_key' => $idempotencyKey,
+                'note' => 'Stok dikembalikan karena pesanan dibatalkan.',
+                'created_by' => auth()->id(),
+            ]);
+    
+            $this->syncLegacyStock($lockedProduct);
+        });
     }
+
 
     /**
     * Kolom legacy mencerminkan total quantity seluruh varian.

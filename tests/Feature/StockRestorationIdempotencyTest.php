@@ -501,4 +501,42 @@ class StockRestorationIdempotencyTest extends TestCase
             $order
         );
     }
+
+
+    public function test_restore_for_order_rejects_order_from_another_tenant(): void
+    {
+        $fixture = $this->createInventoryFixture(8);
+        $tenantB = Tenant::factory()->create();
+
+        app(TenantContext::class)->set($tenantB);
+        $foreignOrder = $this->createOrder($tenantB->id);
+
+        $this->activateTenant($fixture['product']);
+
+        try {
+            app(VariantInventoryService::class)->restoreForOrder(
+                $fixture['product'],
+                $fixture['variant']->id,
+                2,
+                $foreignOrder
+            );
+
+            $this->fail('Order dari tenant lain seharusnya ditolak.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            $this->assertInstanceOf(
+                \Illuminate\Database\Eloquent\ModelNotFoundException::class,
+                $exception
+            );
+        }
+
+        $this->assertSame(8, $fixture['inventory']->fresh()->quantity);
+
+        $this->assertSame(
+            0,
+            InventoryMovement::query()
+            ->where('reference_id', $foreignOrder->id)
+            ->where('type', 'return')
+            ->count()
+        );
+    }
 }
