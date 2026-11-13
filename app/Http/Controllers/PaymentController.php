@@ -17,6 +17,63 @@ use Throwable;
 
 class PaymentController extends Controller
 {
+    private function cancelOrder(
+        Order $order,
+        $payment,
+        string $status,
+        PaymentIntent $paymentIntent
+    ): void {
+        if ($payment->status === 'succeeded') {
+            return;
+        }
+    
+        if (in_array($order->status, [
+            'shipped',
+            'completed',
+            'failed',
+            'refunded',
+        ], true)) {
+            return;
+        }
+    
+        $payment->update([
+            'status' => $status,
+            'transaction_status' => $paymentIntent->status,
+            'metadata' => array_merge(
+                $payment->metadata ?? [],
+                [
+                    'stripe_payment_intent_status' => $paymentIntent->status,
+                ]
+            ),
+        ]);
+    
+        if ($order->status !== 'canceled') {
+            $order->update([
+                'status' => 'canceled',
+            ]);
+        }
+    
+        /*
+         * Gunakan satu mekanisme pembatalan untuk semua jenis order:
+         * - reserved: release tanpa menambah quantity.
+         * - committed: pulihkan quantity.
+         * - released: tidak melakukan apa pun.
+         * - legacy tanpa reservasi: pulihkan berdasarkan order item.
+         *
+         * Pemanggilan ulang aman melalui idempotency movement.
+         */
+        app(VariantInventoryService::class)
+            ->cancelStockForOrder($order);
+    }
+    private function stripeAmount($amount): int
+    {
+        /*
+         * Stripe memperlakukan IDR dengan
+         * dua digit minor unit untuk request amount.
+         */
+        return (int) round((float) $amount * 100);
+    }
+
     /**
      * Menampilkan halaman pembayaran.
      */
@@ -601,53 +658,5 @@ class PaymentController extends Controller
                 $freshPayment
             );
         }
-    }
-
-    private function cancelOrder(
-        Order $order,
-        $payment,
-        string $status,
-        PaymentIntent $paymentIntent
-    ): void {
-        // Pembayaran yang sudah berhasil tidak boleh diturunkan menjadi canceled.
-        if ($payment->status === 'succeeded') {
-            return;
-        }
-    
-        // Order yang sudah dikirim atau selesai tidak dibatalkan oleh callback pembayaran.
-        if (in_array($order->status, ['shipped', 'completed'], true)) {
-            return;
-        }
-    
-        $payment->update([
-            'status' => $status,
-            'transaction_status' => $paymentIntent->status,
-            'metadata' => array_merge(
-                $payment->metadata ?? [],
-                [
-                    'stripe_payment_intent_status' => $paymentIntent->status,
-                ]
-            ),
-        ]);
-    
-        if ($order->status !== 'canceled') {
-            $order->update([
-                'status' => 'canceled',
-            ]);
-        }
-    
-        // Release hanya reservasi yang masih reserved.
-        // Reservasi committed tidak dikembalikan melalui release.
-        app(VariantInventoryService::class)
-            ->releaseReservationsForOrder($order);
-    }
-
-    private function stripeAmount($amount): int
-    {
-        /*
-         * Stripe memperlakukan IDR dengan
-         * dua digit minor unit untuk request amount.
-         */
-        return (int) round((float) $amount * 100);
     }
 }
