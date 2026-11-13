@@ -418,16 +418,12 @@ class ProductGalleryControllerTest extends TestCase
             'role' => User::ROLE_STAFF,
         ]);
 
-        $this->actingAs($staff)
-        ->get(route('admin.product-gallery.index'))
-        ->assertOk();
+        $this->actingAs($staff)->get(route('admin.product-gallery.index'))->assertOk();
 
-        $this->actingAs($staff)
-        ->post(route('admin.product-gallery.upload'), [
+        $this->actingAs($staff)->post(route('admin.product-gallery.upload'), [
             'images' => [UploadedFile::fake()->image('forbidden.jpg')],
-        ])
-        ->assertForbidden();
-
+        ])->assertForbidden();
+        
         $this->assertSame([], Storage::disk('public')->files('products'));
     }
 }

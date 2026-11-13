@@ -187,7 +187,8 @@ class ProductGalleryController extends Controller
 
     public function upload(Request $request)
     {
-        $this->authorizeCatalogView();
+        $this->authorizeCatalogManagement();
+        
         $validated = $request->validate([
             'images' => ['required', 'array', 'max:20'],
             'images.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:' . self::MAX_IMAGE_KB],
