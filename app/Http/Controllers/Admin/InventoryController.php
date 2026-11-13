@@ -15,6 +15,125 @@ use Illuminate\Validation\ValidationException;
 class InventoryController extends Controller
 {
     private const LOW_STOCK_THRESHOLD = 5;
+    
+    private function persistStockChange(
+        Product $product,
+        string $mode,
+        int $amount,
+        string $note
+    ): void {
+        DB::transaction(function () use ($product, $mode, $amount, $note) {
+            $lockedProduct = Product::query()
+                ->whereKey($product->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $variant = $lockedProduct->variants()
+                ->orderByDesc('is_default')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+    
+            if (! $variant) {
+                $baseSku = 'LEGACY-'.$lockedProduct->id;
+                $sku = $baseSku;
+                $suffix = 1;
+    
+                while (ProductVariant::where('sku', $sku)->exists()) {
+                    $sku = $baseSku.'-'.$suffix++;
+                }
+    
+                $variant = $lockedProduct->variants()->create([
+                    'sku' => $sku,
+                    'name' => $lockedProduct->name,
+                    'price' => $lockedProduct->price ?? 0,
+                    'is_default' => true,
+                    'status' => 'active',
+                ]);
+            }
+    
+            $inventory = Inventory::query()
+                ->where('product_variant_id', $variant->id)
+                ->lockForUpdate()
+                ->first();
+    
+            if (! $inventory) {
+                $hasAnyInventory = Inventory::query()
+                    ->whereHas('variant', function ($query) use ($lockedProduct) {
+                        $query->where('product_id', $lockedProduct->id);
+                    })
+                    ->exists();
+    
+                $initialQuantity = $hasAnyInventory
+                    ? 0
+                    : max(0, (int) $lockedProduct->stock);
+    
+                $inventory = Inventory::create([
+                    'product_variant_id' => $variant->id,
+                    'quantity' => $initialQuantity,
+                    'reserved_quantity' => 0,
+                    'reorder_level' => 0,
+                ]);
+    
+                if ($initialQuantity > 0) {
+                    $variant->inventoryMovements()->create([
+                        'type' => 'opening_stock',
+                        'quantity' => $initialQuantity,
+                        'note' => 'Migrasi stok legacy produk ke inventaris varian.',
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+            }
+    
+            $currentQuantity = (int) $inventory->quantity;
+            $reservedQuantity = (int) $inventory->reserved_quantity;
+    
+            $newQuantity = match ($mode) {
+                'set' => $amount,
+                'add' => $currentQuantity + $amount,
+                'subtract' => $currentQuantity - $amount,
+                default => throw new \LogicException(
+                    'Mode perubahan stok tidak valid.'
+                ),
+            };
+    
+            $field = $mode === 'set' ? 'stock' : 'quantity';
+    
+            if ($newQuantity < 0) {
+                throw ValidationException::withMessages([
+                    $field => 'Stok tidak mencukupi untuk pengurangan tersebut.',
+                ]);
+            }
+    
+            if ($newQuantity < $reservedQuantity) {
+                throw ValidationException::withMessages([
+                    $field => "Stok tidak boleh kurang dari stok yang "
+                        ."direservasi ({$reservedQuantity}).",
+                ]);
+            }
+    
+            $difference = $newQuantity - $currentQuantity;
+    
+            if ($difference !== 0) {
+                $inventory->update([
+                    'quantity' => $newQuantity,
+                ]);
+    
+                $variant->inventoryMovements()->create([
+                    'type' => 'adjustment',
+                    'quantity' => $difference,
+                    'note' => $note,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+    
+            // products.stock adalah nilai kompatibilitas katalog lama.
+            // Totalnya dihitung dari seluruh inventories milik produk.
+            // Jangan menulis products.price dari proses penyesuaian stok.
+            app(VariantInventoryService::class)
+                ->syncLegacyStock($lockedProduct);
+        });
+    }
 
     public function index(Request $request)
     {
@@ -127,140 +246,5 @@ class InventoryController extends Controller
                 'success',
                 "Stok produk {$product->name} berhasil diperbarui."
             );
-    }
-
-    /**
-     * inventories.quantity adalah sumber utama stok.
-     * products.stock tetap disinkronkan untuk kompatibilitas katalog lama.
-     */
-    private function persistStockChange(
-        Product $product,
-        string $mode,
-        int $amount,
-        string $note
-    ): void {
-        DB::transaction(function () use (
-            $product,
-            $mode,
-            $amount,
-            $note
-        ) {
-            $lockedProduct = Product::query()
-                ->whereKey($product->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $variant = $lockedProduct->variants()
-                ->orderByDesc('is_default')
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $variant) {
-                $baseSku = 'LEGACY-'.$lockedProduct->id;
-                $sku = $baseSku;
-                $suffix = 1;
-
-                while (ProductVariant::where('sku', $sku)->exists()) {
-                    $sku = $baseSku.'-'.$suffix++;
-                }
-
-                $variant = $lockedProduct->variants()->create([
-                    'sku' => $sku,
-                    'name' => $lockedProduct->name,
-                    'price' => $lockedProduct->price ?? 0,
-                    'is_default' => true,
-                    'status' => 'active',
-                ]);
-            }
-
-            $inventory = Inventory::query()
-                ->where('product_variant_id', $variant->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $inventory) {
-                $hasAnyInventory = Inventory::query()
-                    ->whereHas('variant', function ($query) use (
-                        $lockedProduct
-                    ) {
-                        $query->where(
-                            'product_id',
-                            $lockedProduct->id
-                        );
-                    })
-                    ->exists();
-
-                $initialQuantity = $hasAnyInventory
-                    ? 0
-                    : max(0, (int) $lockedProduct->stock);
-
-                $inventory = Inventory::create([
-                    'product_variant_id' => $variant->id,
-                    'quantity' => $initialQuantity,
-                    'reserved_quantity' => 0,
-                    'reorder_level' => 0,
-                ]);
-
-                if ($initialQuantity > 0) {
-                    $variant->inventoryMovements()->create([
-                        'type' => 'opening_stock',
-                        'quantity' => $initialQuantity,
-                        'note' => 'Migrasi stok legacy produk ke inventaris varian.',
-                        'created_by' => auth()->id(),
-                    ]);
-                }
-            }
-
-            $currentQuantity = (int) $inventory->quantity;
-            $reservedQuantity = (int) $inventory->reserved_quantity;
-
-            $newQuantity = match ($mode) {
-                'set' => $amount,
-                'add' => $currentQuantity + $amount,
-                'subtract' => $currentQuantity - $amount,
-                default => throw new \LogicException(
-                    'Mode perubahan stok tidak valid.'
-                ),
-            };
-
-            $field = $mode === 'set' ? 'stock' : 'quantity';
-
-            if ($newQuantity < 0) {
-                throw ValidationException::withMessages([
-                    $field => 'Stok tidak mencukupi untuk pengurangan tersebut.',
-                ]);
-            }
-
-            if ($newQuantity < $reservedQuantity) {
-                throw ValidationException::withMessages([
-                    $field => "Stok tidak boleh kurang dari stok yang "
-                        ."direservasi ({$reservedQuantity}).",
-                ]);
-            }
-
-            $difference = $newQuantity - $currentQuantity;
-
-            if ($difference !== 0) {
-                $inventory->update([
-                    'quantity' => $newQuantity,
-                ]);
-
-                $variant->inventoryMovements()->create([
-                    'type' => 'adjustment',
-                    'quantity' => $difference,
-                    'note' => $note,
-                    'created_by' => auth()->id(),
-                ]);
-            }
-
-            $lockedProduct->update([
-                'stock' => $newQuantity,
-                'price' => $variant->price,
-            ]);
-
-            app(VariantInventoryService::class)
-                ->syncLegacyStock($lockedProduct);
-        });
     }
 }

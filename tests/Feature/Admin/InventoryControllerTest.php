@@ -352,4 +352,62 @@ class InventoryControllerTest extends TestCase
         ->assertViewIs('admin.inventory.index')
         ->assertSee($product->name);
     }
+
+    public function test_stock_adjustments_never_change_product_or_variant_prices(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Inventory Price Test',
+            'price' => 150000,
+            'stock' => 10,
+        ]);
+
+        $admin = $this->createTenantAdmin($product);
+
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'sku' => 'INV-PRICE-'.uniqid(),
+            'name' => 'Default Variant',
+            'price' => 175000,
+            'is_default' => true,
+            'status' => 'active',
+        ]);
+
+        $inventory = Inventory::create([
+            'product_variant_id' => $variant->id,
+            'quantity' => 10,
+            'reserved_quantity' => 0,
+            'reorder_level' => 0,
+        ]);
+
+        $this->actingAs($admin);
+
+        $response = $this->patch(
+            $this->tenantUrl($product, 'admin.inventory.update-stock', $product),
+            ['stock' => 15]
+        );
+
+        $this->activateTenant($product);
+        $response->assertRedirect();
+
+        $response = $this->post(
+            $this->tenantUrl($product, 'admin.inventory.adjust-stock', $product),
+            ['quantity' => 3, 'type' => 'add']
+        );
+
+        $this->activateTenant($product);
+        $response->assertRedirect();
+
+        $response = $this->post(
+            $this->tenantUrl($product, 'admin.inventory.adjust-stock', $product),
+            ['quantity' => 2, 'type' => 'subtract']
+        );
+
+        $this->activateTenant($product);
+        $response->assertRedirect();
+
+        $this->assertSame(150000.0, (float) $product->fresh()->price);
+        $this->assertSame(175000.0, (float) $variant->fresh()->price);
+        $this->assertSame(16, (int) $inventory->fresh()->quantity);
+        $this->assertSame(16, (int) $product->fresh()->stock);
+    }
 }
