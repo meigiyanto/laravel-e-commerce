@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use Closure;
 
 class RefundService
 {
@@ -18,6 +19,52 @@ class RefundService
         protected StripePaymentService $stripe,
         protected MidtransService $midtrans,
     ) {}
+    
+    private function runWithOrderTenantContext(
+        int $orderId,
+        Closure $callback
+    ): mixed {
+        $tenantId = Order::withoutGlobalScope('tenant')
+            ->whereKey($orderId)
+            ->value('tenant_id');
+    
+        $context = app(TenantContext::class);
+    
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            if ($tenantId !== null) {
+                throw new LogicException(
+                    'Order single-store tidak boleh terikat pada tenant.'
+                );
+            }
+    
+            return $callback();
+        }
+    
+        if ($tenantId === null) {
+            throw new LogicException(
+                'Tenant untuk order refund tidak ditemukan.'
+            );
+        }
+    
+        $currentTenant = $context->current();
+    
+        if ($currentTenant !== null) {
+            if ((int) $currentTenant->id !== (int) $tenantId) {
+                throw new LogicException(
+                    'Refund order tidak sesuai dengan tenant aktif.'
+                );
+            }
+    
+            return $callback();
+        }
+    
+        $tenant = Tenant::query()
+            ->whereKey($tenantId)
+            ->where('status', 'active')
+            ->firstOrFail();
+    
+        return $context->run($tenant, $callback);
+    }
 
     private function ensureOrderTenantContext(int $orderId): void
     {
@@ -342,113 +389,38 @@ class RefundService
             'services.refund.processing_timeout_minutes',
             15
         );
-
+    
         $cutoff = now()->subMinutes($timeoutMinutes);
-
+    
         return Refund::query()
-            ->where('status',
-                Refund::STATUS_PROCESSING)
-            ->whereNotNull('processing_at')
-            ->where('processing_at',
-                '<=',
-                $cutoff)
-            ->orderBy('processing_at')
+            ->join('orders', 'orders.id', '=', 'refunds.order_id')
+            ->select([
+                'refunds.*',
+                'orders.tenant_id as recovery_tenant_id',
+            ])
+            ->where('refunds.status', Refund::STATUS_PROCESSING)
+            ->whereNotNull('refunds.processing_at')
+            ->where('refunds.processing_at', '<=', $cutoff)
+            ->orderBy('refunds.processing_at')
             ->get();
     }
 
     public function recoverRefund(Refund $refund): Refund
     {
-        $lock = $this->refundOperationLock($refund->id);
-
-        if (! $lock->get()) {
-            return $refund->fresh();
-        }
-
-        try {
-            $refundData = Refund::query()
-                ->select(['id', 'payment_id'])
-                ->findOrFail($refund->id);
-
-            $timeoutMinutes = (int) config(
-                'services.refund.processing_timeout_minutes',
-                15
+        $orderId = Refund::query()
+            ->whereKey($refund->id)
+            ->value('order_id');
+    
+        if ($orderId === null) {
+            throw new LogicException(
+                'Order untuk refund recovery tidak ditemukan.'
             );
-
-            $recovery = DB::transaction(function () use (
-                $refundData,
-                $timeoutMinutes
-            ) {
-                $payment = Payment::query()
-                    ->whereKey($refundData->payment_id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $payment) {
-                    return [
-                        'refund' => Refund::findOrFail($refundData->id),
-                        'eligible' => false,
-                    ];
-                }
-
-                $refund = Refund::query()
-                    ->whereKey($refundData->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-
-                if (
-                    $refund->status !== Refund::STATUS_PROCESSING || ! $refund->processing_at
-                ) {
-                    return [
-                        'refund' => $refund->load(['order', 'payment']),
-                        'eligible' => false,
-                    ];
-                }
-
-                $cutoff = now()->subMinutes($timeoutMinutes);
-
-                if ($refund->processing_at->gt($cutoff)) {
-                    return [
-                        'refund' => $refund->load(['order', 'payment']),
-                        'eligible' => false,
-                    ];
-                }
-
-                $refund->update([
-                    'processing_at' => now(),
-                ]);
-
-                return [
-                    'refund' => $refund->fresh(['order', 'payment']),
-                    'eligible' => true,
-                ];
-            });
-
-            $refund = $recovery['refund'];
-
-            if (! $recovery['eligible']) {
-                return $refund;
-            }
-
-            // Periksa kembali status setelah transaksi.
-            if ($refund->status !== Refund::STATUS_PROCESSING) {
-                return $refund;
-            }
-
-            return match ($refund->payment?->provider) {
-                'stripe' => $this->recoverStripe(
-                    $refund,
-                    $refund->payment
-                ),
-                'midtrans' => $this->recoverMidtrans(
-                    $refund,
-                    $refund->payment
-                ),
-                'cod' => $this->processCod($refund),
-                default => $refund,
-            };
-        } finally {
-            $lock->release();
         }
+    
+        return $this->runWithOrderTenantContext(
+            (int) $orderId,
+            fn () => $this->recoverRefundInTenantContext($refund)
+        );
     }
 
     /**

@@ -167,75 +167,118 @@ class PaymentController extends Controller
         $expectedAmount = $this->stripeAmount(
             $order->total
         );
-
+        
         try {
-            /*
-             * Gunakan PaymentIntent lama jika tersedia.
-             */
-            if ($payment->stripe_payment_intent_id) {
-                $paymentIntent = PaymentIntent::retrieve(
-                    $payment->stripe_payment_intent_id
-                );
-
-                $this->validatePaymentIntent(
-                    $order,
-                    $paymentIntent
-                );
-            } else {
-                /*
-                 * Buat PaymentIntent baru.
-                 */
+            $paymentResult = DB::transaction(function () use (
+                $order,
+                $payment,
+                $expectedAmount
+            ) {
+                // Urutan lock: Order -> Payment.
+                $lockedOrder = Order::query()
+                    ->whereKey($order->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+        
+                $lockedPayment = Payment::query()
+                    ->whereKey($payment->id)
+                    ->where('order_id', $lockedOrder->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+        
+                if (
+                    $lockedOrder->status === 'canceled'
+                    || $lockedPayment->status === 'canceled'
+                ) {
+                    return [
+                        'status' => 'canceled',
+                        'payment_intent_id' => null,
+                    ];
+                }
+        
+                if ($lockedPayment->status === 'succeeded') {
+                    return [
+                        'status' => 'succeeded',
+                        'payment_intent_id' => $lockedPayment->stripe_payment_intent_id,
+                    ];
+                }
+        
+                // Request bersamaan akan memakai PaymentIntent yang sama.
+                if ($lockedPayment->stripe_payment_intent_id) {
+                    return [
+                        'status' => 'ready',
+                        'payment_intent_id' => $lockedPayment->stripe_payment_intent_id,
+                    ];
+                }
+        
                 $paymentIntent = PaymentIntent::create([
                     'amount' => $expectedAmount,
                     'currency' => 'idr',
                     'payment_method_types' => ['card'],
-                    'description' => config('app.name') . " order {$order->order_number}",
+                    'description' => config('app.name')
+                        ." order {$lockedOrder->order_number}",
                     'metadata' => [
-                        'order_id' => (string) $order->id,
-                        'order_number' => $order->order_number,
+                        'order_id' => (string) $lockedOrder->id,
+                        'order_number' => $lockedOrder->order_number,
                     ],
-                    'receipt_email' => $order->user?->email,
+                    'receipt_email' => $lockedOrder->user?->email,
+                ], [
+                    'idempotency_key' => 'payment-intent-'.$lockedPayment->id,
                 ]);
-
-                $payment->update([
+        
+                $lockedPayment->update([
                     'provider' => 'stripe',
                     'currency' => 'IDR',
                     'status' => 'pending',
                     'transaction_status' => $paymentIntent->status,
                     'stripe_payment_intent_id' => $paymentIntent->id,
                     'transaction_id' => $paymentIntent->id,
-                    'gross_amount' => $order->total,
-                    'metadata' => [
-                        'stripe_payment_intent_status' => $paymentIntent->status,
-                    ],
+                    'gross_amount' => $lockedOrder->total,
+                    'metadata' => array_merge(
+                        $lockedPayment->metadata ?? [],
+                        [
+                            'stripe_payment_intent_status' => $paymentIntent->status,
+                        ]
+                    ),
                 ]);
+        
+                return [
+                    'status' => 'ready',
+                    'payment_intent_id' => $paymentIntent->id,
+                ];
+            });
+        
+            if ($paymentResult['status'] === 'canceled') {
+                return redirect()
+                    ->route('orders.show', $order)
+                    ->with('error', 'Pesanan ini sudah dibatalkan.');
             }
+        
+            if ($paymentResult['status'] === 'succeeded') {
+                return redirect()->route('checkout.success', $order);
+            }
+        
+            $paymentIntent = PaymentIntent::retrieve(
+                $paymentResult['payment_intent_id']
+            );
+        
+            $this->validatePaymentIntent($order, $paymentIntent);
+        
+            $payment = $payment->fresh();
         } catch (ApiErrorException $e) {
-            Log::error(
-                'Stripe PaymentIntent API error.',
-                [
-                    'order_id' => $order->id,
-                    'message' => $e->getMessage(),
-                ]
-            );
-
-            abort(
-                502,
-                'Stripe payments could not be set up'
-            );
+            Log::error('Stripe PaymentIntent API error.', [
+                'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
+        
+            abort(502, 'Stripe payments could not be set up.');
         } catch (Throwable $e) {
-            Log::error(
-                'Stripe PaymentIntent error.',
-                [
-                    'order_id' => $order->id,
-                    'message' => $e->getMessage(),
-                ]
-            );
-
-            abort(
-                502,
-                'Stripe payments could not be set up.'
-            );
+            Log::error('Stripe PaymentIntent error.', [
+                'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
+        
+            abort(502, 'Stripe payments could not be set up.');
         }
 
         return view(

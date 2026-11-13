@@ -10,23 +10,19 @@ class SetTenantContext
     public function __construct(
         private readonly int $tenantId
     ) {}
-
+    
     public function handle(object $job, callable $next): mixed
     {
         $context = app(TenantContext::class);
-
-        try {
-            $tenant = Tenant::query()
+    
+        $tenant = Tenant::query()
             ->whereKey($this->tenantId)
             ->where('status', 'active')
             ->firstOrFail();
-
-            return $context->run(
-                $tenant,
-                fn () => $next($job)
-            );
-        } finally {
-            $context->clear();
-        }
+    
+        return $context->run(
+            $tenant,
+            fn () => $next($job)
+        );
     }
 }

@@ -25,80 +25,88 @@ class MidtransPaymentController extends Controller
     /**
     * Menampilkan halaman pembayaran Midtrans.
     */
-    public function show(Order $order) {
+    public function show(Order $order)
+    {
         abort_unless($order->user_id === auth()->id(), 403);
-        $order->load(['payment', 'items.product', 'user']);
-        $payment = $order->payment;
-        if (! $payment) {
-            abort(404, 'Data payment not found.');
-        }
-
-        /*
-         * Halaman ini hanya untuk pembayaran Midtrans.
-         */
-        if ($payment->provider !== 'midtrans') {
-            return redirect()->route('payment.show', $order);
-        }
-
-        /*
-         * Pembayaran sudah berhasil.
-         * Tidak perlu membuat Snap Token baru.
-         */
-        if ($payment->status === 'succeeded') {
-            return redirect()->route('checkout.success', $order);
-        }
-
-        if ($order->status === 'canceled') {
-            return redirect()
-            ->route('orders.show', $order)
-            ->with(
-                'error',
-                'Pesanan ini sudah dibatalkan. Silakan buat pesanan baru.'
-            );
-        }
-
-        try {
-            /*
-             * Gunakan Snap Token yang sudah tersimpan.
-             */
+    
+        $result = DB::transaction(function () use ($order) {
+            // Urutan lock: Order -> Payment.
+            $lockedOrder = Order::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $payment = Payment::query()
+                ->where('order_id', $lockedOrder->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            if ($payment->provider !== 'midtrans') {
+                return ['status' => 'wrong_provider'];
+            }
+    
+            if ($payment->status === 'succeeded') {
+                return ['status' => 'succeeded'];
+            }
+    
+            if ($lockedOrder->status === 'canceled') {
+                return ['status' => 'canceled'];
+            }
+    
             $snapToken = $payment->midtrans_snap_token;
-
-            /*
-             * Buat Snap Token hanya jika belum tersedia.
-             */
+    
             if (! $snapToken) {
-                $snapToken = $this->midtrans->createSnapToken($order);
-
+                // Panggilan provider dilakukan saat row lock masih aktif.
+                $snapToken = $this->midtrans->createSnapToken($lockedOrder);
+    
+                if (! is_string($snapToken) || trim($snapToken) === '') {
+                    throw new \RuntimeException(
+                        'Midtrans tidak mengembalikan Snap Token yang valid.'
+                    );
+                }
+    
                 $payment->update([
                     'provider' => 'midtrans',
                     'currency' => 'IDR',
                     'status' => 'pending',
                     'payment_type' => 'midtrans_snap',
                     'transaction_status' => 'pending',
-                    'gross_amount' => $order->total,
+                    'gross_amount' => $lockedOrder->total,
                     'midtrans_snap_token' => $snapToken,
                 ]);
             }
-
-            return view('storefront.midtrans-payment',
-                [
-                    'order' => $order,
-                    'payment' => $payment->fresh(),
-                    'snapToken' => $snapToken,
-                    'clientKey' => config('midtrans.client_key'),
-                ]
-            );
-        } catch (Throwable $e) {
-            Log::error('Midtrans Snap Token creation failed.',
-                [
-                    'order_id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'message' => $e->getMessage(),
-                ]
-            );
-
-            abort(502, 'Midtrans payment cannot be prepared..');
+    
+            return [
+                'status' => 'ready',
+                'order' => $lockedOrder,
+                'payment' => $payment->fresh(),
+                'snap_token' => $snapToken,
+            ];
+        });
+    
+        if ($result['status'] === 'wrong_provider') {
+            return redirect()->route('payment.show', $order);
         }
+    
+        if ($result['status'] === 'succeeded') {
+            return redirect()->route('checkout.success', $order);
+        }
+    
+        if ($result['status'] === 'canceled') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with(
+                    'error',
+                    'Pesanan ini sudah dibatalkan. Silakan buat pesanan baru.'
+                );
+        }
+    
+        return view('storefront.midtrans-payment', [
+            'order' => $result['order'],
+            'payment' => $result['payment'],
+            'snapToken' => $result['snap_token'],
+            'clientKey' => config('midtrans.client_key'),
+        ]);
     }
 
     /**

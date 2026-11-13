@@ -141,7 +141,71 @@ class VariantInventoryService
             'inventory' => $inventory,
         ];
     }
-
+    
+    private function lockReservationContext(string $idempotencyKey): array
+    {
+        // Snapshot awal hanya untuk mengetahui relasi; belum mengambil row lock.
+        $snapshot = InventoryReservation::query()
+            ->where('idempotency_key', $idempotencyKey)
+            ->firstOrFail();
+    
+        $order = null;
+    
+        // Order selalu dikunci sebelum Product dan Inventory.
+        if ($snapshot->reference_type === Order::class) {
+            $order = Order::query()
+                ->whereKey($snapshot->reference_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+        }
+    
+        $variantSnapshot = ProductVariant::query()
+            ->whereKey($snapshot->product_variant_id)
+            ->firstOrFail();
+    
+        $productSnapshot = Product::query()
+            ->whereKey($variantSnapshot->product_id)
+            ->firstOrFail();
+    
+        // resolve mengunci Product -> seluruh Variant -> Inventory.
+        $resolved = $this->resolve(
+            $productSnapshot,
+            (int) $variantSnapshot->id
+        );
+    
+        // Reservation baru dikunci setelah Inventory.
+        $reservation = InventoryReservation::query()
+            ->whereKey($snapshot->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+    
+        $normalize = static fn ($id) => $id === null ? null : (int) $id;
+        $productTenant = $normalize($resolved['product']->tenant_id);
+    
+        if (
+            $normalize($resolved['variant']->tenant_id) !== $productTenant
+            || $normalize($resolved['inventory']->tenant_id) !== $productTenant
+            || $normalize($reservation->tenant_id) !== $productTenant
+            || (
+                $order !== null
+                && $normalize($order->tenant_id) !== $productTenant
+            )
+            || (int) $reservation->product_variant_id !== (int) $resolved['variant']->id
+        ) {
+            throw new \LogicException(
+                'Order, reservation, product, variant, dan inventory tidak konsisten.'
+            );
+        }
+    
+        return [
+            'order' => $order,
+            'reservation' => $reservation,
+            'product' => $resolved['product'],
+            'variant' => $resolved['variant'],
+            'inventory' => $resolved['inventory'],
+        ];
+    }
+    
     public function reserve(
         ProductVariant $variant,
         int $quantity,
@@ -154,15 +218,17 @@ class VariantInventoryService
                 'stock' => 'Jumlah reservasi tidak valid.',
             ]);
         }
-
+    
         if (
-            trim($idempotencyKey) === '' || strlen($idempotencyKey) > 191 || trim($referenceType) === '' || strlen($referenceType) > 100 || $referenceId < 1
+            trim($idempotencyKey) === ''
+            || strlen($idempotencyKey) > 191
+            || trim($referenceType) === ''
+            || strlen($referenceType) > 100
+            || $referenceId < 1
         ) {
-            throw new \InvalidArgumentException(
-                'Data reservasi tidak valid.'
-            );
+            throw new \InvalidArgumentException('Data reservasi tidak valid.');
         }
-
+    
         return DB::transaction(function () use (
             $variant,
             $quantity,
@@ -170,155 +236,146 @@ class VariantInventoryService
             $referenceType,
             $referenceId
         ) {
-            /*
-         * Ambil ulang varian dari database agar tidak bergantung
-         * pada data model yang mungkin sudah kedaluwarsa.
-         */
-            $currentVariant = ProductVariant::query()
-            ->whereKey($variant->id)
-            ->firstOrFail();
-
-            /*
-         * Kunci produk terlebih dahulu. Tenant global scope tetap
-         * berlaku pada kedua query ini.
-         */
-            $product = Product::query()
-            ->whereKey($currentVariant->product_id)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-            /*
-         * Ambil ulang varian dengan row lock dan pastikan
-         * varian tersebut memang milik produk yang dikunci.
-         */
-            $lockedVariant = ProductVariant::query()
-            ->whereKey($currentVariant->id)
-            ->where('product_id', $product->id)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-            /*
-         * Insert reservation menggunakan unique idempotency key.
-         * Jika key sudah ada, data lama akan diperiksa di bawah.
-         */
+            $variantSnapshot = ProductVariant::query()
+                ->whereKey($variant->id)
+                ->firstOrFail();
+    
+            $order = null;
+    
+            if ($referenceType === Order::class) {
+                $order = Order::query()
+                    ->whereKey($referenceId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+            }
+    
+            $productSnapshot = Product::query()
+                ->whereKey($variantSnapshot->product_id)
+                ->firstOrFail();
+    
+            $resolved = $this->resolve(
+                $productSnapshot,
+                (int) $variantSnapshot->id
+            );
+    
+            $product = $resolved['product'];
+            $lockedVariant = $resolved['variant'];
+            $inventory = $resolved['inventory'];
+    
+            $normalize = static fn ($id) => $id === null ? null : (int) $id;
+    
+            if (
+                $order !== null
+                && $normalize($order->tenant_id) !== $normalize($product->tenant_id)
+            ) {
+                throw new \LogicException(
+                    'Order dan produk reservasi harus berasal dari tenant yang sama.'
+                );
+            }
+    
             $inserted = DB::table('inventory_reservations')
-            ->insertOrIgnore([
-                'tenant_id' => $lockedVariant->tenant_id,
-                'product_variant_id' => $lockedVariant->id,
-                'idempotency_key' => $idempotencyKey,
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-                'quantity' => $quantity,
-                'status' => InventoryReservation::STATUS_RESERVED,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
+                ->insertOrIgnore([
+                    'tenant_id' => $lockedVariant->tenant_id,
+                    'product_variant_id' => $lockedVariant->id,
+                    'idempotency_key' => $idempotencyKey,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'quantity' => $quantity,
+                    'status' => InventoryReservation::STATUS_RESERVED,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+    
             $reservation = InventoryReservation::query()
-            ->where('idempotency_key', $idempotencyKey)
-            ->lockForUpdate()
-            ->firstOrFail();
-
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
             if ($inserted === 0) {
-                /*
-             * Key yang sama tidak boleh digunakan untuk payload
-             * berbeda, termasuk tenant atau varian berbeda.
-             */
                 if (
-                    (int) $reservation->tenant_id !== (int) $lockedVariant->tenant_id || (int) $reservation->product_variant_id !== (int) $lockedVariant->id || (int) $reservation->quantity !== $quantity || $reservation->reference_type !== $referenceType || (int) $reservation->reference_id !== $referenceId
+                    $normalize($reservation->tenant_id) !== $normalize($lockedVariant->tenant_id)
+                    || (int) $reservation->product_variant_id !== (int) $lockedVariant->id
+                    || (int) $reservation->quantity !== $quantity
+                    || $reservation->reference_type !== $referenceType
+                    || (int) $reservation->reference_id !== $referenceId
                 ) {
                     throw new \LogicException(
                         'Reservation idempotency key digunakan dengan data berbeda.'
                     );
                 }
-
-                /*
-             * Hanya reservasi yang masih aktif boleh dikembalikan.
-             * Reservasi committed/released tidak boleh diaktifkan ulang.
-             */
-                if (
-                    $reservation->status !== InventoryReservation::STATUS_RESERVED
-                ) {
+    
+                if ($reservation->status !== InventoryReservation::STATUS_RESERVED) {
                     throw new \LogicException(
                         'Reservasi dengan idempotency key ini sudah tidak aktif.'
                     );
                 }
-
+    
                 return $reservation;
             }
-
-            /*
-         * resolve() mengurus inventaris, termasuk backfill stok
-         * legacy jika produk belum memiliki inventory.
-         */
-            $resolved = $this->resolve(
-                $product,
-                (int) $lockedVariant->id
-            );
-
-            $inventory = $resolved['inventory'];
-
-            /*
-         * Periksa stok tersedia langsung pada UPDATE agar
-         * jumlah reservasi tidak melampaui stok fisik.
-         */
+    
             $updated = Inventory::query()
-            ->whereKey($inventory->id)
-            ->whereRaw(
-                'quantity - reserved_quantity >= ?',
-                [$quantity]
-            )
-            ->increment('reserved_quantity', $quantity);
-
+                ->whereKey($inventory->id)
+                ->whereRaw('quantity - reserved_quantity >= ?', [$quantity])
+                ->increment('reserved_quantity', $quantity);
+    
             if ($updated !== 1) {
                 throw ValidationException::withMessages([
-                    'stock' => "Stok varian {$resolved['variant']->name} tidak mencukupi.",
+                    'stock' => "Stok varian {$lockedVariant->name} tidak mencukupi.",
                 ]);
             }
-
+    
             return $reservation->fresh();
         });
     }
 
-    public function commitReservation(
-        string $idempotencyKey
-    ): InventoryReservation {
+    public function commitReservation(string $idempotencyKey): InventoryReservation
+    {
+        DB::transaction(function () use ($order): void {
+            $lockedOrder = Order::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $keys = $lockedOrder->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->pluck('idempotency_key');
+    
+            foreach ($keys as $key) {
+                $this->commitReservation($key);
+            }
+        });
+        
         return DB::transaction(function () use ($idempotencyKey) {
-            $reservation = InventoryReservation::query()
-            ->where('idempotency_key', $idempotencyKey)
-            ->lockForUpdate()
-            ->firstOrFail();
-
+            $context = $this->lockReservationContext($idempotencyKey);
+    
+            $reservation = $context['reservation'];
+            $product = $context['product'];
+            $variant = $context['variant'];
+            $inventory = $context['inventory'];
+            $quantity = (int) $reservation->quantity;
+    
             if ($reservation->status === InventoryReservation::STATUS_COMMITTED) {
                 return $reservation;
             }
-
+    
             if ($reservation->status === InventoryReservation::STATUS_RELEASED) {
                 throw new \LogicException(
                     'Reservasi yang sudah dilepas tidak dapat di-commit.'
                 );
             }
-
-            $variant = ProductVariant::query()
-            ->findOrFail($reservation->product_variant_id);
-
-            $product = Product::query()
-            ->findOrFail($variant->product_id);
-
-            $resolved = $this->resolve($product, (int) $variant->id);
-            $inventory = $resolved['inventory'];
-            $quantity = (int) $reservation->quantity;
-
+    
             if (
-                (int) $inventory->reserved_quantity < $quantity || (int) $inventory->quantity < $quantity
+                (int) $inventory->reserved_quantity < $quantity
+                || (int) $inventory->quantity < $quantity
             ) {
                 throw new \LogicException(
                     'Jumlah stok tidak konsisten dengan reservasi.'
                 );
             }
-
+    
             $movementKey = "reservation:{$reservation->id}:commit";
-
+    
             if ($this->hasRecordedMovement(
                 $movementKey,
                 (int) $variant->id,
@@ -331,14 +388,10 @@ class VariantInventoryService
                     'Movement commit sudah tercatat tetapi status reservasi belum committed.'
                 );
             }
-
-            /*
-             * Urutan ini penting agar constraint
-             * reserved_quantity <= quantity selalu terpenuhi.
-             */
+    
             $inventory->decrement('reserved_quantity', $quantity);
             $inventory->decrement('quantity', $quantity);
-
+    
             $variant->inventoryMovements()->create([
                 'type' => 'sale',
                 'quantity' => -$quantity,
@@ -348,60 +401,81 @@ class VariantInventoryService
                 'note' => 'Stok dikurangi setelah reservasi di-commit.',
                 'created_by' => auth()->id(),
             ]);
-
+    
             $reservation->update([
                 'status' => InventoryReservation::STATUS_COMMITTED,
                 'committed_at' => now(),
             ]);
-
+    
             $this->syncLegacyStock($product);
-
+    
             return $reservation->fresh();
         });
     }
-
-    public function releaseReservation(
-        string $idempotencyKey
-    ): InventoryReservation {
+    
+    public function releaseReservation(string $idempotencyKey): InventoryReservation
+    {
+        DB::transaction(function () use ($order): void {
+            $lockedOrder = Order::query()
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+    
+            $keys = $lockedOrder->reservations()
+                ->orderBy('product_variant_id')
+                ->orderBy('id')
+                ->pluck('idempotency_key');
+    
+            foreach ($keys as $key) {
+                $reservation = InventoryReservation::query()
+                    ->where('idempotency_key', $key)
+                    ->firstOrFail();
+    
+                if (
+                    $reservation->status === InventoryReservation::STATUS_RELEASED
+                    || $reservation->status === InventoryReservation::STATUS_COMMITTED
+                ) {
+                    continue;
+                }
+    
+                if ($reservation->status !== InventoryReservation::STATUS_RESERVED) {
+                    throw new \LogicException('Status reservasi tidak dikenal.');
+                }
+    
+                $this->releaseReservation($key);
+            }
+        });
+        
         return DB::transaction(function () use ($idempotencyKey) {
-            $reservation = InventoryReservation::query()
-            ->where('idempotency_key', $idempotencyKey)
-            ->lockForUpdate()
-            ->firstOrFail();
-
+            $context = $this->lockReservationContext($idempotencyKey);
+    
+            $reservation = $context['reservation'];
+            $inventory = $context['inventory'];
+            $quantity = (int) $reservation->quantity;
+    
             if ($reservation->status === InventoryReservation::STATUS_RELEASED) {
                 return $reservation;
             }
-
+    
             if ($reservation->status === InventoryReservation::STATUS_COMMITTED) {
                 throw new \LogicException(
                     'Reservasi yang sudah di-commit tidak dapat dilepas.'
                 );
             }
-
-            $variant = ProductVariant::query()
-            ->findOrFail($reservation->product_variant_id);
-
-            $product = Product::query()
-            ->findOrFail($variant->product_id);
-
-            $resolved = $this->resolve($product, (int) $variant->id);
-            $inventory = $resolved['inventory'];
-            $quantity = (int) $reservation->quantity;
-
+    
             if ((int) $inventory->reserved_quantity < $quantity) {
                 throw new \LogicException(
                     'Reserved quantity lebih kecil daripada jumlah reservasi.'
                 );
             }
-
+    
             $inventory->decrement('reserved_quantity', $quantity);
-
+    
             $reservation->update([
                 'status' => InventoryReservation::STATUS_RELEASED,
                 'released_at' => now(),
             ]);
-
+    
             return $reservation->fresh();
         });
     }
@@ -893,33 +967,32 @@ class VariantInventoryService
     {
         DB::transaction(function () use ($order): void {
             $lockedOrder = Order::query()
-            ->whereKey($order->getKey())
-            ->lockForUpdate()
-            ->firstOrFail();
+                            ->whereKey($order->getKey())
+                            ->lockForUpdate()
+                            ->firstOrFail();
 
             $reservations = $lockedOrder->reservations()
-            ->orderBy('product_variant_id')
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
+                                    ->orderBy('product_variant_id')
+                                    ->orderBy('id')
+                                    ->get();
 
             $items = $lockedOrder->items()
-            ->orderBy('product_id')
-            ->orderBy('product_variant_id')
-            ->orderBy('id')
-            ->get();
+                            ->orderBy('product_id')
+                            ->orderBy('product_variant_id')
+                            ->orderBy('id')
+                            ->get();
 
             $productIds = $items->pluck('product_id')
-            ->unique()
-            ->sort()
-            ->values();
+                                ->unique()
+                                ->sort()
+                                ->values();
 
             $products = Product::query()
-            ->whereIn('id', $productIds)
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get()
-            ->keyBy('id');
+                                ->whereIn('id', $productIds)
+                                ->orderBy('id')
+                                ->lockForUpdate()
+                                ->get()
+                                ->keyBy('id');
             
             $variants = ProductVariant::query()
                         ->whereIn(
