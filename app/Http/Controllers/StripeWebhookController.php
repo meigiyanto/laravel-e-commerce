@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Services\Billing\WebhookEventService;
 use App\Services\RefundService;
 use App\Services\VariantInventoryService;
-use App\Services\WebhookEventService;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -34,8 +34,7 @@ class StripeWebhookController extends Controller
         $metadata = $paymentIntent->metadata ?? null;
 
         if (
-            (string) ($metadata->order_id ?? '') !== (string) $order->id
-            || (string) ($metadata->order_number ?? '') !== (string) $order->order_number
+            (string) ($metadata->order_id ?? '') !== (string) $order->id || (string) ($metadata->order_number ?? '') !== (string) $order->order_number
         ) {
             throw new \RuntimeException(
                 'Stripe PaymentIntent metadata does not match the order.'
@@ -64,6 +63,65 @@ class StripeWebhookController extends Controller
         $context->set($tenant);
     }
 
+    private function resolveWebhookTenant(object $paymentIntent): ?Tenant
+    {
+        if (
+            ! isset($paymentIntent->id) || ! is_string($paymentIntent->id)
+        ) {
+            return null;
+        }
+
+        // Payment tidak memiliki global scope tenant.
+        // Relasi Payment -> Order menjadi sumber kepemilikan.
+        $payment = Payment::query()
+            ->where('provider', 'stripe')
+            ->where('stripe_payment_intent_id', $paymentIntent->id)
+            ->first();
+
+        if (! $payment) {
+            return null;
+        }
+
+        // Bypass hanya untuk mencari tenant dari relasi Payment
+        // yang sudah ditemukan berdasarkan PaymentIntent terverifikasi.
+        $order = Order::withoutGlobalScope('tenant')
+            ->whereKey($payment->order_id)
+            ->first();
+
+        if (! $order) {
+            return null;
+        }
+
+        if (config('operational.mode', 'single_store') !== 'multi_tenant') {
+            if ($order->tenant_id !== null) {
+                throw new \RuntimeException(
+                    'Order memiliki tenant pada mode single-store.'
+                );
+            }
+
+            return null;
+        }
+
+        if ($order->tenant_id === null) {
+            throw new \RuntimeException(
+                'Order tidak memiliki tenant untuk webhook multi-tenant.'
+            );
+        }
+
+        $tenant = Tenant::query()
+            ->whereKey($order->tenant_id)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $tenant) {
+            throw new \RuntimeException(
+                'Tenant webhook tidak ditemukan atau tidak aktif.'
+            );
+        }
+
+        return $tenant;
+    }
+
     public function handle(Request $request): Response
     {
         $payload = $request->getContent();
@@ -80,43 +138,66 @@ class StripeWebhookController extends Controller
         } catch (SignatureVerificationException $e) {
             return response('Invalid signature', 400);
         }
-        
+
         $tenantContext = app(TenantContext::class);
         $previousTenant = $tenantContext->current();
 
         try {
-            $this->webhookEvents->process(
-                provider: 'stripe',
-                eventId: $event->id,
-                eventType: $event->type,
-                payload: json_decode(
-                    $payload,
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR
-                ),
-                handler: function () use ($event): void {
-                    switch ($event->type) {
-                        case 'payment_intent.succeeded':
-                            $this->handlePaymentIntentSucceeded(
-                                $event->data->object
-                            );
-                            break;
+            $stripeObject = $event->data->object ?? null;
 
-                        case 'payment_intent.payment_failed':
-                            $this->handlePaymentIntentFailed(
-                                $event->data->object
-                            );
-                            break;
+            $tenant = is_object($stripeObject)
+                ? $this->resolveWebhookTenant($stripeObject)
+                : null;
 
-                        case 'payment_intent.canceled':
-                            $this->handlePaymentIntentCanceled(
-                                $event->data->object
-                            );
-                            break;
-                    }
-                }
-            );
+            $processWebhook = function () use (
+                $event,
+                $payload,
+                $tenant
+            ): void {
+                $this->webhookEvents->process(
+                    provider: 'stripe',
+                    eventId: $event->id,
+                    eventType: $event->type,
+                    payload: json_decode(
+                        $payload,
+                        true,
+                        512,
+                        JSON_THROW_ON_ERROR
+                    ),
+                    handler: function () use ($event): void {
+                        switch ($event->type) {
+                            case 'payment_intent.succeeded':
+                                $this->handlePaymentIntentSucceeded(
+                                    $event->data->object
+                                );
+                                break;
+
+                            case 'payment_intent.payment_failed':
+                                $this->handlePaymentIntentFailed(
+                                    $event->data->object
+                                );
+                                break;
+
+                            case 'payment_intent.canceled':
+                                $this->handlePaymentIntentCanceled(
+                                    $event->data->object
+                                );
+                                break;
+                        }
+                    },
+                    tenantId: $tenant?->id
+                );
+            };
+
+            if ($tenant !== null) {
+                $tenantContext->run(
+                    $tenant,
+                    fn () => $processWebhook()
+                );
+            } else {
+                $tenantContext->clear();
+                $processWebhook();
+            }
         } catch (\RuntimeException $e) {
             return response($e->getMessage(), 422);
         } catch (\JsonException $e) {
