@@ -53,7 +53,9 @@ class TenantOperationalIsolationTest extends TestCase
             ]
         );
 
-        return [$tenant, $store, $domain];
+        return [$tenant,
+            $store,
+            $domain];
     }
 
     private function tenantUrl(
@@ -87,7 +89,8 @@ class TenantOperationalIsolationTest extends TestCase
 
     public function test_customer_cannot_update_or_remove_another_tenants_cart_item(): void
     {
-        [$tenantA, , $domainA] = $this->createTenantStore('Store A');
+        [$tenantA,,
+            $domainA] = $this->createTenantStore('Store A');
         [$tenantB] = $this->createTenantStore('Store B');
 
         $user = User::factory()->create();
@@ -139,7 +142,8 @@ class TenantOperationalIsolationTest extends TestCase
 
     public function test_customer_cannot_checkout_another_tenants_cart(): void
     {
-        [$tenantA, , $domainA] = $this->createTenantStore('Store A');
+        [$tenantA,,
+            $domainA] = $this->createTenantStore('Store A');
         [$tenantB] = $this->createTenantStore('Store B');
 
         $user = User::factory()->create();
@@ -189,7 +193,8 @@ class TenantOperationalIsolationTest extends TestCase
 
     public function test_customer_cannot_open_another_tenants_order(): void
     {
-        [, , $domainA] = $this->createTenantStore('Store A');
+        [,,
+            $domainA] = $this->createTenantStore('Store A');
         [$tenantB] = $this->createTenantStore('Store B');
 
         $user = User::factory()->create();
@@ -214,7 +219,8 @@ class TenantOperationalIsolationTest extends TestCase
 
     public function test_admin_cannot_change_another_tenants_order(): void
     {
-        [$tenantA, , $domainA] = $this->createTenantStore('Store A');
+        [$tenantA,,
+            $domainA] = $this->createTenantStore('Store A');
         [$tenantB] = $this->createTenantStore('Store B');
 
         $adminA = $this->createAdmin($tenantA);
@@ -247,7 +253,8 @@ class TenantOperationalIsolationTest extends TestCase
 
     public function test_admin_cannot_update_or_adjust_another_tenants_inventory(): void
     {
-        [$tenantA, , $domainA] = $this->createTenantStore('Store A');
+        [$tenantA,,
+            $domainA] = $this->createTenantStore('Store A');
         [$tenantB] = $this->createTenantStore('Store B');
 
         $adminA = $this->createAdmin($tenantA);
@@ -284,5 +291,97 @@ class TenantOperationalIsolationTest extends TestCase
             10,
             (int) $productB->fresh()->stock
         );
+    }
+
+    public function test_customer_on_tenant_a_cannot_confirm_tenant_b_payment_by_order_id(): void
+    {
+        [,,
+            $domainA] = $this->createTenantStore('Store A');
+        [$tenantB] = $this->createTenantStore('Store B');
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+        ]);
+
+        $fixtures = app(TenantContext::class)->run($tenantB, function () use ($tenantB, $user) {
+            $stripeOrder = Order::factory()->create([
+                'tenant_id' => $tenantB->id,
+                'user_id' => $user->id,
+                'status' => 'pending',
+            ]);
+
+            $stripePayment = Payment::factory()->create([
+                'order_id' => $stripeOrder->id,
+                'provider' => 'stripe',
+                'status' => 'pending',
+                'stripe_payment_intent_id' => 'pi_tenant_b_test',
+            ]);
+
+            $midtransOrder = Order::factory()->create([
+                'tenant_id' => $tenantB->id,
+                'user_id' => $user->id,
+                'status' => 'pending',
+            ]);
+
+            $midtransPayment = Payment::factory()->create([
+                'order_id' => $midtransOrder->id,
+                'provider' => 'midtrans',
+                'status' => 'pending',
+                'transaction_id' => 'midtrans-tenant-b-test',
+            ]);
+
+            return compact(
+                'stripeOrder',
+                'stripePayment',
+                'midtransOrder',
+                'midtransPayment'
+            );
+        });
+
+        $this->actingAs($user)->postJson(
+            $this->tenantUrl(
+                $domainA,
+                'payment.confirm',
+                $fixtures['stripeOrder']->id
+            ),
+            [
+                'payment_intent_id' => 'pi_tenant_b_test',
+                'payment_id' => $fixtures['stripePayment']->id,
+            ]
+        )->assertNotFound();
+
+        $this->actingAs($user)->postJson(
+            $this->tenantUrl(
+                $domainA,
+                'payment.midtrans.confirm',
+                $fixtures['midtransOrder']->id
+            ),
+            [
+                'transaction_id' => 'midtrans-tenant-b-test',
+                'payment_id' => $fixtures['midtransPayment']->id,
+            ]
+        )->assertNotFound();
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $fixtures['stripeOrder']->id,
+            'tenant_id' => $tenantB->id,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $fixtures['stripePayment']->id,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $fixtures['midtransOrder']->id,
+            'tenant_id' => $tenantB->id,
+            'status' => 'pending',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'id' => $fixtures['midtransPayment']->id,
+            'status' => 'pending',
+        ]);
     }
 }

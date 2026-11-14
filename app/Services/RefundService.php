@@ -363,13 +363,38 @@ class RefundService
         $lock = $this->refundOperationLock($refund->id);
 
         if (! $lock->get()) {
-            return $refund->fresh();
+            // return $refund->fresh();
+            return Refund::query()
+                    ->whereKey($refundData->id)
+                    ->where('order_id', $order->id)
+                    ->firstOrFail();
         }
 
         try {
+            /*
             $refundData = Refund::query()
                 ->select(['id', 'payment_id'])
                 ->findOrFail($refund->id);
+            */
+            
+            $refundData = Refund::query()
+                            ->select(['id', 'order_id', 'payment_id'])
+                            ->findOrFail($refund->id);
+        
+            // Query Order tetap menggunakan global scope tenant.
+            $order = Order::query()
+                    ->whereKey($refundData->order_id)
+                    ->firstOrFail();
+            
+            $paymentReference = Payment::query()
+                                ->whereKey($refundData->payment_id)
+                                ->firstOrFail();
+            
+            if ((int) $paymentReference->order_id !== (int) $order->id) {
+                throw new LogicException(
+                    'Payment refund tidak dimiliki oleh order refund.'
+                );
+            }
 
             $timeoutMinutes = (int) config(
                 'services.refund.processing_timeout_minutes',

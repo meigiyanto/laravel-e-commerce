@@ -2,19 +2,19 @@
 
 namespace Tests\Feature\Stripe;
 
+use App\Models\Inventory;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Stripe\WebhookSignature;
 use Tests\TestCase;
-use App\Models\OrderItem;
-use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\Inventory;
-use Illuminate\Support\Facades\DB;
 
 class WebhookTest extends TestCase
 {
@@ -30,7 +30,7 @@ class WebhookTest extends TestCase
     {
         parent::setUp();
 
-        Config::set('services.stripe.webhook_secret',self::WEBHOOK_SECRET);
+        Config::set('services.stripe.webhook_secret', self::WEBHOOK_SECRET);
     }
 
     /*
@@ -309,9 +309,9 @@ class WebhookTest extends TestCase
                 'last_payment_error' => null,
             ]
         );
-        
+
         $response->assertStatus(200);
-        
+
         $this->assertDatabaseHas('payments', [
             'id' => $payment->id,
             'status' => 'failed',
@@ -339,7 +339,7 @@ class WebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-        
+
         $response->assertStatus(200);
 
         $this->assertDatabaseHas('payments', [
@@ -413,7 +413,7 @@ class WebhookTest extends TestCase
         $payment = $this->createPayment(
             paymentStatus: 'failed'
         );
-    
+
         $response = $this->postStripeWebhook(
             'payment_intent.canceled',
             [
@@ -423,11 +423,11 @@ class WebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-        
+
         $response->assertStatus(200);
-    
+
         $this->assertPaymentState($payment, 'canceled');
-    
+
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
             'status' => 'canceled',
@@ -537,7 +537,7 @@ class WebhookTest extends TestCase
             'payment_intent.succeeded',
             $payload
         );
-        
+
         $second->assertStatus(200);
 
         $this->assertPaymentState($payment, 'succeeded');
@@ -587,7 +587,7 @@ class WebhookTest extends TestCase
             'amount' => self::STRIPE_AMOUNT,
             'currency' => 'idr',
         ];
-        
+
         $this->postStripeWebhook(
             'payment_intent.canceled',
             $payload
@@ -629,7 +629,7 @@ class WebhookTest extends TestCase
         );
 
         $response->assertStatus(200);
-        
+
         $expectedPaymentStatus = $orderStatus === 'canceled' ? 'succeeded' : 'pending';
 
         $this->assertPaymentState($payment, $expectedPaymentStatus);
@@ -657,7 +657,6 @@ class WebhookTest extends TestCase
                 'currency' => 'idr',
             ]
         );
-        
 
         $response->assertStatus(200);
 
@@ -690,9 +689,9 @@ class WebhookTest extends TestCase
         $response->assertStatus(200);
 
         $expectedPaymentStatus = $orderStatus === 'canceled' ? 'canceled' : 'pending';
-        
+
         $this->assertPaymentState($payment, $expectedPaymentStatus);
-        
+
         $this->assertDatabaseHas('orders', [
             'id' => $payment->order_id,
             'status' => $orderStatus,
@@ -774,12 +773,6 @@ class WebhookTest extends TestCase
         $this->assertPaymentState($payment, 'pending');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Invalid failed-event payload
-    |--------------------------------------------------------------------------
-    */
-
     #[DataProvider('invalidFailedStatusPayloads')]
     public function test_failed_webhook_rejects_invalid_status(
         array $statusData
@@ -803,12 +796,6 @@ class WebhookTest extends TestCase
         $this->assertPaymentState($payment, 'pending');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Invalid canceled-event payload
-    |--------------------------------------------------------------------------
-    */
-
     #[DataProvider('invalidCanceledStatusPayloads')]
     public function test_canceled_webhook_rejects_invalid_status(
         array $statusData
@@ -831,12 +818,6 @@ class WebhookTest extends TestCase
 
         $this->assertPaymentState($payment, 'pending');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Payment intent ID validation
-    |--------------------------------------------------------------------------
-    */
 
     #[DataProvider('invalidPaymentIntentIds')]
     public function test_webhook_rejects_invalid_payment_intent_id(
@@ -874,12 +855,6 @@ class WebhookTest extends TestCase
 
         $this->assertPaymentState($payment, 'pending');
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Missing required fields
-    |--------------------------------------------------------------------------
-    */
 
     #[DataProvider('missingPaymentIntentIds')]
     public function test_webhook_rejects_missing_payment_intent_id(
@@ -925,12 +900,6 @@ class WebhookTest extends TestCase
             'canceled' => ['payment_intent.canceled'],
         ];
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Data providers
-    |--------------------------------------------------------------------------
-    */
 
     public static function terminalOrderStatuses(): array
     {
@@ -1151,12 +1120,6 @@ class WebhookTest extends TestCase
         ];
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Test helpers
-    |--------------------------------------------------------------------------
-    */
-
     private function createPayment(
         string $orderStatus = 'pending',
         string $paymentStatus = 'pending',
@@ -1211,10 +1174,23 @@ class WebhookTest extends TestCase
         string $eventType,
         array $paymentIntent,
     ) {
-        $payload = $this->makePayload(
-            $eventType,
-            $paymentIntent
-        );
+        $payment = isset($paymentIntent['id'])
+            ? Payment::query()
+                ->where('provider', 'stripe')
+                ->where('stripe_payment_intent_id', $paymentIntent['id'])
+                ->first()
+            : null;
+
+        if ($payment) {
+            $order = Order::findOrFail($payment->order_id);
+
+            $paymentIntent['metadata'] = array_merge([
+                'order_id' => (string) $order->id,
+                'order_number' => (string) $order->order_number,
+            ], $paymentIntent['metadata'] ?? []);
+        }
+
+        $payload = $this->makePayload($eventType, $paymentIntent);
 
         $signature = WebhookSignature::generateSignatureHeader(
             $payload,
@@ -1270,18 +1246,18 @@ class WebhookTest extends TestCase
             'status' => $status,
         ]);
     }
-    
+
     private function createOrderReservation(
         Payment $payment,
         string $reservationStatus
     ): array {
         $order = Order::findOrFail($payment->order_id);
         $isCommitted = $reservationStatus === 'committed';
-    
+
         $product = Product::factory()->create([
             'stock' => $isCommitted ? 8 : 10,
         ]);
-    
+
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'sku' => 'STRIPE-CANCEL-'.uniqid(),
@@ -1290,14 +1266,14 @@ class WebhookTest extends TestCase
             'is_default' => true,
             'status' => 'active',
         ]);
-    
+
         $inventory = Inventory::create([
             'product_variant_id' => $variant->id,
             'quantity' => $isCommitted ? 8 : 10,
             'reserved_quantity' => $reservationStatus === 'reserved' ? 2 : 0,
             'reorder_level' => 0,
         ]);
-    
+
         $item = OrderItem::create([
             'order_id' => $order->id,
             'product_id' => $product->id,
@@ -1307,7 +1283,7 @@ class WebhookTest extends TestCase
             'quantity' => 2,
             'subtotal' => 100000,
         ]);
-    
+
         DB::table('inventory_reservations')->insert([
             'product_variant_id' => $variant->id,
             'idempotency_key' => 'stripe-cancel-'.$order->id,
@@ -1318,7 +1294,35 @@ class WebhookTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    
+
         return [$order, $product, $variant, $inventory, $item];
+    }
+
+    public function test_stripe_webhook_rejects_payment_intent_with_foreign_order_metadata(): void
+    {
+        $payment = $this->createPayment();
+
+        $response = $this->postStripeWebhook(
+            'payment_intent.succeeded',
+            [
+                'id' => $payment->stripe_payment_intent_id,
+                'status' => 'succeeded',
+                'amount' => self::STRIPE_AMOUNT,
+                'currency' => 'idr',
+                'metadata' => [
+                    'order_id' => '999999',
+                    'order_number' => 'ORDER-FOREIGN',
+                ],
+            ]
+        );
+
+        $response->assertStatus(422);
+
+        $this->assertPaymentState($payment, 'pending');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $payment->order_id,
+            'status' => 'pending',
+        ]);
     }
 }

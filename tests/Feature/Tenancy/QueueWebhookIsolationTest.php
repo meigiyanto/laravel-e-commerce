@@ -91,4 +91,41 @@ class QueueWebhookIsolationTest extends TestCase
 
         $this->assertDatabaseCount('billing_webhook_events', 2);
     }
+
+    public function test_queue_middleware_restores_previous_context_after_job_exception(): void
+    {
+        $tenantA = Tenant::factory()->create(['status' => 'active']);
+        $tenantB = Tenant::factory()->create(['status' => 'active']);
+        $context = app(TenantContext::class);
+
+        $context->run($tenantA, function () use ($tenantB, $context) {
+            try {
+                (new SetTenantContext($tenantB->id))->handle(
+                    new \stdClass(),
+                    function () use ($tenantB, $context) {
+                        $this->assertSame(
+                            $tenantB->id,
+                            $context->current()->id
+                        );
+
+                        throw new \RuntimeException('Simulated job failure');
+                    }
+                );
+
+                $this->fail('Job seharusnya melempar exception.');
+            } catch (\RuntimeException $exception) {
+                $this->assertSame(
+                    'Simulated job failure',
+                    $exception->getMessage()
+                );
+            }
+
+            $this->assertSame(
+                $tenantA->id,
+                $context->current()->id
+            );
+        });
+
+        $this->assertNull($context->current());
+    }
 }

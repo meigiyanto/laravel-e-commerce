@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Tenant;
-use App\Support\Tenancy\TenantContext;
 use App\Services\RefundService;
-use App\Services\WebhookEventService;
 use App\Services\VariantInventoryService;
+use App\Services\WebhookEventService;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +21,27 @@ class StripeWebhookController extends Controller
     public function __construct(
         protected WebhookEventService $webhookEvents
     ) {}
+
+    private function convertStripeAmount(int $amount): float
+    {
+        return $amount / 100;
+    }
+
+    private function assertPaymentIntentMatchesOrder(
+        object $paymentIntent,
+        Order $order
+    ): void {
+        $metadata = $paymentIntent->metadata ?? null;
+
+        if (
+            (string) ($metadata->order_id ?? '') !== (string) $order->id
+            || (string) ($metadata->order_number ?? '') !== (string) $order->order_number
+        ) {
+            throw new \RuntimeException(
+                'Stripe PaymentIntent metadata does not match the order.'
+            );
+        }
+    }
 
     private function activateTenantContext(Order $order): void
     {
@@ -59,6 +80,9 @@ class StripeWebhookController extends Controller
         } catch (SignatureVerificationException $e) {
             return response('Invalid signature', 400);
         }
+        
+        $tenantContext = app(TenantContext::class);
+        $previousTenant = $tenantContext->current();
 
         try {
             $this->webhookEvents->process(
@@ -97,6 +121,12 @@ class StripeWebhookController extends Controller
             return response($e->getMessage(), 422);
         } catch (\JsonException $e) {
             return response('Invalid webhook payload.', 400);
+        } finally {
+            if ($previousTenant !== null) {
+                $tenantContext->set($previousTenant);
+            } else {
+                $tenantContext->clear();
+            }
         }
 
         return response('Webhook received', 200);
@@ -122,6 +152,7 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
+            $this->assertPaymentIntentMatchesOrder($paymentIntent, $order);
             $this->activateTenantContext($order);
 
             // Order failed dan refunded tidak boleh menerima pembayaran baru.
@@ -188,11 +219,11 @@ class StripeWebhookController extends Controller
 
         // Refund dilakukan setelah transaksi transisi selesai.
         $payment = Payment::query()
-        ->where('provider',
-            'stripe')
-        ->where('stripe_payment_intent_id',
-            $paymentIntent->id)
-        ->first();
+            ->where('provider',
+                'stripe')
+            ->where('stripe_payment_intent_id',
+                $paymentIntent->id)
+            ->first();
 
         if (! $payment) {
             return;
@@ -225,7 +256,7 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
-
+            $this->assertPaymentIntentMatchesOrder($paymentIntent, $order);
             $this->activateTenantContext($order);
 
             // Jangan menurunkan pembayaran yang sudah sukses atau canceled.
@@ -258,37 +289,37 @@ class StripeWebhookController extends Controller
     }
 
     /**
-    * Mengunci Order terlebih dahulu, baru Payment.
-    *
-    * Dipanggil hanya dari dalam DB transaction.
-    */
+     * Mengunci Order terlebih dahulu, baru Payment.
+     *
+     * Dipanggil hanya dari dalam DB transaction.
+     */
     private function lockPaymentContext(string $paymentIntentId): ?array
     {
         // Ambil referensi awal untuk mengetahui order_id.
         $paymentReference = Payment::query()
-        ->where('provider',
-            'stripe')
-        ->where('stripe_payment_intent_id',
-            $paymentIntentId)
-        ->first();
+            ->where('provider',
+                'stripe')
+            ->where('stripe_payment_intent_id',
+                $paymentIntentId)
+            ->first();
 
         if (! $paymentReference) {
             return null;
         }
 
         $order = Order::withoutGlobalScope('tenant')
-        ->whereKey($paymentReference->order_id)
-        ->lockForUpdate()
-        ->first();
+            ->whereKey($paymentReference->order_id)
+            ->lockForUpdate()
+            ->first();
 
         if (! $order) {
             return null;
         }
 
         $payment = Payment::query()
-        ->whereKey($paymentReference->id)
-        ->lockForUpdate()
-        ->first();
+            ->whereKey($paymentReference->id)
+            ->lockForUpdate()
+            ->first();
 
         if (! $payment || (int) $payment->order_id !== (int) $order->id || $payment->stripe_payment_intent_id !== $paymentIntentId) {
             return null;
@@ -316,6 +347,7 @@ class StripeWebhookController extends Controller
 
             $order = $context['order'];
             $payment = $context['payment'];
+            $this->assertPaymentIntentMatchesOrder($paymentIntent, $order);
             $this->activateTenantContext($order);
 
             if ($order->status === 'pending') {
@@ -363,12 +395,7 @@ class StripeWebhookController extends Controller
 
             // Aman dipanggil ulang: reservasi released akan dilewati.
             app(VariantInventoryService::class)
-            ->releaseReservationsForOrder($order);
+                ->releaseReservationsForOrder($order);
         });
-    }
-
-    private function convertStripeAmount(int $amount): float
-    {
-        return $amount / 100;
     }
 }

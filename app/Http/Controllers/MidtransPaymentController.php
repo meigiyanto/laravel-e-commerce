@@ -324,6 +324,7 @@ class MidtransPaymentController extends Controller
         }
 
         $tenantContext = app(TenantContext::class);
+        $previousTenant = $tenantContext->current();
 
         try {
             // 2. Cari pesanan dari order_id yang dikirim Midtrans.
@@ -514,7 +515,11 @@ class MidtransPaymentController extends Controller
                     'message' => 'Notifikasi belum dapat diproses.',
                 ], 500);
             } finally {
-                $tenantContext->clear();
+                if ($previousTenant !== null) {
+                    $tenantContext->set($previousTenant);
+                } else {
+                    $tenantContext->clear();
+                }
             }
         }
 
