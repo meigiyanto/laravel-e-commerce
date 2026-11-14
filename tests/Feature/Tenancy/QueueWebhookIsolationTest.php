@@ -98,7 +98,7 @@ class QueueWebhookIsolationTest extends TestCase
         $tenantB = Tenant::factory()->create(['status' => 'active']);
         $context = app(TenantContext::class);
 
-        $context->run($tenantA, function () use ($tenantB, $context) {
+        $context->run($tenantA, function () use ($tenantA, $tenantB, $context) {
             try {
                 (new SetTenantContext($tenantB->id))->handle(
                     new \stdClass(),

@@ -342,60 +342,56 @@ class RefundService
             'services.refund.processing_timeout_minutes',
             15
         );
-    
+
         $cutoff = now()->subMinutes($timeoutMinutes);
-    
+
         return Refund::query()
-            ->join('orders', 'orders.id', '=', 'refunds.order_id')
+            ->join('orders',
+                'orders.id',
+                '=',
+                'refunds.order_id')
             ->select([
                 'refunds.*',
                 'orders.tenant_id as recovery_tenant_id',
-            ])
-            ->where('refunds.status', Refund::STATUS_PROCESSING)
+                ])
+            ->where('refunds.status',
+                Refund::STATUS_PROCESSING)
             ->whereNotNull('refunds.processing_at')
-            ->where('refunds.processing_at', '<=', $cutoff)
+            ->where('refunds.processing_at',
+                '<=',
+                $cutoff)
             ->orderBy('refunds.processing_at')
             ->get();
     }
 
     public function recoverRefund(Refund $refund): Refund
     {
-        $lock = $this->refundOperationLock($refund->id);
+        // Ambil referensi refund terlebih dahulu.
+        $refundData = Refund::query()
+            ->select(['id',
+                'order_id',
+                'payment_id'])
+            ->whereKey($refund->id)
+            ->firstOrFail();
+
+        // Order tetap menggunakan global scope tenant.
+        // Jika order bukan milik tenant aktif, query akan gagal.
+        $order = Order::query()
+            ->whereKey($refundData->order_id)
+            ->firstOrFail();
+
+        $lock = $this->refundOperationLock($refundData->id);
 
         if (! $lock->get()) {
-            // return $refund->fresh();
             return Refund::query()
-                    ->whereKey($refundData->id)
-                    ->where('order_id', $order->id)
-                    ->firstOrFail();
+                ->whereKey($refundData->id)
+                ->where('order_id', $order->id)
+                ->where('payment_id', $refundData->payment_id)
+                ->firstOrFail()
+                ->load(['order', 'payment']);
         }
 
         try {
-            /*
-            $refundData = Refund::query()
-                ->select(['id', 'payment_id'])
-                ->findOrFail($refund->id);
-            */
-            
-            $refundData = Refund::query()
-                            ->select(['id', 'order_id', 'payment_id'])
-                            ->findOrFail($refund->id);
-        
-            // Query Order tetap menggunakan global scope tenant.
-            $order = Order::query()
-                    ->whereKey($refundData->order_id)
-                    ->firstOrFail();
-            
-            $paymentReference = Payment::query()
-                                ->whereKey($refundData->payment_id)
-                                ->firstOrFail();
-            
-            if ((int) $paymentReference->order_id !== (int) $order->id) {
-                throw new LogicException(
-                    'Payment refund tidak dimiliki oleh order refund.'
-                );
-            }
-
             $timeoutMinutes = (int) config(
                 'services.refund.processing_timeout_minutes',
                 15
@@ -405,47 +401,67 @@ class RefundService
                 $refundData,
                 $timeoutMinutes
             ) {
+                // Kunci order menggunakan global scope tenant.
+                $lockedOrder = Order::query()
+                    ->whereKey($refundData->order_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Payment harus benar-benar milik order tersebut.
                 $payment = Payment::query()
                     ->whereKey($refundData->payment_id)
+                    ->where('order_id', $lockedOrder->id)
                     ->lockForUpdate()
                     ->first();
 
+                $lockedRefund = Refund::query()
+                    ->whereKey($refundData->id)
+                    ->where('order_id', $lockedOrder->id)
+                    ->where('payment_id', $refundData->payment_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
                 if (! $payment) {
                     return [
-                        'refund' => Refund::findOrFail($refundData->id),
+                        'refund' => $lockedRefund->load(['order', 'payment']),
                         'eligible' => false,
                     ];
                 }
 
-                $refund = Refund::query()
-                    ->whereKey($refundData->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                if (
+                    (int) $payment->order_id !== (int) $lockedOrder->id
+                ) {
+                    throw new LogicException(
+                        'Payment refund tidak dimiliki oleh order refund.'
+                    );
+                }
 
                 if (
-                    $refund->status !== Refund::STATUS_PROCESSING || ! $refund->processing_at
+                    $lockedRefund->status !== Refund::STATUS_PROCESSING || ! $lockedRefund->processing_at
                 ) {
                     return [
-                        'refund' => $refund->load(['order', 'payment']),
+                        'refund' => $lockedRefund->load(['order', 'payment']),
                         'eligible' => false,
                     ];
                 }
 
                 $cutoff = now()->subMinutes($timeoutMinutes);
 
-                if ($refund->processing_at->gt($cutoff)) {
+                if ($lockedRefund->processing_at->gt($cutoff)) {
                     return [
-                        'refund' => $refund->load(['order', 'payment']),
+                        'refund' => $lockedRefund->load(['order', 'payment']),
                         'eligible' => false,
                     ];
                 }
 
-                $refund->update([
+                // Tandai waktu recovery agar worker lain tidak langsung
+                // menganggap refund ini sudah melewati batas waktu.
+                $lockedRefund->update([
                     'processing_at' => now(),
                 ]);
 
                 return [
-                    'refund' => $refund->fresh(['order', 'payment']),
+                    'refund' => $lockedRefund->fresh(['order', 'payment']),
                     'eligible' => true,
                 ];
             });
@@ -456,7 +472,6 @@ class RefundService
                 return $refund;
             }
 
-            // Periksa kembali status setelah transaksi.
             if ($refund->status !== Refund::STATUS_PROCESSING) {
                 return $refund;
             }
